@@ -1,0 +1,38 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   App.razor — AVA.App.Web
+   Purpose  : Web shell root.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@using AVA.UI.Layout
+@using Microsoft.AspNetCore.Components.Routing
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <link rel="stylesheet" href="_content/AVA.UI/app.css" />
+    <HeadOutlet />
+</head>
+<body>
+
+    <Router AppAssembly="@typeof(AVA.UI.App).Assembly">
+        <Found Context="routeData">
+            <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            <LayoutView Layout="@typeof(MainLayout)">
+                <div style="padding:24px; color: var(--text-muted);">
+                    <p>404 — Page not found.</p>
+                </div>
+            </LayoutView>
+        </NotFound>
+    </Router>
+
+    <script src="_content/AVA.UI/ava-interop.js"></script>
+    <script src="_framework/blazor.server.js"></script>
+
+</body>
+</html>

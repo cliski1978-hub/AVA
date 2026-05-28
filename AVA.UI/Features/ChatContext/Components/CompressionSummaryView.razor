@@ -1,0 +1,69 @@
+@using AVA.UI.CORE.ChatContext.Models
+
+<div class="ctx-compression">
+    <div class="ctx-compression__header">
+        <span>Compression</span>
+        <span class="ctx-compression__state">@(Enabled ? "Enabled" : "Disabled")</span>
+    </div>
+
+    @if (Result == null || !Enabled)
+    {
+        <div class="ctx-compression__empty">Automatic compression is not active.</div>
+    }
+    else
+    {
+        <div class="ctx-compression__grid">
+            <span>Applied</span>
+            <strong>@(Result.CompressionApplied ? "Yes" : "No")</strong>
+            <span>Original Tokens</span>
+            <strong>@Result.OriginalTokenCount</strong>
+            <span>Compressed Tokens</span>
+            <strong>@Result.CompressedTokenCount</strong>
+            <span>Tokens Saved</span>
+            <strong>@Result.TokensSaved</strong>
+            <span>Blocks</span>
+            <strong>@Result.CompressedBlocks.Count</strong>
+        </div>
+
+        @if (Result.Warnings.Count > 0)
+        {
+            <div class="ctx-compression__warnings">
+                @foreach (var warning in Result.Warnings)
+                {
+                    <div>@warning</div>
+                }
+            </div>
+        }
+
+        @if (Result.CompressedBlocks.Count > 0)
+        {
+            <details class="ctx-compression__blocks">
+                <summary>Compressed blocks</summary>
+                @foreach (var block in Result.CompressedBlocks)
+                {
+                    <div class="ctx-compression__block">
+                        <div>@block.BlockId</div>
+                        <div>@block.OriginalMessageCount items, @block.OriginalEstimatedTokens to @block.CompressedEstimatedTokens tokens</div>
+                    </div>
+                }
+            </details>
+        }
+    }
+</div>
+
+<style>
+.ctx-compression { padding: 8px; background: var(--BgElevated); border: 1px solid var(--Border); border-radius: var(--RxSm); display: flex; flex-direction: column; gap: 6px; }
+.ctx-compression__header { display: flex; justify-content: space-between; align-items: center; color: var(--Text); font-size: var(--FzXs); font-weight: 600; }
+.ctx-compression__state { color: var(--TextMuted); font-weight: 500; }
+.ctx-compression__empty { color: var(--TextMuted); font-size: var(--FzXs); }
+.ctx-compression__grid { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; font-size: var(--FzXs); color: var(--TextMuted); }
+.ctx-compression__grid strong { color: var(--Text); font-family: var(--FontMono); font-weight: 600; }
+.ctx-compression__warnings { display: flex; flex-direction: column; gap: 3px; padding: 6px; color: var(--Warn); background: rgba(200,150,60,0.08); border-radius: var(--RxSm); font-size: var(--FzXs); }
+.ctx-compression__blocks { font-size: var(--FzXs); color: var(--TextMuted); }
+.ctx-compression__block { padding: 6px 0; border-top: 1px solid var(--Border); }
+</style>
+
+@code {
+    [Parameter] public bool Enabled { get; set; }
+    [Parameter] public CompressionResult? Result { get; set; }
+}

@@ -1,0 +1,69 @@
+@using AVA.UI.Features.ChatContext.ViewModels
+@using AVA.UI.State
+@inject AppState AppState
+@inject RightContextNavVM VM
+@implements IDisposable
+
+@if (VM.IsOpen)
+{
+    <aside class="right-context-nav" style="width:@($"{VM.WidthPx}px");min-width:@($"{VM.WidthPx}px")">
+        <div class="right-context-nav__header">
+            <div>
+                <div class="right-context-nav__title">@VM.Title</div>
+                <div class="right-context-nav__sub">Right / @VM.PanelId</div>
+            </div>
+            <button class="right-context-nav__close" @onclick="VM.Close" title="Close">x</button>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(VM.PlaceholderMessage))
+        {
+            <div class="right-context-nav__placeholder">@VM.PlaceholderMessage</div>
+        }
+        else
+        {
+            <div class="right-context-nav__body">
+                <PromptContextPane />
+            </div>
+        }
+    </aside>
+}
+
+<style>
+.right-context-nav { --Fz2Xs: 13px; --FzXs: 14px; --FzSm: 15px; --FzMd: 16px; --FzLg: 17px; --FzXl: 18px; --Fz2Xl: 19px; --FzDisplay: 20px; height: 100%; flex-shrink: 0; display: flex; flex-direction: column; background: var(--BgSurface); border-left: 1px solid var(--Border); overflow: hidden; }
+.right-context-nav__header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-bottom: 1px solid var(--Border); flex-shrink: 0; }
+.right-context-nav__title { color: var(--Text); font-size: var(--FzSm); font-weight: 700; }
+.right-context-nav__sub { color: var(--TextMuted); font-size: var(--FzXs); font-family: var(--FontMono); }
+.right-context-nav__close { background: transparent; border: 1px solid transparent; border-radius: var(--RxSm); color: var(--TextMuted); cursor: pointer; height: var(--SzSm); min-width: var(--SzSm); }
+.right-context-nav__close:hover { border-color: var(--Border); color: var(--Accent); background: var(--BgHover); }
+.right-context-nav__body { flex: 1; min-height: 0; overflow: auto; padding: 10px; }
+.right-context-nav__placeholder { margin: 12px; padding: 12px; border: 1px solid var(--Border); border-radius: var(--RxSm); background: var(--BgElevated); color: var(--TextMuted); font-size: var(--FzSm); }
+.right-context-nav .ctx-pane { min-width: 0 !important; width: 100%; max-height: none; height: auto; border-radius: var(--RxSm); }
+</style>
+
+@code {
+    private Action? _handler;
+
+    protected override void OnInitialized()
+    {
+        _handler = () => InvokeAsync(StateHasChanged);
+        VM.OnChange += _handler;
+        AppState.OnChange += HandleAppStateChanged;
+    }
+
+    private void HandleAppStateChanged()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            await VM.RefreshAsync();
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        if (_handler != null)
+            VM.OnChange -= _handler;
+
+        AppState.OnChange -= HandleAppStateChanged;
+    }
+}

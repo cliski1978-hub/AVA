@@ -1,0 +1,27 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   StatusBar.razor
+   Namespace: AVA.UI.Shared
+   Purpose  : Bottom status bar. Replaces WPF StatusBar in MainWin.xaml.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@using AVA.UI.State
+@inject AppState State
+
+<footer class="ava-status">
+    <span class="ava-status__field">
+        <span class="ava-status__label">Type:</span>
+        <span class="ava-status__value">@State.ConnectionType</span>
+    </span>
+    <span class="ava-status__divider">|</span>
+    <span class="ava-status__field">
+        <span class="ava-status__label">Status:</span>
+        <span class="ava-status__value @(State.IsConnected ? "ava-status__value--ok" : "ava-status__value--warn")">
+            @State.ConnectionStatus
+        </span>
+    </span>
+    <span class="ava-status__divider">|</span>
+    <span class="ava-status__field">
+        <span class="ava-status__label">Details:</span>
+        <span class="ava-status__value">@State.ConnectionDetails</span>
+    </span>
+</footer>

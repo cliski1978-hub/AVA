@@ -1,0 +1,62 @@
+@using AVA.UI.Features.Canvas.Components.Blocks
+
+<div class="canvas-document">
+    @foreach (var block in Document.OrderedBlocks)
+    {
+        <div class="canvas-editor-block @(IsSelected(block) ? "is-selected" : string.Empty)"
+             data-canvas-block-id="@block.Id"
+             data-canvas-block-type="@block.BlockType"
+             @onclick="() => OnBlockSelected.InvokeAsync(block.Id)">
+            <CanvasBlockRenderer Block="block"
+                                 OnTextChanged="OnBlockTextChanged" />
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// Gets or sets the active Canvas document to render.
+    /// </summary>
+    [Parameter]
+    public CanvasDocument Document { get; set; } = default!;
+
+    /// <summary>
+    /// Gets or sets the currently selected block identifier.
+    /// </summary>
+    [Parameter]
+    public string? SelectedBlockId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when a block is selected.
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> OnBlockSelected { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when a block is removed.
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> OnBlockRemoved { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when a block should move up.
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> OnBlockMoveUp { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when a block should move down.
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> OnBlockMoveDown { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when editable block text changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<(string BlockId, string Text)> OnBlockTextChanged { get; set; }
+
+    private bool IsSelected(CanvasBlock block)
+        => !string.IsNullOrWhiteSpace(SelectedBlockId)
+            && string.Equals(SelectedBlockId, block.Id, StringComparison.OrdinalIgnoreCase);
+}

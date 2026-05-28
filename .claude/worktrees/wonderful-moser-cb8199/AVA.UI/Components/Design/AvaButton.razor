@@ -1,0 +1,62 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   AvaButton.razor
+   Purpose: Main button component with intents and sizes.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+<button type="button"
+        class="ava-btn ava-btn--@Intent ava-btn--@Size"
+        @onclick="OnButtonClick"
+        disabled="@Disabled"
+        style="cursor: @(Disabled ? "not-allowed" : "pointer");">
+    @if (Loading)
+    {
+        <span style="display: inline-block; width: 12px; height: 12px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: pulse 1s linear infinite;"></span>
+    }
+    @ChildContent
+</button>
+
+@code {
+    /// <summary>
+    /// Button intent: primary, secondary, ghost, danger
+    /// </summary>
+    [Parameter]
+    public string Intent { get; set; } = "secondary";
+
+    /// <summary>
+    /// Button size: sm, md, lg
+    /// </summary>
+    [Parameter]
+    public string Size { get; set; } = "md";
+
+    /// <summary>
+    /// Whether the button is disabled.
+    /// </summary>
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    /// <summary>
+    /// Whether the button shows a loading spinner.
+    /// </summary>
+    [Parameter]
+    public bool Loading { get; set; }
+
+    /// <summary>
+    /// Callback when the button is clicked.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnClick { get; set; }
+
+    /// <summary>
+    /// Button content.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private async Task OnButtonClick()
+    {
+        if (!Disabled && !Loading)
+        {
+            await OnClick.InvokeAsync();
+        }
+    }
+}

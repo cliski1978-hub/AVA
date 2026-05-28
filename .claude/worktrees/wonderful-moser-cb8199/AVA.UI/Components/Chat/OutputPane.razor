@@ -1,0 +1,63 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   OutputPane.razor
+   Namespace: AVA.UI.Chat
+   Purpose  : Renders the list of OutputSegments. Replaces OutputPaneView.xaml
+              + OutputPaneVM.cs. Auto-scrolls to bottom on new content.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@using AVA.UI.State
+@using AVA.UI.CORE.Models
+@inject AppState State
+@inject IJSRuntime JS
+@implements IDisposable
+
+<div class="output-pane">
+    <div class="output-pane__toolbar">
+        <span class="output-pane__title">Output</span>
+        <button class="output-pane__clear" @onclick="State.ClearOutput">Clear</button>
+    </div>
+
+    <div class="output-pane__scroll" @ref="_scrollContainer">
+        @if (!State.OutputSegments.Any())
+        {
+            <div class="output-pane__empty">No output yet.</div>
+        }
+        else
+        {
+            @foreach (var segment in State.OutputSegments)
+            {
+                <OutputSegmentRenderer Segment="@segment" />
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private ElementReference _scrollContainer;
+    private int _lastCount = 0;
+
+    protected override void OnInitialized()
+    {
+        State.OnChange += OnStateChanged;
+    }
+
+    private void OnStateChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Auto-scroll when new segments arrive
+        if (State.OutputSegments.Count != _lastCount)
+        {
+            _lastCount = State.OutputSegments.Count;
+            await JS.InvokeVoidAsync("avaScrollToBottom", _scrollContainer);
+        }
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= OnStateChanged;
+    }
+}

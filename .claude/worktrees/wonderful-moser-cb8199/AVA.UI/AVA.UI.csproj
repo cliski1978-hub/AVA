@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>AVA.UI</RootNamespace>
+
+    <!--
+      This is a Razor Class Library (RCL).
+      Static assets under wwwroot/ (app.css, ava-interop.js) are served
+      by consuming apps under the path:
+        _content/AVA.UI/
+    -->
+    <AddRazorSupportForMvc>false</AddRazorSupportForMvc>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AVA.Nomi.Bridge\AVA.Nomi.Bridge.csproj" />
+    <ProjectReference Include="..\AVA.UI.CORE\AVA.UI.CORE.csproj" />
+  </ItemGroup>
+
+</Project>

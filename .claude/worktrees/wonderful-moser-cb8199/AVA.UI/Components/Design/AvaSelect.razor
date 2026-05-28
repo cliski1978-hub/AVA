@@ -1,0 +1,59 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   AvaSelect.razor
+   Purpose: Dropdown select component with options.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+<select class="ava-select ava-select--@Size"
+        value="@Value"
+        @onchange="async (e) => { Value = e.Value?.ToString(); await ValueChanged.InvokeAsync(Value ?? string.Empty); }"
+        disabled="@Disabled">
+    <option value="">-- Select --</option>
+    @if (Options != null)
+    {
+        @foreach (var Option in Options)
+        {
+            <option value="@Option.Value">@Option.Label</option>
+        }
+    }
+</select>
+
+@code {
+    /// <summary>
+    /// Selected option value.
+    /// </summary>
+    [Parameter]
+    public string? Value { get; set; }
+
+    /// <summary>
+    /// Callback when selected value changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> ValueChanged { get; set; }
+
+    /// <summary>
+    /// List of available options.
+    /// </summary>
+    [Parameter]
+    public IEnumerable<SelectOption>? Options { get; set; }
+
+    /// <summary>
+    /// Size: sm, md, lg
+    /// </summary>
+    [Parameter]
+    public string Size { get; set; } = "md";
+
+    /// <summary>
+    /// Whether the select is disabled.
+    /// </summary>
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    /// <summary>
+    /// Select option model.
+    /// </summary>
+    public class SelectOption
+    {
+        public string Value { get; set; } = string.Empty;
+        public string Label { get; set; } = string.Empty;
+    }
+}

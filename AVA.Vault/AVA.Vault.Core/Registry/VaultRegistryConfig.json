@@ -1,0 +1,11 @@
+﻿{
+  "mode": "Hybrid",
+  "registryPath": "./Registry",
+  "remoteEndpoint": "http://localhost:8080/api/vaults",
+  "syncIntervalSeconds": 60,
+  "enableAutoSync": true,
+  "allowAnonymousVaults": false,
+  "defaultSourceKind": "Sqlite",
+  "identityNodeId": "node-AVA-Bizon",
+  "logRegistryActivity": true
+}

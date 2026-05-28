@@ -1,0 +1,124 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   GlobalPromptBar.razor
+   Namespace: AVA.UI.Components.Canvas
+   Purpose  : Broadcasts a prompt to all participating cards on the canvas.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@inject AppState State
+
+<div class="global-bar">
+    <div class="global-bar__label">Global</div>
+    <textarea class="global-bar__input"
+              placeholder="Send to all cards..."
+              @bind="_text"
+              @bind:event="oninput"
+              @onkeydown="HandleKeydown"
+              rows="1"></textarea>
+    <button class="global-bar__send" @onclick="Send" disabled="@_sending">
+        @(_sending ? "…" : "↑")
+    </button>
+</div>
+
+<style>
+.global-bar {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--BgCard);
+    border: 1px solid var(--BorderMid);
+    border-radius: 28px;
+    padding: 8px 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    min-width: 360px;
+    max-width: 640px;
+    z-index: 100;
+}
+
+.global-bar__label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--TextMuted);
+    white-space: nowrap;
+    padding-left: 4px;
+}
+
+.global-bar__input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--Text);
+    font-size: 13px;
+    resize: none;
+    line-height: 1.4;
+    max-height: 80px;
+    overflow-y: auto;
+}
+
+.global-bar__input::placeholder {
+    color: var(--TextMuted);
+}
+
+.global-bar__send {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: var(--Success);
+    color: #000;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: opacity 0.15s;
+}
+
+.global-bar__send:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+</style>
+
+@code {
+    private string _text = string.Empty;
+    private bool _sending;
+
+    private async Task Send()
+    {
+        if (string.IsNullOrWhiteSpace(_text) || _sending) return;
+
+        var prompt = _text.Trim();
+        _text = string.Empty;
+        _sending = true;
+        StateHasChanged();
+
+        try
+        {
+            var targets = State.CurrentSession.Canvas.Cards
+                .Where(c => c.ParticipatesInGlobal)
+                .SelectMany(c => c.ModelProfileIds)
+                .Distinct()
+                .ToList();
+
+            if (targets.Any())
+                await State.Sessions.BroadcastAsync(prompt, targets);
+        }
+        finally
+        {
+            _sending = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleKeydown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+            await Send();
+    }
+}

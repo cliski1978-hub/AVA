@@ -1,0 +1,241 @@
+@using AVA.UI.Features.Vault.ViewModels
+@inject VaultNoteEditorVM VM
+@implements IDisposable
+
+@if (VM.HasNote)
+{
+    <div class="note-tags">
+        <div class="note-tags__header">
+            <span class="note-tags__title">Tags</span>
+        </div>
+
+        <div class="note-tags__assigned">
+            @foreach (var tag in VM.AssignedTags)
+            {
+                var t = tag;
+                <span class="note-tags__chip"
+                      style="@(string.IsNullOrWhiteSpace(t.Color) ? "" : $"border-color:{t.Color};color:{t.Color}")">
+                    @t.Name
+                    <button class="note-tags__chip-remove"
+                            @onclick="() => RemoveTag(t.ID)"
+                            @onclick:stopPropagation="true"
+                            title="Remove tag">
+                        ×
+                    </button>
+                </span>
+            }
+        </div>
+
+        @if (_showPicker)
+        {
+            <div class="note-tags__picker">
+                @foreach (var tag in VM.AvailableTags.Where(t => !VM.AssignedTags.Any(a => a.ID == t.ID)))
+                {
+                    var t = tag;
+                    <button class="note-tags__picker-item"
+                            @onclick="() => AssignTag(t.ID)">
+                        @t.Name
+                    </button>
+                }
+                @if (!VM.AvailableTags.Any(t => !VM.AssignedTags.Any(a => a.ID == t.ID)))
+                {
+                    <span class="note-tags__picker-empty">No existing tags. Create one below.</span>
+                }
+            </div>
+
+            <div class="note-tags__create-row">
+                <input class="note-tags__create-input"
+                       placeholder="New tag name…"
+                       @bind="_newTagName"
+                       @bind:event="oninput"
+                       @onkeydown="HandleTagKeyDown" />
+                <button class="note-tags__create-btn"
+                        disabled="@string.IsNullOrWhiteSpace(_newTagName)"
+                        @onclick="CreateTagAsync">
+                    Create
+                </button>
+            </div>
+        }
+
+        <button class="note-tags__add" @onclick="TogglePicker">
+            @(_showPicker ? "Cancel" : "+ Add tag")
+        </button>
+    </div>
+}
+
+<style>
+    .note-tags {
+        border-bottom: 1px solid var(--Border);
+        padding: 10px 16px;
+    }
+
+    .note-tags__header {
+        margin-bottom: 8px;
+    }
+
+    .note-tags__title {
+        font-size: var(--FzXs);
+        font-weight: 600;
+        color: var(--TextFaint);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .note-tags__assigned {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin-bottom: 8px;
+    }
+
+    .note-tags__chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: var(--FzXs);
+        padding: 2px 8px 2px 10px;
+        border-radius: var(--RxPill);
+        border: 1px solid var(--BorderMid);
+        color: var(--TextMuted);
+    }
+
+    .note-tags__chip-remove {
+        width: 14px;
+        height: 14px;
+        border-radius: 999px;
+        border: 0;
+        background: rgba(255,255,255,0.08);
+        color: inherit;
+        font-size: 11px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: background var(--T);
+        font-family: inherit;
+    }
+
+    .note-tags__chip-remove:hover { background: rgba(255,255,255,0.18); }
+
+    .note-tags__picker {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-bottom: 6px;
+        padding: 8px;
+        background: var(--BgElevated);
+        border-radius: var(--RxMd);
+        border: 1px solid var(--Border);
+    }
+
+    .note-tags__picker-item {
+        font-size: var(--FzXs);
+        padding: 2px 8px;
+        border-radius: var(--RxPill);
+        border: 1px solid var(--Border);
+        background: transparent;
+        color: var(--TextMuted);
+        font-family: var(--Font);
+        cursor: pointer;
+        transition: all var(--T);
+    }
+
+    .note-tags__picker-item:hover {
+        border-color: var(--Accent);
+        color: var(--Accent);
+    }
+
+    .note-tags__picker-empty {
+        font-size: var(--FzXs);
+        color: var(--TextFaint);
+        padding: 4px;
+    }
+
+    .note-tags__add {
+        border: 0;
+        background: transparent;
+        color: var(--TextMuted);
+        font-family: var(--Font);
+        font-size: var(--FzXs);
+        cursor: pointer;
+        padding: 0;
+        transition: color var(--T);
+    }
+
+    .note-tags__add:hover { color: var(--Accent); }
+
+    .note-tags__create-row {
+        display: flex;
+        gap: 6px;
+        margin-top: 6px;
+    }
+
+    .note-tags__create-input {
+        flex: 1;
+        height: 26px;
+        border-radius: var(--RxSm);
+        border: 1px solid var(--BorderMid);
+        background: var(--BgBase);
+        color: var(--Text);
+        font-family: var(--Font);
+        font-size: var(--FzXs);
+        padding: 0 var(--RxSm);
+        outline: none;
+    }
+
+    .note-tags__create-input:focus { border-color: var(--Accent); }
+
+    .note-tags__create-btn {
+        height: 26px;
+        padding: 0 var(--RxMd);
+        border-radius: var(--RxSm);
+        border: 1px solid var(--Border);
+        background: transparent;
+        color: var(--TextMuted);
+        font-family: var(--Font);
+        font-size: var(--FzXs);
+        cursor: pointer;
+        flex-shrink: 0;
+        transition: all var(--T);
+    }
+
+    .note-tags__create-btn:hover:not(:disabled) { border-color: var(--Accent); color: var(--Accent); }
+    .note-tags__create-btn:disabled { opacity: 0.4; cursor: default; }
+</style>
+
+@code {
+    private bool _showPicker;
+    private string _newTagName = string.Empty;
+    private Action? _vmHandler;
+
+    protected override void OnInitialized()
+    {
+        _vmHandler = () => InvokeAsync(StateHasChanged);
+        VM.OnChange += _vmHandler;
+    }
+
+    private void TogglePicker() { _showPicker = !_showPicker; _newTagName = string.Empty; }
+
+    private async Task AssignTag(string tagId)
+    {
+        await VM.AssignTagAsync(tagId);
+        _showPicker = false;
+    }
+
+    private async Task RemoveTag(string tagId) => await VM.RemoveTagAsync(tagId);
+
+    private async Task CreateTagAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newTagName)) return;
+        await VM.CreateTagAsync(_newTagName.Trim());
+        _newTagName = string.Empty;
+        _showPicker = false;
+    }
+
+    private async Task HandleTagKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await CreateTagAsync();
+    }
+
+    public void Dispose() { VM.OnChange -= _vmHandler; }
+}

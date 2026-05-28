@@ -1,0 +1,24 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   App.razor — AVA.UI
+   Purpose  : Root Blazor component. Entry point for both the Photino
+              desktop shell and the Blazor web shell.
+              Wires the router and applies the main layout.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@using AVA.UI.Layout
+@using Microsoft.AspNetCore.Components.Routing
+
+
+<Router AppAssembly="@typeof(App).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <LayoutView Layout="@typeof(MainLayout)">
+            <div style="padding:24px; color: var(--text-muted);">
+                <p>Page not found.</p>
+            </div>
+        </LayoutView>
+    </NotFound>
+</Router>

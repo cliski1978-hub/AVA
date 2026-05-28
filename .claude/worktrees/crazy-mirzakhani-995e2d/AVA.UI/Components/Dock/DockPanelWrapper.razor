@@ -1,0 +1,120 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   DockPanelWrapper.razor
+   Namespace: AVA.UI.Components.Dock
+   Purpose  : Wraps a docked panel with a header bar.
+              Header provides: title, collapse toggle, float button,
+              and a context menu to move the panel to another zone.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@using AVA.UI.CORE.Models.UI
+@using AVA.UI.CORE.Services
+@inject DockLayoutService Dock
+
+<div class="dock-panel @(PanelState.IsCollapsed ? "dock-panel--collapsed" : "")">
+
+    <!-- ── Panel Header ──────────────────────────────────────────────────── -->
+    <div class="dock-panel__header"
+         @ondblclick="() => Dock.ToggleCollapsed(PanelState.PanelId)">
+
+        <div class="dock-panel__header-left">
+            <button class="dock-panel__collapse-btn"
+                    @onclick="() => Dock.ToggleCollapsed(PanelState.PanelId)">
+                @(PanelState.IsCollapsed ? "▶" : "▼")
+            </button>
+            <span class="dock-panel__title">@GetTitle(PanelState.PanelId)</span>
+        </div>
+
+        <div class="dock-panel__header-right">
+            <button class="dock-panel__action-btn"
+                    title="Float panel"
+                    @onclick="FloatThis">
+                ⧉
+            </button>
+            <button class="dock-panel__action-btn"
+                    title="Move panel"
+                    @onclick="ToggleMoveMenu">
+                ⋮
+            </button>
+        </div>
+
+        @if (_ShowMoveMenu)
+        {
+            <div class="dock-panel__move-menu">
+                <div class="dock-panel__move-menu__title">Move to</div>
+                @foreach (var Zone in Zones.Where(Z => Z != PanelState.ZoneId))
+                {
+                    var Z = Zone;
+                    <div class="dock-panel__move-menu__item"
+                         @onclick="() => MoveTo(Z)">
+                        @ZoneLabel(Z)
+                    </div>
+                }
+            </div>
+        }
+
+    </div>
+
+    <!-- ── Panel Content ─────────────────────────────────────────────────── -->
+    @if (!PanelState.IsCollapsed)
+    {
+        <div class="dock-panel__content">
+            @ChildContent
+        </div>
+    }
+
+</div>
+
+@code {
+    [Parameter, EditorRequired] public DockPanelState PanelState { get; set; } = default!;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private bool _ShowMoveMenu = false;
+
+    private static readonly string[] Zones = new[]
+    {
+        DockZoneId.Center,
+        DockZoneId.Left,
+        DockZoneId.Right,
+        DockZoneId.Top,
+        DockZoneId.Bottom,
+        DockZoneId.FloatLayer
+    };
+
+    private void ToggleMoveMenu() => _ShowMoveMenu = !_ShowMoveMenu;
+
+    private void MoveTo(string ZoneId)
+    {
+        Dock.MovePanel(PanelState.PanelId, ZoneId);
+        _ShowMoveMenu = false;
+    }
+
+    private void FloatThis()
+    {
+        Dock.FloatPanel(PanelState.PanelId);
+        _ShowMoveMenu = false;
+    }
+
+    private static string GetTitle(string Id) => Id switch
+    {
+        AVA.UI.CORE.Models.UI.PanelId.ChatOutput    => "Output",
+        AVA.UI.CORE.Models.UI.PanelId.ChatInput     => "Input",
+        AVA.UI.CORE.Models.UI.PanelId.ModelPicker   => "Models",
+        AVA.UI.CORE.Models.UI.PanelId.SessionTabs   => "Sessions",
+        AVA.UI.CORE.Models.UI.PanelId.MemoryLog     => "Memory",
+        AVA.UI.CORE.Models.UI.PanelId.Reflection    => "Reflection",
+        AVA.UI.CORE.Models.UI.PanelId.PromptPreview => "Preview",
+        AVA.UI.CORE.Models.UI.PanelId.Settings      => "Settings",
+        _                                            => Id
+    };
+
+    private static string ZoneLabel(string ZoneId) => ZoneId switch
+    {
+        DockZoneId.Center     => "⬛ Center",
+        DockZoneId.Left       => "◀ Left",
+        DockZoneId.Right      => "▶ Right",
+        DockZoneId.Top        => "▲ Top",
+        DockZoneId.Bottom     => "▼ Bottom",
+        DockZoneId.FloatLayer => "⧉ Float",
+        _                     => ZoneId
+    };
+}

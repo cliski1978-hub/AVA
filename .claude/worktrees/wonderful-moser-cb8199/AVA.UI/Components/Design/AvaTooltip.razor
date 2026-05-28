@@ -1,0 +1,28 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   AvaTooltip.razor
+   Purpose: CSS-only tooltip wrapper. Shows on hover via ::after pseudo-element.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+<div class="ava-tooltip" data-tooltip="@Text">
+    @ChildContent
+</div>
+
+@code {
+    /// <summary>
+    /// Tooltip text displayed on hover.
+    /// </summary>
+    [Parameter]
+    public string? Text { get; set; }
+
+    /// <summary>
+    /// Content to wrap with tooltip.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Position: top, bottom, left, right (currently CSS supports top).
+    /// </summary>
+    [Parameter]
+    public string Position { get; set; } = "top";
+}

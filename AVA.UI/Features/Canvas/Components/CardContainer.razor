@@ -1,0 +1,157 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   CardContainer.razor
+   Namespace: AVA.UI.Components.Canvas
+   Purpose  : Absolutely-positioned wrapper for all card types.
+              Delegates drag-start and resize-start up to the canvas.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@using AVA.UI.CORE.Models.UI
+
+<div class="card @Card.CardType.ToLower() @(IsDragging ? "dragging" : "") @(Card.IsMinimised ? "minimised" : "")"
+     style="left:@(Card.X.ToString("F0"))px;
+       top:@(Card.Y.ToString("F0"))px;
+       width:@(Card.Width.ToString("F0"))px;
+       @(Card.IsMinimised
+            ? "height:44px;"
+            : (Card.Height.HasValue ? $"height:{Card.Height.Value.ToString("F0")}px;" : "")
+        )
+       z-index:@Card.ZIndex;"
+     @onmousedown="OnMouseDown"
+     @onclick="OnClick">
+
+    @if (Card.CardType == "SingleModel")
+    {
+        <SingleModelCard Card="Card" OnActivate="OnActivate" />
+    }
+    else if (Card.CardType == "Broadcast")
+    {
+        <BroadcastCard Card="Card" OnActivate="OnActivate" />
+    }
+    else
+    {
+        <div class="card-unknown">Unknown card type: @Card.CardType</div>
+    }
+
+    @if (!Card.IsMinimised)
+    {
+        <div class="resize-handle resize-n"  @onmousedown="@(e => StartResize(e, "n"))"  @onmousedown:stopPropagation="true"></div>
+        <div class="resize-handle resize-s"  @onmousedown="@(e => StartResize(e, "s"))"  @onmousedown:stopPropagation="true"></div>
+        <div class="resize-handle resize-e"  @onmousedown="@(e => StartResize(e, "e"))"  @onmousedown:stopPropagation="true"></div>
+        <div class="resize-handle resize-w"  @onmousedown="@(e => StartResize(e, "w"))"  @onmousedown:stopPropagation="true"></div>
+        <div class="resize-handle resize-ne" @onmousedown="@(e => StartResize(e, "ne"))" @onmousedown:stopPropagation="true"></div>
+        <div class="resize-handle resize-nw" @onmousedown="@(e => StartResize(e, "nw"))" @onmousedown:stopPropagation="true"></div>
+        <div class="resize-handle resize-se" @onmousedown="@(e => StartResize(e, "se"))" @onmousedown:stopPropagation="true"></div>
+        <div class="resize-handle resize-sw" @onmousedown="@(e => StartResize(e, "sw"))" @onmousedown:stopPropagation="true"></div>
+    }
+
+</div>
+
+<style>
+.card {
+    position: absolute;
+    min-height: 280px;
+    background: var(--CardBg);
+    border: 1px solid var(--Border);
+    border-radius: var(--RxLg, 12px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: box-shadow 0.15s;
+    cursor: default;
+}
+
+.card:hover {
+    border-color: var(--BorderMid);
+}
+
+.card.minimised {
+    height: 44px;
+    min-height: 44px;
+    overflow: hidden;
+}
+
+.card.dragging {
+    box-shadow: 0 16px 48px rgba(0,0,0,0.7), 0 4px 16px rgba(0,200,255,0.1);
+    user-select: none;
+}
+
+.card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    border-radius: var(--RxLg, 12px) var(--RxLg, 12px) 0 0;
+    z-index: 1;
+}
+
+.card.singlemodel::before {
+    background: var(--Success);
+}
+
+.card.broadcast::before {
+    background: linear-gradient(90deg, var(--Success), var(--Orange, #f97316), var(--Purple, #a855f7), var(--Pink, #ec4899));
+}
+
+.card-unknown {
+    padding: 16px;
+    color: var(--TextMuted);
+    font-size: 13px;
+}
+
+/* ── Resize handles ── */
+
+.resize-handle {
+    position: absolute;
+    z-index: 10;
+}
+
+/* Edges */
+.resize-n  { top: 0;    left: 8px;  right: 8px; height: 5px; cursor: n-resize;  }
+.resize-s  { bottom: 0; left: 8px;  right: 8px; height: 5px; cursor: s-resize;  }
+.resize-e  { right: 0;  top: 8px; bottom: 8px;  width: 5px;  cursor: e-resize;  }
+.resize-w  { left: 0;   top: 8px; bottom: 8px;  width: 5px;  cursor: w-resize;  }
+
+/* Corners */
+.resize-ne { top: 0;    right: 0;   width: 12px; height: 12px; cursor: ne-resize; }
+.resize-nw { top: 0;    left: 0;    width: 12px; height: 12px; cursor: nw-resize; }
+.resize-se { bottom: 0; right: 0;   width: 12px; height: 12px; cursor: se-resize; }
+.resize-sw { bottom: 0; left: 0;    width: 12px; height: 12px; cursor: sw-resize; }
+</style>
+
+@code {
+    [Parameter, EditorRequired]
+    public CardState Card { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<(CardState Card, double OffsetX, double OffsetY)> OnDragStart { get; set; }
+
+    [Parameter]
+    public EventCallback<(CardState Card, string Direction, double MouseX, double MouseY)> OnResizeStart { get; set; }
+
+    [Parameter]
+    public EventCallback<CardState> OnActivate { get; set; }
+
+    [Parameter]
+    public bool IsDragging { get; set; }
+
+    private async Task OnMouseDown(MouseEventArgs e)
+    {
+        var offsetX = e.ClientX - Card.X;
+        var offsetY = e.ClientY - Card.Y;
+        await OnDragStart.InvokeAsync((Card, offsetX, offsetY));
+    }
+
+    private async Task OnClick(MouseEventArgs e)
+    {
+        await OnActivate.InvokeAsync(Card);
+    }
+
+    private async Task StartResize(MouseEventArgs e, string direction)
+    {
+        await OnActivate.InvokeAsync(Card);
+        await OnResizeStart.InvokeAsync((Card, direction, e.ClientX, e.ClientY));
+    }
+}

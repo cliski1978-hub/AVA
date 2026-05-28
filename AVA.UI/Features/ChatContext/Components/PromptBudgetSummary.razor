@@ -1,0 +1,48 @@
+@using AVA.UI.CORE.ChatContext.Models
+
+<div class="ctx-budget @(Budget?.IsOverBudget == true ? "ctx-budget--over" : "")">
+    <div class="ctx-budget__row">
+        <span class="ctx-budget__label">Context Window</span>
+        <span class="ctx-budget__value">@(Budget?.ContextWindow ?? 0)</span>
+    </div>
+    <div class="ctx-budget__bar">
+        <div class="ctx-budget__bar-fill"
+             style="width:@(Math.Min(Budget?.UsagePercent ?? 0, 100).ToString("F0"))%">
+        </div>
+    </div>
+    <div class="ctx-budget__row">
+        <span class="ctx-budget__label">Used</span>
+        <span class="ctx-budget__value @(Budget?.IsOverBudget == true ? "ctx-budget__value--warn" : "")">
+            @(Budget?.UsedTokens ?? 0) tokens (@((Budget?.UsagePercent ?? 0).ToString("F0"))%)
+        </span>
+    </div>
+    <div class="ctx-budget__row">
+        <span class="ctx-budget__label">Remaining</span>
+        <span class="ctx-budget__value">@(Budget?.RemainingTokens ?? 0)</span>
+    </div>
+    <div class="ctx-budget__row">
+        <span class="ctx-budget__label">Output Reserve</span>
+        <span class="ctx-budget__value">@(Budget?.OutputReserve ?? 0)</span>
+    </div>
+    @if (Budget?.IsOverBudget == true)
+    {
+        <div class="ctx-budget__warning">⚠ Context budget exceeded</div>
+    }
+</div>
+
+<style>
+.ctx-budget { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; background: var(--BgElevated); border-radius: var(--RxMd); border: 1px solid var(--Border); font-size: var(--FzSm); }
+.ctx-budget--over { border-color: var(--Err); }
+.ctx-budget__row { display: flex; justify-content: space-between; align-items: center; }
+.ctx-budget__label { color: var(--TextMuted); }
+.ctx-budget__value { color: var(--Text); font-family: var(--FontMono); }
+.ctx-budget__value--warn { color: var(--Err); }
+.ctx-budget__bar { height: 4px; border-radius: 2px; background: var(--BgSurface); overflow: hidden; }
+.ctx-budget__bar-fill { height: 100%; background: var(--Accent); border-radius: 2px; transition: width 0.2s; }
+.ctx-budget--over .ctx-budget__bar-fill { background: var(--Err); }
+.ctx-budget__warning { color: var(--Err); font-size: var(--FzXs); font-weight: 600; text-align: center; padding: 2px 0; }
+</style>
+
+@code {
+    [Parameter] public PromptBudgetState? Budget { get; set; }
+}

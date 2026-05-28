@@ -1,0 +1,60 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   ReflectionPane.razor
+   Namespace: AVA.UI.Reflection
+   Purpose  : Displays AVA self-reflection log with contradiction detection.
+              Replaces ReflectionPaneView.xaml + ReflectionPaneVM.cs.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@using AVA.UI.Features.Reflection.ViewModels
+@inject ReflectionPaneVM VM
+@implements IDisposable
+
+<div class="reflection-pane">
+    <div class="reflection-pane__header">
+        <span class="reflection-pane__title">🪞 Reflection</span>
+        <button class="reflection-pane__btn" @onclick="VM.Clear">
+            Clear
+        </button>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(VM.LatestInsight))
+    {
+        <div class="reflection-pane__insight @(VM.HasContradiction ? "reflection-pane__insight--warn" : "reflection-pane__insight--ok")">
+            <span class="reflection-pane__insight-label">
+                @(VM.HasContradiction ? "⚠ Contradiction Detected" : "✔ Latest Insight")
+            </span>
+            <p class="reflection-pane__insight-text">@VM.LatestInsight</p>
+        </div>
+    }
+
+    <div class="reflection-pane__log">
+        @if (!VM.Reflections.Any())
+        {
+            <div class="reflection-pane__empty">No reflections yet.</div>
+        }
+        else
+        {
+            @foreach (var entry in VM.Reflections)
+            {
+                <div class="reflection-pane__entry @(entry.Contains("CONTRADICTION") ? "reflection-pane__entry--warn" : "")">
+                    @entry
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private Action? _vmHandler;
+
+    protected override void OnInitialized()
+    {
+        _vmHandler = () => InvokeAsync(StateHasChanged);
+        VM.OnChange += _vmHandler;
+    }
+
+    public void Dispose()
+    {
+        VM.OnChange -= _vmHandler;
+    }
+}

@@ -1,0 +1,59 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   Pages/Index.razor — AVA.UI
+   Purpose  : Default routable page. MainLayout renders the full shell;
+              this page just satisfies the router. All real UI is in
+              MainLayout.razor and its child components.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@inject AppState AppState
+@implements IDisposable
+
+@switch (AppState.SelectedNavigationItem)
+{
+    case "Memory":
+        <MemoryLogPane />
+        break;
+    case "Reflection":
+        <ReflectionPane />
+        break;
+    case "Settings":
+        <SettingsPane />
+        break;
+    case "Canvas":
+        <SessionCanvas />
+        break;
+    case "Vault":
+        @if (AppState.ActiveVaultId is not null)
+        {
+            <VaultNotesLayout />
+        }
+        else
+        {
+            <div class="vault-empty-state">
+                <div class="vault-empty-state__icon">--</div>
+                <div class="vault-empty-state__title">No vault selected</div>
+                <div class="vault-empty-state__hint">Select a vault from the workspace panel first to view and manage notes.</div>
+            </div>
+        }
+        break;
+    default:
+        <ChatLayout />
+        break;
+}
+
+@code {
+    protected override void OnInitialized()
+    {
+        AppState.OnChange += HandleStateChanged;
+    }
+
+    private void HandleStateChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        AppState.OnChange -= HandleStateChanged;
+    }
+}

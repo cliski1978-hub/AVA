@@ -1,0 +1,111 @@
+<label class="@CssClass">
+    <input class="ava-hidden-input"
+           type="radio"
+           name="@Name"
+           value="@Value"
+           checked="@IsSelected"
+           disabled="@IsDisabled"
+           @onchange="HandleChange"
+           @attributes="AdditionalAttributes" />
+    <span class="ava-radio__dot"></span>
+    @if (ChildContent is not null)
+    {
+        <span class="ava-radio__label @LabelSizeClass">@ChildContent</span>
+    }
+</label>
+
+@code {
+    /// <summary>
+    /// Gets or sets the visual intent for the radio.
+    /// </summary>
+    [Parameter]
+    public string Intent { get; set; } = "primary";
+
+    /// <summary>
+    /// Gets or sets the size variant for the radio.
+    /// </summary>
+    [Parameter]
+    public string Size { get; set; } = "md";
+
+    /// <summary>
+    /// Gets or sets an optional state class for the radio.
+    /// </summary>
+    [Parameter]
+    public string State { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the current radio value.
+    /// </summary>
+    [Parameter]
+    public string Value { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the currently selected group value.
+    /// </summary>
+    [Parameter]
+    public string? SelectedValue { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when the selected value changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> SelectedValueChanged { get; set; }
+
+    /// <summary>
+    /// Gets or sets the radio group name.
+    /// </summary>
+    [Parameter]
+    public string Name { get; set; } = Guid.NewGuid().ToString("N");
+
+    /// <summary>
+    /// Gets or sets whether the radio is disabled.
+    /// </summary>
+    [Parameter]
+    public bool IsDisabled { get; set; }
+
+    /// <summary>
+    /// Gets or sets optional label content.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Gets or sets additional HTML attributes for the radio.
+    /// </summary>
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private bool IsSelected => string.Equals(SelectedValue, Value, StringComparison.Ordinal);
+
+    private string CssClass =>
+        string.Join(" ",
+            "ava-radio",
+            "ava-choice",
+            Normalize("ava-radio", Intent, "primary"),
+            Normalize("ava-radio", Size, "md"),
+            IsSelected ? "is-checked" : string.Empty,
+            IsDisabled ? "is-disabled" : string.Empty,
+            string.IsNullOrWhiteSpace(State) ? string.Empty : State);
+
+    private string LabelSizeClass => $"ava-size-{NormalizeValue(Size, "md")}";
+
+    private async Task HandleChange(ChangeEventArgs args)
+    {
+        if (args.Value?.ToString() == Value)
+        {
+            SelectedValue = Value;
+            await SelectedValueChanged.InvokeAsync(Value);
+        }
+    }
+
+    private static string Normalize(string prefix, string value, string fallback)
+    {
+        var resolved = NormalizeValue(value, fallback);
+        return resolved.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            ? resolved
+            : $"{prefix}-{resolved}";
+    }
+
+    private static string NormalizeValue(string value, string fallback)
+        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim().Replace("ava-radio-", string.Empty, StringComparison.OrdinalIgnoreCase);
+}

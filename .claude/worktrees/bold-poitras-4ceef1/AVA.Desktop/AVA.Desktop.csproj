@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net8.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<RootNamespace>AVA.App.Desktop</RootNamespace>
+		<AssemblyName>AVA</AssemblyName>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\AVA.UI\AVA.UI.csproj" />
+		<ProjectReference Include="..\AVA.UI.CORE\AVA.UI.CORE.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Photino.Blazor" Version="4.0.13" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Content Update="wwwroot\**">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
+
+</Project>

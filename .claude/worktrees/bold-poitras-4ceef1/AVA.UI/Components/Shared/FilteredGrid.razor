@@ -1,0 +1,87 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   FilteredGrid.razor
+   Namespace: AVA.UI.Components.Shared
+   Purpose  : Generic filterable data grid component.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@typeparam TItem
+
+<div class="filtered-grid">
+
+    <div class="filtered-grid__toolbar">
+        <input class="filtered-grid__search"
+               type="text"
+               placeholder="Search..."
+               value="@_query"
+               @oninput="OnQueryChanged" />
+        @if (ToolbarContent != null)
+        {
+            @ToolbarContent
+        }
+    </div>
+
+    <div class="filtered-grid__table-wrap">
+        @if (_filtered.Count == 0)
+        {
+            <div class="filtered-grid__empty">No items found.</div>
+        }
+        else
+        {
+            <table class="filtered-grid__table">
+                <thead>
+                    <tr>
+                        @HeaderTemplate
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in _filtered)
+                    {
+                        <tr @onclick="() => OnRowClick.InvokeAsync(item)"
+                            class="filtered-grid__row @(Equals(item, SelectedItem) ? "filtered-grid__row--selected" : "")">
+                            @RowTemplate(item)
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+
+    <div class="filtered-grid__footer">
+        @_filtered.Count of @Items?.Count() item(s)
+    </div>
+
+</div>
+
+@code {
+    [Parameter] public IEnumerable<TItem>? Items { get; set; }
+    [Parameter] public Func<TItem, string, bool>? FilterFunc { get; set; }
+    [Parameter] public RenderFragment? HeaderTemplate { get; set; }
+    [Parameter] public RenderFragment<TItem> RowTemplate { get; set; } = default!;
+    [Parameter] public RenderFragment? ToolbarContent { get; set; }
+    [Parameter] public EventCallback<TItem> OnRowClick { get; set; }
+    [Parameter] public TItem? SelectedItem { get; set; }
+
+    private string _query = string.Empty;
+    private List<TItem> _filtered = new();
+
+    protected override void OnParametersSet() => ApplyFilter();
+
+    private void OnQueryChanged(ChangeEventArgs e)
+    {
+        _query = e.Value?.ToString() ?? string.Empty;
+        ApplyFilter();
+    }
+
+    private void ApplyFilter()
+    {
+        if (Items == null)
+        {
+            _filtered = new List<TItem>();
+            return;
+        }
+
+        _filtered = string.IsNullOrWhiteSpace(_query) || FilterFunc == null
+            ? Items.ToList()
+            : Items.Where(i => FilterFunc(i, _query)).ToList();
+    }
+}

@@ -1,0 +1,61 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
+
+	<!-- EF Core provider dependencies -->
+	<ItemGroup>
+		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.9" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite.Core" Version="9.0.9" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.9" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.9">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+	</ItemGroup>
+
+	<!-- Structure folders (not required for build but keeps VS tidy) -->
+	<ItemGroup>
+		<Folder Include="Extensions\" />
+		<Folder Include="Migrations\" />
+	</ItemGroup>
+
+	<!-- Project dependencies -->
+	<ItemGroup>
+		<ProjectReference Include="..\AVA.Memory.Abstractions\AVA.Memory.Abstractions.csproj" />
+		<ProjectReference Include="..\AVA.Memory.Core\AVA.Memory.Core.csproj" />
+		<ProjectReference Include="..\AVA.Memory.Data\AVA.Memory.Data.csproj" />
+	</ItemGroup>
+
+	<!-- Local NuGet Packaging -->
+	<PropertyGroup>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<IncludeReferencedProjects>true</IncludeReferencedProjects>
+
+		<!-- Identification -->
+		<PackageId>AVA.Memory.Sql</PackageId>
+		<Version>1.0.0-local</Version>
+		<Authors>AVA Systems</Authors>
+		<Company>AVA</Company>
+		<Description>
+			SQL persistence and data access layer for the AVA Memory subsystem.
+			Provides EF Core–based backing stores and relational persistence for in-memory data.
+		</Description>
+
+		<!-- Output -->
+		<PackageOutputPath>C:\NuGetLocal\</PackageOutputPath>
+		<NoWarn>NU5105</NoWarn>
+		<PublishRepositoryUrl>false</PublishRepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+
+		<!-- Cosmetic metadata -->
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<RepositoryUrl>https://github.com/AVA-Systems/AVA.Memory</RepositoryUrl>
+		<PackageProjectUrl>https://github.com/AVA-Systems</PackageProjectUrl>
+		<PackageTags>AVA Memory SQL EFCore Data Persistence</PackageTags>
+	</PropertyGroup>
+
+</Project>

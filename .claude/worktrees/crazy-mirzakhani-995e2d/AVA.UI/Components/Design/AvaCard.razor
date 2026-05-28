@@ -1,0 +1,109 @@
+<section class="@CssClass"
+         @onclick="HandleClick"
+         @attributes="AdditionalAttributes">
+    @if (HeaderContent is not null)
+    {
+        <div class="ava-card__header">@HeaderContent</div>
+    }
+
+    <div class="ava-card__body">@ChildContent</div>
+
+    @if (FooterContent is not null)
+    {
+        <div class="ava-card__footer">@FooterContent</div>
+    }
+</section>
+
+@code {
+    /// <summary>
+    /// Gets or sets the visual intent for the card.
+    /// </summary>
+    [Parameter]
+    public string Intent { get; set; } = "neutral";
+
+    /// <summary>
+    /// Gets or sets the size variant for the card.
+    /// </summary>
+    [Parameter]
+    public string Size { get; set; } = "md";
+
+    /// <summary>
+    /// Gets or sets an optional state class for the card.
+    /// </summary>
+    [Parameter]
+    public string State { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets whether the card is interactive.
+    /// </summary>
+    [Parameter]
+    public bool IsInteractive { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the card is elevated.
+    /// </summary>
+    [Parameter]
+    public bool IsElevated { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the card is selected.
+    /// </summary>
+    [Parameter]
+    public bool IsSelected { get; set; }
+
+    /// <summary>
+    /// Gets or sets the card header content.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? HeaderContent { get; set; }
+
+    /// <summary>
+    /// Gets or sets the card body content.
+    /// </summary>
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = default!;
+
+    /// <summary>
+    /// Gets or sets the card footer content.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? FooterContent { get; set; }
+
+    /// <summary>
+    /// Gets or sets additional HTML attributes for the card.
+    /// </summary>
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    /// <summary>
+    /// Gets or sets the click callback.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnClick { get; set; }
+
+    private string CssClass =>
+        string.Join(" ",
+            "ava-card",
+            Normalize("ava-card", Intent, "neutral"),
+            Normalize("ava-card", Size, "md"),
+            IsInteractive ? "is-interactive" : string.Empty,
+            IsElevated ? "is-elevated" : string.Empty,
+            IsSelected ? "is-selected" : string.Empty,
+            string.IsNullOrWhiteSpace(State) ? string.Empty : State);
+
+    private async Task HandleClick()
+    {
+        if (IsInteractive)
+        {
+            await OnClick.InvokeAsync();
+        }
+    }
+
+    private static string Normalize(string prefix, string value, string fallback)
+    {
+        var resolved = string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
+        return resolved.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            ? resolved
+            : $"{prefix}-{resolved}";
+    }
+}

@@ -1,0 +1,216 @@
+@using AVA.UI.Features.Vault.ViewModels
+@inject VaultNoteEditorVM VM
+@implements IDisposable
+
+<div class="note-editor">
+
+    @if (VM.IsLoading)
+    {
+        <div class="note-editor__loading">Loading note…</div>
+    }
+    else if (!VM.HasNote)
+    {
+        <div class="note-editor__empty">Select a note to edit.</div>
+    }
+    else
+    {
+        <div class="note-editor__toolbar">
+            <button class="note-editor__save"
+                    disabled="@(!VM.IsDirty || VM.IsSaving)"
+                    @onclick="SaveAsync">
+                @(VM.IsSaving ? "Saving…" : "Save")
+            </button>
+
+            @if (VM.IsDirty)
+            {
+                <button class="note-editor__discard" @onclick="VM.DiscardChanges">
+                    Discard
+                </button>
+                <span class="note-editor__dirty-badge">Unsaved</span>
+            }
+
+            <button class="note-editor__delete"
+                    title="Delete note"
+                    @onclick="DeleteAsync">
+                Delete
+            </button>
+        </div>
+
+        <input class="note-editor__title"
+               placeholder="Note title…"
+               @bind="VM.DraftTitle"
+               @bind:event="oninput" />
+
+        <textarea class="note-editor__content"
+                  placeholder="Write your note here…"
+                  @bind="VM.DraftContent"
+                  @bind:event="oninput"
+                  @onkeydown="HandleKeyDown"></textarea>
+
+        <div class="note-editor__panels">
+            <VaultNoteMetadata />
+            <VaultNoteTagPanel />
+            <VaultNoteRelatedPanel />
+        </div>
+    }
+</div>
+
+<style>
+    .note-editor {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        background: var(--BgBase);
+    }
+
+    .note-editor__loading,
+    .note-editor__empty {
+        padding: 32px;
+        text-align: center;
+        font-size: var(--FzSm);
+        color: var(--TextMuted);
+    }
+
+    .note-editor__toolbar {
+        display: flex;
+        align-items: center;
+        gap: var(--RxSm);
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--Border);
+        flex-shrink: 0;
+    }
+
+    .note-editor__save {
+        height: 26px;
+        padding: 0 var(--RxMd);
+        border-radius: var(--RxSm);
+        border: 1px solid rgba(0, 200, 255, 0.4);
+        background: rgba(0, 200, 255, 0.08);
+        color: var(--Accent);
+        font-family: var(--Font);
+        font-size: var(--FzSm);
+        cursor: pointer;
+        transition: all var(--T);
+    }
+
+    .note-editor__save:hover:not(:disabled) {
+        background: rgba(0, 200, 255, 0.15);
+        border-color: var(--Accent);
+    }
+
+    .note-editor__save:disabled {
+        opacity: 0.4;
+        cursor: default;
+    }
+
+    .note-editor__discard {
+        height: 26px;
+        padding: 0 var(--RxMd);
+        border-radius: var(--RxSm);
+        border: 1px solid var(--Border);
+        background: transparent;
+        color: var(--TextMuted);
+        font-family: var(--Font);
+        font-size: var(--FzSm);
+        cursor: pointer;
+        transition: all var(--T);
+    }
+
+    .note-editor__discard:hover {
+        border-color: var(--Danger);
+        color: var(--Danger);
+    }
+
+    .note-editor__delete {
+        margin-left: auto;
+        height: 26px;
+        padding: 0 var(--RxMd);
+        border-radius: var(--RxSm);
+        border: 1px solid transparent;
+        background: transparent;
+        color: var(--TextFaint);
+        font-family: var(--Font);
+        font-size: var(--FzSm);
+        cursor: pointer;
+        transition: all var(--T);
+    }
+
+    .note-editor__delete:hover {
+        border-color: var(--DangerLine);
+        color: var(--Danger);
+    }
+
+    .note-editor__dirty-badge {
+        font-size: var(--FzXs);
+        color: #f5a623;
+        letter-spacing: 0.04em;
+    }
+
+    .note-editor__title {
+        width: 100%;
+        box-sizing: border-box;
+        border: 0;
+        border-bottom: 1px solid var(--Border);
+        background: transparent;
+        color: var(--Text);
+        font-family: var(--Font);
+        font-size: var(--FzXl);
+        font-weight: 600;
+        padding: 16px 16px 12px;
+        outline: none;
+        flex-shrink: 0;
+    }
+
+    .note-editor__title::placeholder { color: var(--TextFaint); }
+
+    .note-editor__content {
+        flex: 1;
+        width: 100%;
+        box-sizing: border-box;
+        border: 0;
+        background: transparent;
+        color: var(--Text);
+        font-family: var(--Font);
+        font-size: var(--FzMd);
+        line-height: 1.7;
+        padding: 16px;
+        resize: none;
+        outline: none;
+        min-height: 200px;
+    }
+
+    .note-editor__content::placeholder { color: var(--TextFaint); }
+
+    .note-editor__panels {
+        border-top: 1px solid var(--Border);
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        flex-shrink: 0;
+    }
+</style>
+
+@code {
+    private Action? _vmHandler;
+
+    protected override void OnInitialized()
+    {
+        _vmHandler = () => InvokeAsync(StateHasChanged);
+        VM.OnChange += _vmHandler;
+    }
+
+    private async Task SaveAsync() => await VM.SaveAsync();
+    private async Task DeleteAsync() => await VM.DeleteNoteAsync();
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        // Ctrl+S / Cmd+S
+        if ((e.CtrlKey || e.MetaKey) && e.Key == "s")
+            await VM.SaveAsync();
+    }
+
+    public void Dispose()
+    {
+        VM.OnChange -= _vmHandler;
+    }
+}

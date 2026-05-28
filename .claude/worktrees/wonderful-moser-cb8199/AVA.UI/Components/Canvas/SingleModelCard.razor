@@ -1,0 +1,270 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   SingleModelCard.razor
+   Namespace: AVA.UI.Components.Canvas
+   Purpose  : Card that routes to a single model and shows the conversation.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@using AVA.UI.CORE.Models.UI
+@inject AppState State
+
+<div class="card-header" @onmousedown:stopPropagation="true">
+    <div class="card-model-dot" style="background:var(--Success)"></div>
+    <div class="card-header-info">
+        <div class="card-title">@_modelName</div>
+        <div class="card-subtitle">temp @(Card.TemperatureOverride?.ToString("F1") ?? "0.7") · live</div>
+    </div>
+    <div class="card-header-actions">
+        <button class="card-hdr-btn" title="Settings" @onclick="() => _showSettings = !_showSettings">⚙</button>
+        <button class="card-hdr-btn" title="Minimise" @onclick="() => Card.IsMinimised = !Card.IsMinimised">−</button>
+        <button class="card-hdr-btn card-hdr-btn--close" title="Close" @onclick="Close">✕</button>
+    </div>
+</div>
+
+@if (!Card.IsMinimised)
+{
+    <div class="card-body" id="body-@Card.CardId">
+        @foreach (var msg in _messages)
+        {
+            <MessageBubble Message="msg" />
+        }
+        @if (_typing)
+        {
+            <div class="card-typing">
+                <span></span><span></span><span></span>
+            </div>
+        }
+    </div>
+
+    <div class="card-input-area" @onmousedown:stopPropagation="true">
+        <textarea class="card-textarea"
+                  placeholder="Message..."
+                  @bind="_input"
+                  @bind:event="oninput"
+                  @onkeydown="HandleKeydown"></textarea>
+        <button class="card-send-btn" @onclick="Send" disabled="@_typing">↑</button>
+    </div>
+}
+
+<style>
+.card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--Border);
+    cursor: grab;
+    user-select: none;
+}
+
+.card-model-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.card-header-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--Text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.card-subtitle {
+    font-size: 11px;
+    color: var(--TextMuted);
+}
+
+.card-header-actions {
+    display: flex;
+    gap: 2px;
+}
+
+.card-hdr-btn {
+    width: 22px;
+    height: 22px;
+    border: none;
+    background: transparent;
+    color: var(--TextMuted);
+    font-size: 12px;
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.1s, color 0.1s;
+}
+
+.card-hdr-btn:hover {
+    background: var(--BgSurface);
+    color: var(--Text);
+}
+
+.card-hdr-btn--close:hover {
+    background: var(--ErrorBg, #3a1a1a);
+    color: var(--Error, #ff6b6b);
+}
+
+.card-body {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    padding: 8px 0;
+    gap: 4px;
+    min-height: 120px;
+}
+
+.card-input-area {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    padding: 8px 10px;
+    border-top: 1px solid var(--Border);
+}
+
+.card-textarea {
+    flex: 1;
+    background: var(--BgSurface, #111);
+    border: 1px solid var(--Border);
+    border-radius: 10px;
+    color: var(--Text);
+    font-size: 13px;
+    padding: 8px 10px;
+    resize: none;
+    outline: none;
+    line-height: 1.4;
+    max-height: 80px;
+    overflow-y: auto;
+    transition: border-color 0.15s;
+}
+
+.card-textarea:focus {
+    border-color: var(--BorderMid);
+}
+
+.card-textarea::placeholder {
+    color: var(--TextMuted);
+}
+
+.card-send-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: var(--Success);
+    color: #000;
+    font-size: 14px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: opacity 0.15s;
+}
+
+.card-send-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.card-typing {
+    display: flex;
+    gap: 4px;
+    padding: 8px 16px;
+    align-self: flex-start;
+}
+
+.card-typing span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--TextMuted);
+    animation: bounce 1.2s infinite;
+}
+
+.card-typing span:nth-child(2) { animation-delay: 0.2s; }
+.card-typing span:nth-child(3) { animation-delay: 0.4s; }
+
+@@keyframes bounce {
+    0%, 80%, 100% { transform: translateY(0); }
+    40%           { transform: translateY(-6px); }
+}
+</style>
+
+@code {
+    [Parameter, EditorRequired]
+    public CardState Card { get; set; } = default!;
+
+    private List<Message> _messages = new();
+    private string _input = string.Empty;
+    private bool _typing;
+    private bool _showSettings;
+
+    private string _modelName => Card.ModelProfileIds.Count > 0
+        ? State.GetModelName(Card.ModelProfileIds[0])
+        : "No model";
+
+    private async Task Send()
+    {
+        if (string.IsNullOrWhiteSpace(_input) || _typing) return;
+
+        var prompt = _input.Trim();
+        _input = string.Empty;
+        _messages.Add(new Message { Role = "user", Content = prompt });
+        _typing = true;
+        StateHasChanged();
+
+        try
+        {
+            if (Card.ModelProfileIds.Count == 0)
+            {
+                _messages.Add(new Message
+                {
+                    Role = "assistant",
+                    Content = "No model assigned to this card.",
+                    IsError = true
+                });
+                return;
+            }
+
+            var response = await State.Sessions.SendToModelAsync(prompt, Card.ModelProfileIds[0]);
+            var content = AppState.ExtractContent(response);
+
+            _messages.Add(new Message
+            {
+                Role = "assistant",
+                Content = string.IsNullOrEmpty(content) ? "(empty response)" : content,
+                ModelId = Card.ModelProfileIds[0],
+                ModelLabel = _modelName,
+                IsError = !response.Success
+            });
+        }
+        catch (Exception ex)
+        {
+            _messages.Add(new Message
+            {
+                Role = "assistant",
+                Content = ex.Message,
+                IsError = true
+            });
+        }
+        finally
+        {
+            _typing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleKeydown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+            await Send();
+    }
+
+    private void Close() => State.RemoveCard(Card.CardId);
+}

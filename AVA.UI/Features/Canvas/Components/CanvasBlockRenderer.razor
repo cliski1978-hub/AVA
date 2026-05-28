@@ -1,0 +1,39 @@
+@using AVA.UI.Features.Canvas.Components.Blocks
+
+@switch (Block)
+{
+    case CanvasHeadingBlock headingBlock:
+        <CanvasHeadingBlockView Block="headingBlock" OnTextChanged="HandleTextChangedAsync" />
+        break;
+    case CanvasCodeBlock codeBlock:
+        <CanvasCodeBlockView Block="codeBlock" OnTextChanged="HandleTextChangedAsync" />
+        break;
+    case CanvasChatBlock chatBlock:
+        <CanvasChatBlockView Block="chatBlock" OnTextChanged="HandleTextChangedAsync" />
+        break;
+    case CanvasTextBlock textBlock:
+        <CanvasTextBlockView Block="textBlock" OnTextChanged="HandleTextChangedAsync" />
+        break;
+    default:
+        <div class="canvas-shell__placeholder-copy">
+            Unsupported block type: @Block.BlockType
+        </div>
+        break;
+}
+
+@code {
+    /// <summary>
+    /// Gets or sets the Canvas block to render.
+    /// </summary>
+    [Parameter]
+    public CanvasBlock Block { get; set; } = default!;
+
+    /// <summary>
+    /// Gets or sets the callback raised when editable text changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<(string BlockId, string Text)> OnTextChanged { get; set; }
+
+    private Task HandleTextChangedAsync(string text)
+        => OnTextChanged.InvokeAsync((Block.Id, text));
+}

@@ -1,0 +1,456 @@
+@using AVA.UI.CORE.Models.UI
+@inject AppState AppState
+@inject IJSRuntime JS
+
+<div class="vault">
+    <div class="vault-row @(IsExpanded ? "open" : string.Empty) @(IsCollapsed ? "collapsed" : string.Empty)">
+
+        <div class="vault-main" @onclick="ToggleExpand">
+            <span class="vault-chevron">></span>
+            <span class="vault-icon">V</span>
+
+            @if (!IsCollapsed && !_isRenaming)
+            {
+                <span class="vault-name">@Vault.Name</span>
+                <span class="vault-count">@(@Vault.Projects.Count + @Vault.Sessions.Count)</span>
+            }
+        </div>
+
+        @if (!IsCollapsed)
+        {
+            @if (_isRenaming)
+            {
+                <div class="node-editor" @onclick:stopPropagation="true">
+                    <input class="node-rename-input"
+                           @bind="_draftName"
+                           @bind:event="oninput"
+                           @onclick:stopPropagation="true" />
+
+                    <button type="button"
+                            class="node-rename-btn"
+                            @onclick:stopPropagation="true"
+                            @onclick="SaveRenameAsync">
+                        Save
+                    </button>
+
+                    <button type="button"
+                            class="node-rename-btn"
+                            @onclick:stopPropagation="true"
+                            @onclick="CancelRename">
+                        Cancel
+                    </button>
+                </div>
+            }
+            else
+            {
+                <button type="button"
+                        class="vault-action-btn"
+                        title="New project"
+                        @onclick:stopPropagation="true"
+                        @onclick="CreateProjectAsync">
+                    +
+                </button>
+
+                <button type="button"
+                        class="vault-menu-btn"
+                        title="Menu"
+                        @onclick:stopPropagation="true"
+                        @onclick="ToggleMenu">
+                    ...
+                </button>
+            }
+        }
+    </div>
+
+    @if (_showMenu && !IsCollapsed)
+    {
+        <div class="vault-menu" @onclick:stopPropagation="true">
+            <button type="button"
+                    class="vault-menu__item"
+                    @onclick:stopPropagation="true"
+                    @onclick="CreateProjectAsync">
+                New project
+            </button>
+
+            <button type="button"
+                    class="vault-menu__item"
+                    @onclick:stopPropagation="true"
+                    @onclick="CreateSessionAsync">
+                New session
+            </button>
+
+            <button type="button"
+                    class="vault-menu__item"
+                    @onclick:stopPropagation="true"
+                    @onclick="BeginRename">
+                Rename Vault
+            </button>
+
+            <button type="button"
+                    class="vault-menu__item vault-menu__item--danger"
+                    @onclick:stopPropagation="true"
+                    @onclick="ConfirmRemoveVaultAsync">
+                Remove vault
+            </button>
+        </div>
+    }
+
+    @if (IsExpanded && !IsCollapsed)
+    {
+        <div class="vault-children">
+            @foreach (var session in Vault.Sessions.OrderByDescending(s => s.LastActiveAt))
+            {
+                <SessionNode @key="session.SessionId"
+                             VaultId="@Vault.VaultId"
+                             ProjectId="@null"
+                             Session="session"
+                             OnSessionChanged="OnVaultChanged" />
+            }
+
+            @foreach (var project in Vault.Projects)
+            {
+                <ProjectNode @key="project.ProjectId"
+                             VaultId="@Vault.VaultId"
+                             Project="project"
+                             OnProjectChanged="OnVaultChanged" />
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .vault {
+        margin-bottom: var(--RxSm);
+        border-radius: var(--RxMd);
+    }
+
+    .vault-row {
+        display: flex;
+        align-items: center;
+        gap: var(--RxMd);
+        min-height: var(--SzMd);
+        padding: 0 var(--RxMd);
+        border-radius: var(--RxMd);
+        transition: background var(--T);
+        user-select: none;
+    }
+
+        .vault-row.collapsed {
+            justify-content: center;
+            padding-inline: 0;
+        }
+
+        .vault-row:hover {
+            background: var(--BgHover);
+        }
+
+        .vault-row.open {
+            background: var(--BgElevated);
+        }
+
+    .vault-main {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: var(--RxMd);
+        min-height: var(--SzMd);
+        cursor: pointer;
+    }
+
+    .vault-chevron {
+        font-size: var(--FzXs);
+        color: var(--TextMuted);
+        flex-shrink: 0;
+        transition: transform var(--T);
+        width: var(--FzSm);
+        text-align: center;
+    }
+
+    .vault-row.open .vault-chevron {
+        transform: rotate(90deg);
+    }
+
+    .vault-icon {
+        font-size: var(--FzXl);
+        flex-shrink: 0;
+        width: var(--Fz2Xl);
+        text-align: center;
+        color: var(--Accent);
+    }
+
+    .vault-name {
+        font-size: var(--FzMd);
+        font-weight: 600;
+        flex: 1;
+        min-width: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: var(--Text);
+        letter-spacing: 0.02em;
+    }
+
+    .vault-count {
+        font-size: var(--FzXs);
+        font-weight: 600;
+        color: var(--TextMuted);
+        background: var(--BgBase);
+        border: 1px solid var(--Border);
+        border-radius: var(--RxPill);
+        padding: 0 var(--RxMd);
+        line-height: var(--SzXs);
+        flex-shrink: 0;
+    }
+
+    .vault-action-btn,
+    .vault-menu-btn {
+        width: var(--Fz2Xl);
+        height: var(--Fz2Xl);
+        border-radius: var(--RxTiny);
+        background: var(--BgBase);
+        border: 1px solid var(--Border);
+        color: var(--TextMuted);
+        font-size: var(--FzLg);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        transition: all var(--T);
+    }
+
+    .vault-menu-btn {
+        background: transparent;
+        border-color: transparent;
+        color: var(--TextFaint);
+    }
+
+        .vault-action-btn:hover,
+        .vault-menu-btn:hover {
+            background: var(--BgHover);
+            border-color: var(--Border);
+            color: var(--Accent);
+        }
+
+    .vault-menu {
+        margin: 0 0 var(--RxSm) calc(var(--Fz2Xl) + var(--RxMd));
+        display: flex;
+        flex-direction: column;
+        gap: var(--RxXs);
+        padding: var(--RxSm);
+        background: var(--BgElevated);
+        border: 1px solid var(--Border);
+        border-radius: var(--RxMd);
+    }
+
+    .vault-menu__item {
+        min-height: var(--SzSm);
+        text-align: left;
+        padding: 0 var(--RxMd);
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: var(--RxSm);
+        color: var(--TextMuted);
+        font-family: var(--Font);
+        font-size: var(--FzSm);
+        cursor: pointer;
+        transition: all var(--T);
+    }
+
+        .vault-menu__item:hover {
+            background: var(--BgHover);
+            border-color: var(--BorderMid);
+            color: var(--Text);
+        }
+
+    .vault-menu__item--danger:hover {
+        border-color: var(--DangerLine);
+        color: var(--Danger);
+    }
+
+    .node-editor {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: var(--RxSm);
+    }
+
+    .node-rename-input {
+        flex: 1;
+        min-width: 0;
+        height: var(--SzSm);
+        border-radius: var(--RxSm);
+        border: 1px solid var(--BorderMid);
+        background: var(--BgBase);
+        color: var(--Text);
+        font-family: var(--Font);
+        font-size: var(--FzSm);
+        padding: 0 var(--RxMd);
+    }
+
+    .node-rename-btn {
+        height: var(--SzSm);
+        border-radius: var(--RxSm);
+        border: 1px solid var(--Border);
+        background: var(--BgBase);
+        color: var(--TextMuted);
+        font-family: var(--Font);
+        font-size: var(--FzXs);
+        padding: 0 var(--RxMd);
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+
+        .node-rename-btn:hover {
+            color: var(--Text);
+            border-color: var(--BorderMid);
+        }
+
+    .vault-children {
+        padding-left: var(--FzSm);
+        border-left: 1px solid var(--Border);
+        margin-left: var(--Fz2Xl);
+        margin-top: var(--RxXs);
+        margin-bottom: var(--RxSm);
+    }
+</style>
+
+@code {
+    [Parameter, EditorRequired]
+    public VaultState Vault { get; set; } = default!;
+
+    [Parameter]
+    public bool IsCollapsed { get; set; }
+
+    [Parameter]
+    public EventCallback OnVaultChanged { get; set; }
+
+    private bool _showMenu;
+    private bool _isRenaming;
+    private string _draftName = string.Empty;
+
+    private bool IsExpanded => Vault.IsExpanded;
+
+    private async Task ToggleExpand()
+    {
+        if (_isRenaming)
+        {
+            return;
+        }
+
+        _showMenu = false;
+        Vault.IsExpanded = !Vault.IsExpanded;
+        await OnVaultChanged.InvokeAsync();
+    }
+
+    private void ToggleMenu()
+    {
+        _showMenu = !_showMenu;
+        StateHasChanged();
+    }
+
+    private void BeginRename()
+    {
+        _showMenu = false;
+        _isRenaming = true;
+        _draftName = Vault.Name;
+        StateHasChanged();
+    }
+
+    private void CancelRename()
+    {
+        _isRenaming = false;
+        _draftName = string.Empty;
+        StateHasChanged();
+    }
+
+    private async Task CreateProjectAsync()
+    {
+        _showMenu = false;
+        _isRenaming = false;
+
+        await AppState.CreateProjectAsync(
+            Vault.VaultId,
+            $"Project {Vault.Projects.Count + 1}");
+
+        Vault.IsExpanded = true;
+        AppState.NotifyStateChanged();
+
+        await OnVaultChanged.InvokeAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task CreateSessionAsync()
+    {
+        _showMenu = false;
+        _isRenaming = false;
+
+        var session = await AppState.CreateWorkspaceSessionAsync(
+            Vault.VaultId,
+            null,
+            $"Session {Vault.Sessions.Count + 1}");
+
+        if (session == null)
+        {
+            return;
+        }
+
+        Vault.IsExpanded = true;
+        AppState.SelectSession(Vault.VaultId, null, session.SessionId);
+        AppState.SetSelectedNavigationItem("Chat");
+        AppState.NotifyStateChanged();
+
+        await OnVaultChanged.InvokeAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SaveRenameAsync()
+    {
+        var trimmed = _draftName.Trim();
+
+        if (string.IsNullOrWhiteSpace(trimmed))
+        {
+            CancelRename();
+            return;
+        }
+
+        _isRenaming = false;
+        _draftName = string.Empty;
+
+        await AppState.RenameVaultAsync(Vault.VaultId, trimmed);
+        AppState.NotifyStateChanged();
+
+        await OnVaultChanged.InvokeAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ConfirmRemoveVaultAsync()
+    {
+        var confirmed = await JS.InvokeAsync<bool>(
+            "confirm",
+            $"Delete vault '{Vault.Name}' and all of its projects and sessions?");
+
+        if (!confirmed)
+        {
+            _showMenu = false;
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        await RemoveVaultAsync();
+    }
+
+    private async Task RemoveVaultAsync()
+    {
+        _showMenu = false;
+        _isRenaming = false;
+
+        await AppState.RemoveVaultAsync(Vault.VaultId);
+        AppState.NotifyStateChanged();
+
+        await OnVaultChanged.InvokeAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+}

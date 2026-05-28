@@ -1,0 +1,330 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   LLMProfilesPanel.razor
+   Namespace: AVA.UI.Components.Settings
+   Purpose  : Displays all LLM profiles with their model lists.
+              Per profile: Test Endpoint, Connect, IsActive toggle.
+              Per model: Test Model, IsActive toggle, New badge for
+              API-discovered models not yet saved to settings.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@using AVA.UI.State
+@using AVA.UI.CORE.Models.Settings
+@inject AppState State
+@inject IJSRuntime JS
+
+<div class="llm-profiles-panel">
+
+    <div class="settings-toolbar">
+        <button class="settings-btn" @onclick="AddProfile">+ Add Profile</button>
+    </div>
+
+    @foreach (var P in State.LLMProfiles.ToList())
+    {
+        var Profile = P;
+
+        <div class="profile-card @(Profile.IsActive ? "profile-card--active" : "")">
+
+            <!-- ── Profile Header ─────────────────────────────────────── -->
+            <div class="profile-card__header">
+                <div class="profile-card__header-left">
+                    <label class="settings-row">
+                        <input type="checkbox"
+                               checked="@Profile.IsActive"
+                               @onchange="E => { Profile.IsActive = (bool)(E.Value ?? false); State.SaveSettings(); StateHasChanged(); }" />
+                        <span class="profile-card__name">@Profile.Name</span>
+                        <span class="profile-card__provider">@Profile.ResolvedProvider</span>
+                    </label>
+                </div>
+                <div class="profile-card__header-right">
+                    <button class="settings-btn settings-btn--sm"
+                            @onclick="() => EditProfile(Profile)">
+                        Edit
+                    </button>
+                    <button class="settings-btn settings-btn--sm"
+                            @onclick="async () => await TestEndpoint(Profile)"
+                            disabled="@_TestingEndpoint.Contains(Profile.ProfileId)">
+                        @(_TestingEndpoint.Contains(Profile.ProfileId) ? "Testing…" : "Test Endpoint")
+                    </button>
+                    <button class="settings-btn settings-btn--primary settings-btn--sm"
+                            @onclick="async () => await ConnectProfile(Profile)"
+                            disabled="@_ConnectingProfile.Contains(Profile.ProfileId)">
+                        @(_ConnectingProfile.Contains(Profile.ProfileId) ? "Connecting…" : "Connect")
+                    </button>
+                    <button class="settings-btn settings-btn--danger settings-btn--sm"
+                            @onclick:stopPropagation="true"
+                            @onclick="async () => await RemoveProfile(Profile)">
+                        Remove
+                    </button>
+                </div>
+            </div>
+
+            <!-- ── Profile Feedback ───────────────────────────────────── -->
+            @if (_ProfileMessages.TryGetValue(Profile.ProfileId, out var PMsg) &&
+           !string.IsNullOrWhiteSpace(PMsg.Text))
+            {
+                <div class="settings-feedback @(PMsg.Ok ? "settings-feedback--ok" : "settings-feedback--err")">
+                    @PMsg.Text
+                </div>
+            }
+
+            <!-- ── Model List ─────────────────────────────────────────── -->
+            <div class="model-list">
+
+                <div class="model-list__toolbar">
+                    <span class="model-list__label">Models</span>
+                    <button class="settings-btn settings-btn--sm"
+                            @onclick="() => AddModel(Profile)">
+                        + Add Model
+                    </button>
+                    <button class="settings-btn settings-btn--sm"
+                            @onclick="async () => await LoadModelsFromApi(Profile)"
+                            disabled="@_LoadingModels.Contains(Profile.ProfileId)">
+                        @(_LoadingModels.Contains(Profile.ProfileId) ? "Loading…" : "Load from API")
+                    </button>
+                </div>
+
+                @if (!Profile.Models.Any())
+                {
+                    <div class="model-list__empty">
+                        No models defined. Add manually or use Load from API.
+                    </div>
+                }
+                else
+                {
+                    @foreach (var M in Profile.Models.ToList())
+                    {
+                        var Model = M;
+                        <div class="model-item @(Model.IsActive ? "model-item--active" : "")">
+
+                            <div class="model-item__left">
+                                <input type="checkbox"
+                                       checked="@Model.IsActive"
+                                       @onchange="E => { Model.IsActive = (bool)(E.Value ?? false); State.SaveSettings(); StateHasChanged(); }" />
+                                <span class="model-item__label">@Model.Label</span>
+                                <span class="model-item__id">@Model.Id</span>
+                                @if (Model.IsDiscovered)
+                                {
+                                    <span class="model-item__badge model-item__badge--new">New</span>
+                                }
+                            </div>
+
+                            <div class="model-item__right">
+                                <button class="settings-btn settings-btn--sm"
+                                        @onclick="async () => await TestModel(Profile, Model)"
+                                        disabled="@_TestingModel.Contains(Model.Id)">
+                                    @(_TestingModel.Contains(Model.Id) ? "Testing…" : "Test")
+                                </button>
+                                @if (Model.IsDiscovered)
+                                {
+                                    <button class="settings-btn settings-btn--sm"
+                                            @onclick="() => SaveDiscoveredModel(Profile, Model)">
+                                        Save
+                                    </button>
+                                }
+                                <button class="settings-btn settings-btn--danger settings-btn--sm"
+                                        @onclick="async () => await RemoveModel(Profile, Model)">
+                                    Remove
+                                </button>
+                            </div>
+
+                            <!-- ── Model Feedback ─────────────────────── -->
+                            @if (_ModelMessages.TryGetValue(Model.Id, out var MMsg) &&
+                           !string.IsNullOrWhiteSpace(MMsg.Text))
+                            {
+                                <div class="model-item__feedback @(MMsg.Ok ? "settings-feedback--ok" : "settings-feedback--err")">
+                                    @MMsg.Text
+                                </div>
+                            }
+
+                        </div>
+                    }
+                }
+
+            </div>
+
+        </div>
+    }
+
+    <!-- ── Add / Edit Dialog ──────────────────────────────────────────── -->
+    @if (_EditingProfile != null)
+    {
+        <EditLLMProfileDialog Profile="@_EditingProfile"
+                              OnSave="SaveProfile"
+                              OnCancel="CancelEdit" />
+    }
+
+</div>
+
+@code {
+
+    // ── State ─────────────────────────────────────────────────────────────
+
+    private LLMProfile? _EditingProfile;
+
+    private readonly HashSet<string> _TestingEndpoint = new();
+    private readonly HashSet<string> _ConnectingProfile = new();
+    private readonly HashSet<string> _LoadingModels = new();
+    private readonly HashSet<string> _TestingModel = new();
+
+    private readonly Dictionary<string, (string Text, bool Ok)> _ProfileMessages = new();
+    private readonly Dictionary<string, (string Text, bool Ok)> _ModelMessages = new();
+
+    // ── Profile Actions ───────────────────────────────────────────────────
+
+    private void AddProfile()
+    {
+        _EditingProfile = new LLMProfile
+            {
+                ProfileId = Guid.NewGuid().ToString(),
+                Name = "New Profile"
+            };
+    }
+
+    private void EditProfile(LLMProfile Profile)
+    {
+        _EditingProfile = Profile;
+    }
+
+    private void SaveProfile(LLMProfile Updated)
+    {
+        var Existing = State.LLMProfiles
+            .FirstOrDefault(P => P.ProfileId == Updated.ProfileId);
+
+        if (Existing != null)
+        {
+            // Update in place
+            var Idx = State.LLMProfiles.IndexOf(Existing);
+            Updated.Models = Existing.Models;
+            State.LLMProfiles[Idx] = Updated;
+        }
+        else
+        {
+            State.LLMProfiles.Add(Updated);
+        }
+
+        State.SaveSettings();
+        _EditingProfile = null;
+        StateHasChanged();
+    }
+
+    private void CancelEdit()
+    {
+        _EditingProfile = null;
+        StateHasChanged();
+    }
+
+    private async Task RemoveProfile(LLMProfile Profile)
+    {
+        var Confirmed = await JS.InvokeAsync<bool>("confirm",
+            $"Remove profile '{Profile.Name}' and all its models?");
+        if (!Confirmed) return;
+
+        State.LLMProfiles.Remove(Profile);
+        State.SaveSettings();
+        StateHasChanged();
+    }
+
+    private async Task TestEndpoint(LLMProfile Profile)
+    {
+        _TestingEndpoint.Add(Profile.ProfileId);
+        _ProfileMessages.Remove(Profile.ProfileId);
+        StateHasChanged();
+
+        var (Ok, Message) = await State.TestEndpointAsync(Profile);
+        _ProfileMessages[Profile.ProfileId] = (Message, Ok);
+
+        _TestingEndpoint.Remove(Profile.ProfileId);
+        StateHasChanged();
+    }
+
+    private async Task ConnectProfile(LLMProfile Profile)
+    {
+        _ConnectingProfile.Add(Profile.ProfileId);
+        _ProfileMessages.Remove(Profile.ProfileId);
+        StateHasChanged();
+
+        await State.ConnectProfileAsync(Profile);
+
+        var Ok = State.IsConnected;
+        var Message = Ok
+            ? $"✅ Connected — {Profile.Models.Count} model(s) available."
+            : $"❌ {State.ConnectionDetails}";
+
+        _ProfileMessages[Profile.ProfileId] = (Message, Ok);
+
+        _ConnectingProfile.Remove(Profile.ProfileId);
+        StateHasChanged();
+    }
+
+    private async Task LoadModelsFromApi(LLMProfile Profile)
+    {
+        _LoadingModels.Add(Profile.ProfileId);
+        _ProfileMessages.Remove(Profile.ProfileId);
+        StateHasChanged();
+
+        try
+        {
+            await State.ConnectProfileAsync(Profile);
+
+            var Count = Profile.Models.Count(M => M.IsDiscovered);
+            _ProfileMessages[Profile.ProfileId] = (
+                $"✅ Loaded — {Count} new model(s) discovered.",
+                true);
+        }
+        catch (Exception Ex)
+        {
+            _ProfileMessages[Profile.ProfileId] = ($"❌ {Ex.Message}", false);
+        }
+        finally
+        {
+            _LoadingModels.Remove(Profile.ProfileId);
+            StateHasChanged();
+        }
+    }
+
+    // ── Model Actions ─────────────────────────────────────────────────────
+
+    private void AddModel(LLMProfile Profile)
+    {
+        Profile.Models.Add(new ModelProfile
+            {
+                Id = string.Empty,
+                Label = "New Model",
+                Type = Profile.ResolvedProvider.ToLowerInvariant()
+            });
+
+        State.SaveSettings();
+        StateHasChanged();
+    }
+
+    private async Task RemoveModel(LLMProfile Profile, ModelProfile Model)
+    {
+        var Confirmed = await JS.InvokeAsync<bool>("confirm",
+            $"Remove model '{Model.Label}'?");
+        if (!Confirmed) return;
+
+        Profile.Models.Remove(Model);
+        State.SaveSettings();
+        StateHasChanged();
+    }
+
+    private async Task TestModel(LLMProfile Profile, ModelProfile Model)
+    {
+        _TestingModel.Add(Model.Id);
+        _ModelMessages.Remove(Model.Id);
+        StateHasChanged();
+
+        var (Ok, Message) = await State.TestModelAsync(Profile, Model);
+        _ModelMessages[Model.Id] = (Message, Ok);
+
+        _TestingModel.Remove(Model.Id);
+        StateHasChanged();
+    }
+
+    private void SaveDiscoveredModel(LLMProfile Profile, ModelProfile Model)
+    {
+        Model.IsDiscovered = false;
+        State.SaveSettings();
+        StateHasChanged();
+    }
+}

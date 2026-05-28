@@ -1,0 +1,62 @@
+<span class="@CssClass"
+      data-tooltip="@Text"
+      @attributes="AdditionalAttributes">
+    @ChildContent
+</span>
+
+@code {
+    /// <summary>
+    /// Gets or sets the visual intent for the tooltip wrapper.
+    /// </summary>
+    [Parameter]
+    public string Intent { get; set; } = "neutral";
+
+    /// <summary>
+    /// Gets or sets the size variant for the tooltip wrapper.
+    /// </summary>
+    [Parameter]
+    public string Size { get; set; } = "md";
+
+    /// <summary>
+    /// Gets or sets an optional state class for the tooltip wrapper.
+    /// </summary>
+    [Parameter]
+    public string State { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the tooltip text.
+    /// </summary>
+    [Parameter]
+    public string Text { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the tooltip position.
+    /// Accepts <c>top</c>, <c>bottom</c>, <c>left</c>, or <c>right</c>.
+    /// </summary>
+    [Parameter]
+    public string Position { get; set; } = "top";
+
+    /// <summary>
+    /// Gets or sets the wrapped content.
+    /// </summary>
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = default!;
+
+    /// <summary>
+    /// Gets or sets additional HTML attributes for the tooltip wrapper.
+    /// </summary>
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string CssClass =>
+        string.Join(" ",
+            "ava-tooltip",
+            $"ava-tooltip-{NormalizePosition(Position)}",
+            string.IsNullOrWhiteSpace(State) ? string.Empty : State);
+
+    private static string NormalizePosition(string value)
+    {
+        var resolved = string.IsNullOrWhiteSpace(value) ? "top" : value.Trim().ToLowerInvariant();
+        return resolved is "top" or "bottom" or "left" or "right" ? resolved : "top";
+    }
+}

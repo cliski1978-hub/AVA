@@ -1,0 +1,1182 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>AVA.UPS.Adapter</name>
+    </assembly>
+    <members>
+        <member name="T:AVA.UPS.Adapter.AdapterRegistry">
+            <summary>
+            Registry of all available protocol adapters for UPS routing.
+            Supports initialization, diagnostics, configuration metadata,
+            and thread-safe multi-transport resolution.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.AdapterRecord">
+            <summary>
+            Holds runtime metadata for a protocol adapter instance.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.BaseUParamAdapter">
+            <summary>
+            A fully semantic, contract-aware, async-capable UPS ↔ DTO mapper.
+            This class serves as the foundation for all UPS DTO adapters and is
+            designed for UPS v1.0+ and AVA's future agent-driven data flows.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.ContractAwareAdapter">
+            <summary>
+            A contract-driven adapter that applies semantic UPS rules, defaults,
+            domain type coercion, and strict/permissive mapping to and from DTOs.
+            This class ensures DTO mappings fully align with the UPS contract.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.IUParamAdapter">
+            <summary>
+            Converts between UPS UParams and strongly typed DTOs.
+            Supports async operations, contract awareness, semantic type mapping,
+            and strict/permissive transformation modes.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.IUParamAdapter.Parse``1(System.Collections.Generic.List{AVA.UPS.Adapter.Models.UParam})">
+            <summary>
+            Converts a list of UPS parameters into a strongly typed DTO.
+            Contract-independent (raw mapping).
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.IUParamAdapter.Build``1(``0)">
+            <summary>
+            Converts a strongly typed DTO into a set of UPS parameters.
+            Contract-independent (raw mapping).
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.IUParamAdapter.Parse``1(System.Collections.Generic.List{AVA.UPS.Adapter.Models.UParam},AVA.UPS.Adapter.Contracts.UPSMethodContract)">
+            <summary>
+            Contract-aware DTO parsing with type enforcement and defaults.
+            Populates fields according to UPSMethodContract semantics.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.IUParamAdapter.Build``1(``0,AVA.UPS.Adapter.Contracts.UPSMethodContract)">
+            <summary>
+            Contract-aware DTO building that respects expected parameter keys,
+            semantic types, and list-structured definitions.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.IUParamAdapter.ParseAsync``1(System.Collections.Generic.List{AVA.UPS.Adapter.Models.UParam})">
+            <summary>
+            Async version of Parse for scenarios where value resolution
+            requires IO (identity lookup, vector DB, remote DTO transforms, etc.)
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.IUParamAdapter.BuildAsync``1(``0)">
+            <summary>
+            Async version of Build supporting remote resolution, identity routing,
+            and semantic enrichment.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.IUParamAdapter.ParseAsync``1(System.Collections.Generic.List{AVA.UPS.Adapter.Models.UParam},AVA.UPS.Adapter.Contracts.UPSMethodContract)">
+            <summary>
+            Contract-aware async parsing (full UPS lifecycle support).
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.IUParamAdapter.BuildAsync``1(``0,AVA.UPS.Adapter.Contracts.UPSMethodContract)">
+            <summary>
+            Contract-aware async UPS parameter construction.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.IUParamAdapter.StrictMode">
+            <summary>
+            StrictMode:
+            true = DTO must match contract exactly (no missing fields, no extras).
+            false = permissive mode, allowing partial DTOs and auto-coercions.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.IUParamAdapter.AutoMapIdentity">
+            <summary>
+            When true, identity fields (Id, Handle, Type) are automatically mapped
+            from DTO annotations or naming conventions.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.IUParamAdapter.AutoNormalizeEmbeddings">
+            <summary>
+            When true, embedding arrays and lists are flattened/normalized automatically.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.IUParamAdapter.EnableNestedDTOs">
+            <summary>
+            When true, DTO properties with nested objects will be converted into
+            structured UParam blocks automatically.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.Adapter.OpenAiInboundAdapter.#ctor(System.Collections.Generic.Dictionary{System.String,System.String})">
+            <summary>
+            Maps model ID prefixes to their target module names.
+            If modelId starts with a key, its value is the target module.
+            Default fallback is "Nomi" for unmatched models.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Contracts.ContractRegistry">
+            <summary>
+            Central registry for all UPS JSON contract files.
+            Handles loading, normalization, validation, and lookup.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Contracts.ContractRegistry.Modules">
+            <summary>
+            Exposes all loaded contract modules.
+            Keys are canonical module names.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.Contracts.ContractRegistry.LoadFromDirectories(System.String[])">
+            <summary>
+            Loads all UPS contract files from one or more directories.
+            Supports deterministic ordering, module override rules, and full validation.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.Contracts.ContractRegistry.LoadFromDirectory(System.String)">
+            <summary>
+            Loads all JSON contract files from a single directory.
+            Applies strict validation and normalization.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.Contracts.ContractRegistry.GetMethodContract(System.String,System.String)">
+            <summary>
+            Returns the contract for a specific method within a module,
+            or null if the module or method is not registered.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Contracts.UPSContractFile">
+            <summary>
+            Root object for each module's JSON contract file.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Contracts.UPSMethodContract">
+            <summary>
+            Represents a contract for a single method in a module.
+            Contains its name, version, expected parameters, and return type.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Contracts.UPSParameterContract">
+            <summary>
+            Defines a single expected parameter in a UPS method contract.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Contracts.UPSReturnContract">
+            <summary>
+            Describes the full expected return schema of a UPS method.
+            This is loaded from external contract definition files.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Dispatcher.DispatcherResult">
+            <summary>
+            Represents the result of a UPS dispatch operation.
+            Includes structured diagnostics, mismatch reporting,
+            and correlation-aware metadata for UPS v1.0+ routing.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Dispatcher.DispatcherResult.Success">
+            <summary>
+            True if the dispatch operation completed successfully.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Dispatcher.DispatcherResult.Payload">
+            <summary>
+            The UParam payload returned by the invoked method or error handler.
+            Always non-null.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Dispatcher.DispatcherResult.ErrorType">
+            <summary>
+            Optional error type (e.g., ContractError, InvocationError, AdapterError).
+            Useful for diagnostics, logging, and multi-agent UPS routing.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Dispatcher.DispatcherResult.Mismatches">
+            <summary>
+            Detailed mismatch entries generated by contract validation
+            or adapter-level type coercion reporting.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Dispatcher.DispatcherResult.Diagnostics">
+            <summary>
+            Diagnostics metadata such as adapter used, execution time,
+            method name, module, correlation id, or stack traces.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Dispatcher.DispatcherResult.CorrelationId">
+            <summary>
+            Correlation ID from the UPS envelope for end-to-end tracing.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Dispatcher.MethodInvoker">
+            <summary>
+            Reflection-based UPS method invoker supporting UPS v1.0+ signatures,
+            diagnostics injection, correlation awareness, and structured error handling.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Dispatcher.ModuleDispatcher">
+            <summary>
+            Executes UPS method calls inside the same process using reflection.
+            Fully contract-aware, correlation-aware, and compatible with UPS v1.0+.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Gateway.IInboundAdapter.FormatName">
+            <summary>
+            Unique name identifying this format.
+            e.g. "ups-native", "openai", "nomi", "raw"
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Gateway.IInboundAdapter.Priority">
+            <summary>
+            Priority order for auto-detection.
+            Lower number = checked first.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.Gateway.IInboundAdapter.CanHandle(System.Byte[],System.Collections.Generic.Dictionary{System.String,System.String})">
+            <summary>
+            Inspects raw bytes and headers to determine if this adapter
+            can handle the incoming payload. Used for auto-detection when
+            no format is explicitly specified.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.Gateway.IInboundAdapter.TranslateAsync(System.Byte[],System.Collections.Generic.Dictionary{System.String,System.String},System.Threading.CancellationToken)">
+            <summary>
+            Translates raw inbound bytes into a UPSMessageEnvelope.
+            This is the ONLY place format-specific inbound logic lives.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.Gateway.IInboundAdapter.TranslateResponseAsync(AVA.UPS.Adapter.Models.UPSMessageEnvelope,System.Threading.CancellationToken)">
+            <summary>
+            Translates a UPSMessageEnvelope response back into bytes
+            in the format the caller expects.
+            This is the ONLY place format-specific outbound response logic lives.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.Gateway.InboundAdapterRegistry.Detect(System.Byte[],System.Collections.Generic.Dictionary{System.String,System.String})">
+            <summary>
+            Inspects raw bytes and headers to find the first adapter
+            that claims it can handle the payload, ordered by Priority.
+            Returns null if no adapter matches.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.Gateway.InboundAdapterRegistry.Resolve(System.Byte[],System.Collections.Generic.Dictionary{System.String,System.String},System.String)">
+            <summary>
+            Resolves an adapter by explicit format name first.
+            Falls back to auto-detection if format is null or unknown.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.Gateway.UPSGateway.SendAsync(System.Byte[],System.Collections.Generic.Dictionary{System.String,System.String},System.String,System.Threading.CancellationToken)">
+            <summary>
+            Accepts any inbound payload as raw bytes.
+            FormatHint is optional — if null auto-detection is used.
+            Headers carry transport metadata, auth hints, routing hints.
+            Returns raw bytes in the caller's expected format.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Handshake.UPSCompatibilityValidator">
+            <summary>
+            Validates compatibility between two UPS handshake declarations.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Handshake.UPSHandshakeCapabilities">
+            <summary>
+            Capability declaration exchanged by modules during handshake.
+            Indicates supported transports, encodings, compression, etc.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Handshake.UPSHandshakeCapabilities.SupportedTransports">
+            <summary>
+            Transport types and encodings supported by this module.
+            Example: ["http", "grpc", "file", "s3"]
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Handshake.UPSHandshakeCapabilities.MaxPayloadBytes">
+            <summary>
+            Maximum allowed payload size in bytes.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Handshake.UPSHandshakeError">
+            <summary>
+            Error produced during handshake negotiation.
+            Includes helper factories for common handshake failures.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.Handshake.UPSHandshakeError.VersionMismatch(System.String,System.String)">
+            <summary>
+            Creates a version mismatch error.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.Handshake.UPSHandshakeError.CapabilityMismatch">
+            <summary>
+            Creates a capability mismatch error.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Handshake.UPSHandshakeIdentity">
+            <summary>
+            Declares identity information exchanged during handshake.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Handshake.UPSHandshakeIdentity.NodeId">
+            <summary>
+            Unique ID for this machine or AVA instance.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Handshake.UPSHandshakeIdentity.ModuleName">
+            <summary>
+            Module name (Vault, Memory, Agent, etc.).
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Handshake.UPSHandshakeIdentity.DisplayName">
+            <summary>
+            Optional human-readable name.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Handshake.UPSHandshakeIdentity.Environment">
+            <summary>
+            Operating system or environment details.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Handshake.UPSHandshakeIdentity.ModuleVersion">
+            <summary>
+            Instance version of the module, used for compatibility checks.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Handshake.UPSHandshakeRequest">
+            <summary>
+            Data sent by a module initiating a UPS handshake to another module.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Handshake.UPSHandshakeResponse">
+            <summary>
+            Response returned by a remote module upon handshake.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Handshake.UPSHandshakeService">
+            <summary>
+            Performs UPS handshake negotiation between two modules.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.Handshake.UPSHandshakeService.BuildRequest(System.String,System.String,AVA.UPS.Adapter.Handshake.UPSHandshakeCapabilities,System.String)">
+            <summary>
+            Builds a handshake request for the calling module.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.Handshake.UPSHandshakeService.ValidateHandshake(AVA.UPS.Adapter.Handshake.UPSHandshakeRequest,System.String)">
+            <summary>
+            Validates an incoming handshake request
+            and returns host module identity + acceptance status.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Host.HttpUPSHostListener">
+            <summary>
+            Bare-metal HTTP listener for UPS envelopes.
+            Uses HttpListener (Windows-compatible), no ASP.NET Core required.
+            POST /invoke → accepts UPSMessageEnvelope JSON and returns a UPSMessageEnvelope JSON.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Host.IUPSHostTransport">
+            <summary>
+            Interface implemented by all UPS host listeners.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Host.UPSHost">
+            <summary>
+            Core host for UPS. Creates dispatchers and runs listeners.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Host.UPSHostContext">
+            <summary>
+            Context passed to all UPS host listeners on startup.
+            Carries everything a listener needs to process inbound requests.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Host.UPSHostContext.ModuleInstance">
+            <summary>
+            The module instance being hosted.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Host.UPSHostContext.Contract">
+            <summary>
+            The UPS contract file defining all methods for this module.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Host.UPSHostContext.Dispatcher">
+            <summary>
+            The dispatcher responsible for invoking module methods.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Host.UPSHostContext.Gateway">
+            <summary>
+            The single UPS gateway entry point for all inbound traffic.
+            All requests are routed through here regardless of format or transport.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Host.UPSHostContext.Options">
+            <summary>
+            Configuration options for host behavior.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Host.UPSHostListener">
+            <summary>
+            Base class for all UPS host listeners.
+            Reads raw bytes from any transport stream and routes them
+            through the UPSGateway — the single entry point for all inbound traffic.
+            </summary>
+        </member>
+        <member name="F:AVA.UPS.Adapter.Host.UPSHostListener._Context">
+            <summary>
+            The host context containing the gateway and options.
+            </summary>
+        </member>
+        <member name="F:AVA.UPS.Adapter.Host.UPSHostListener._Gateway">
+            <summary>
+            The single UPS gateway entry point.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.Host.UPSHostListener.StartAsync(AVA.UPS.Adapter.Host.UPSHostContext,System.Threading.CancellationToken)">
+            <summary>
+            Initializes the listener with the host context.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.Host.UPSHostListener.StopAsync(System.Threading.CancellationToken)">
+            <summary>
+            Stops the listener.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.Host.UPSHostListener.HandleRequestAsync(System.IO.Stream,System.IO.Stream,System.Threading.CancellationToken)">
+            <summary>
+            Reads raw bytes from the input stream, routes through the gateway,
+            and writes the response bytes to the output stream.
+            This is the only request handling logic — format agnostic.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Host.UPSHostListener.FormatHint">
+            <summary>
+            Override to provide a format hint from transport-specific metadata.
+            For example HTTP Content-Type header, TCP frame prefix, pipe handshake.
+            Returns null to use auto-detection.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.Host.UPSHostListener.ExtractHeaders">
+            <summary>
+            Override to extract transport-specific headers or metadata
+            and pass them to the gateway for adapter detection and routing hints.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Host.UPSHostOptions">
+            <summary>
+            Configuration for UPS host behavior.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Host.UPSHostOptions.MaxPayloadBytes">
+            <summary>
+            Maximum allowed payload size.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.LLMAdapters.ChatGPTAdapter">
+            <summary>
+            ILLMAdapter for ChatGPT-style OpenAI chat completions endpoints.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.LLMAdapters.ChatGPTAdapter.#ctor(AVA.UPS.Adapter.LLMAdapters.LLMAdapterConfig,System.Net.Http.HttpClient)">
+            <summary>
+            Initializes a ChatGPT adapter from a normalized config bag.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.ChatGPTAdapter.ProviderId">
+            <inheritdoc />
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.ChatGPTAdapter.DisplayName">
+            <inheritdoc />
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.ChatGPTAdapter.ModelName">
+            <inheritdoc />
+        </member>
+        <member name="M:AVA.UPS.Adapter.LLMAdapters.ChatGPTAdapter.ConnectAsync(System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:AVA.UPS.Adapter.LLMAdapters.ChatGPTAdapter.SendAsync(AVA.UPS.Adapter.Models.UPSPayload,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:AVA.UPS.Adapter.LLMAdapters.ChatGPTAdapter.TestAsync(System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:AVA.UPS.Adapter.LLMAdapters.ChatGPTAdapter.DisconnectAsync">
+            <inheritdoc />
+        </member>
+        <member name="M:AVA.UPS.Adapter.LLMAdapters.ChatGPTAdapter.GetCapabilitiesAsync">
+            <inheritdoc />
+        </member>
+        <member name="T:AVA.UPS.Adapter.LLMAdapters.ClaudeAdapter">
+            <summary>
+            ILLMAdapter for Anthropic Claude.
+            POST /v1/messages with x-api-key and anthropic-version headers.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.ClaudeAdapter.ProviderId">
+            <inheritdoc />
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.ClaudeAdapter.DisplayName">
+            <inheritdoc />
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.ClaudeAdapter.ModelName">
+            <inheritdoc />
+        </member>
+        <member name="M:AVA.UPS.Adapter.LLMAdapters.ClaudeAdapter.#ctor(AVA.UPS.Adapter.LLMAdapters.LLMAdapterConfig,System.Net.Http.HttpClient)">
+            <summary>
+            Initializes the adapter from a config bag.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.LLMAdapters.ClaudeAdapter.ConnectAsync(System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:AVA.UPS.Adapter.LLMAdapters.ClaudeAdapter.SendAsync(AVA.UPS.Adapter.Models.UPSPayload,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:AVA.UPS.Adapter.LLMAdapters.ClaudeAdapter.TestAsync(System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:AVA.UPS.Adapter.LLMAdapters.ClaudeAdapter.DisconnectAsync">
+            <inheritdoc />
+        </member>
+        <member name="M:AVA.UPS.Adapter.LLMAdapters.ClaudeAdapter.GetCapabilitiesAsync">
+            <inheritdoc />
+        </member>
+        <member name="T:AVA.UPS.Adapter.LLMAdapters.DeepSeekAdapter">
+            <summary>
+            ILLMAdapter for DeepSeek chat completions endpoints.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.LLMAdapters.DeepSeekAdapter.#ctor(AVA.UPS.Adapter.LLMAdapters.LLMAdapterConfig,System.Net.Http.HttpClient)">
+            <summary>
+            Initializes a DeepSeek adapter from a normalized config bag.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.DeepSeekAdapter.ProviderId">
+            <inheritdoc />
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.DeepSeekAdapter.DisplayName">
+            <inheritdoc />
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.DeepSeekAdapter.ModelName">
+            <inheritdoc />
+        </member>
+        <member name="M:AVA.UPS.Adapter.LLMAdapters.DeepSeekAdapter.ConnectAsync(System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:AVA.UPS.Adapter.LLMAdapters.DeepSeekAdapter.SendAsync(AVA.UPS.Adapter.Models.UPSPayload,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:AVA.UPS.Adapter.LLMAdapters.DeepSeekAdapter.TestAsync(System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:AVA.UPS.Adapter.LLMAdapters.DeepSeekAdapter.DisconnectAsync">
+            <inheritdoc />
+        </member>
+        <member name="M:AVA.UPS.Adapter.LLMAdapters.DeepSeekAdapter.GetCapabilitiesAsync">
+            <inheritdoc />
+        </member>
+        <member name="T:AVA.UPS.Adapter.LLMAdapters.ILLMAdapter">
+            <summary>
+            Common contract for all LLM provider adapters in AVA.
+            Implementations exist for Anthropic (Claude), OpenAI-compatible
+            endpoints (ChatGPT, DeepSeek, Venice), and Nomi.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.ILLMAdapter.ProviderId">
+            <summary>
+            Unique provider identifier used for routing (e.g. "anthropic", "openai").
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.ILLMAdapter.DisplayName">
+            <summary>
+            Human-readable display name shown in the UI.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.ILLMAdapter.ModelName">
+            <summary>
+            Active model identifier (e.g. "claude-sonnet-4-20250514").
+            Sourced from LLMProfile at runtime.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.LLMAdapters.ILLMAdapter.ConnectAsync(System.Threading.CancellationToken)">
+            <summary>
+            Establishes connectivity and verifies the API key is valid.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.LLMAdapters.ILLMAdapter.SendAsync(AVA.UPS.Adapter.Models.UPSPayload,System.Threading.CancellationToken)">
+            <summary>
+            Sends a prompt and returns the provider response wrapped in a UPSResponse.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.LLMAdapters.ILLMAdapter.TestAsync(System.Threading.CancellationToken)">
+            <summary>
+            Sends a lightweight test prompt and measures latency.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.LLMAdapters.ILLMAdapter.DisconnectAsync">
+            <summary>
+            Releases any held resources (HTTP clients, connections).
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.LLMAdapters.ILLMAdapter.GetCapabilitiesAsync">
+            <summary>
+            Returns the capabilities reported by this provider.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.LLMAdapters.LLMConnectionResult">
+            <summary>
+            Result of a ConnectAsync call.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.LLMConnectionResult.IsSuccess">
+            <summary>Whether the connection succeeded.</summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.LLMConnectionResult.Message">
+            <summary>Human-readable status message.</summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.LLMConnectionResult.ConnectedAt">
+            <summary>UTC timestamp of the successful connection.</summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.LLMAdapters.LLMTestResult">
+            <summary>
+            Result of a TestAsync call.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.LLMTestResult.IsSuccess">
+            <summary>Whether the test prompt succeeded.</summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.LLMTestResult.Message">
+            <summary>Human-readable status or error message.</summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.LLMTestResult.LatencyMs">
+            <summary>Round-trip latency in milliseconds.</summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.LLMAdapters.LLMCapabilitySet">
+            <summary>
+            Capability information returned by the provider.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.LLMCapabilitySet.MaxTokens">
+            <summary>Maximum output tokens supported.</summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.LLMCapabilitySet.MaxTemperature">
+            <summary>Maximum temperature value accepted.</summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.LLMCapabilitySet.SupportsStreaming">
+            <summary>Whether streaming responses are supported.</summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.LLMCapabilitySet.SystemPromptCapabilities">
+            <summary>Supported system prompt modes.</summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.LLMAdapters.LLMAdapterConfig">
+            <summary>
+            All configuration an ILLMAdapter needs to connect and send.
+            Populated by UPSClientService from LLMProfile + ModelProfile.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.LLMAdapterConfig.ProfileId">
+            <summary>Unique identifier for this profile+model combination.</summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.LLMAdapterConfig.ProfileName">
+            <summary>Human-readable profile name (e.g. "My Claude Profile").</summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.LLMAdapterConfig.Provider">
+            <summary>Resolved provider name (e.g. "Anthropic", "OpenAI", "DeepSeek").</summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.LLMAdapterConfig.Endpoint">
+            <summary>Base endpoint URL. Adapters append path suffixes as needed.</summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.LLMAdapterConfig.ApiKey">
+            <summary>API key or bearer token.</summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.LLMAdapterConfig.CustomHeadersAsText">
+            <summary>Custom headers as raw text (Key=Value, one per line).</summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.LLMAdapterConfig.ModelId">
+            <summary>Model identifier (e.g. "claude-sonnet-4-20250514", "gpt-4o").</summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.LLMAdapterConfig.ModelLabel">
+            <summary>Human-readable model label.</summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.LLMAdapterConfig.Temperature">
+            <summary>Temperature — model override if set, else profile default.</summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.LLMAdapterConfig.MaxTokens">
+            <summary>Max tokens — model override if set, else profile default.</summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.LLMAdapterConfig.SystemPrompt">
+            <summary>Optional system prompt for this model.</summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.LLMAdapters.OpenAiCompatibleAdapter">
+            <summary>
+            ILLMAdapter for any OpenAI-compatible endpoint.
+            One class handles ChatGPT, DeepSeek, Venice, and any other provider
+            that implements /v1/chat/completions.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.OpenAiCompatibleAdapter.ProviderId">
+            <inheritdoc />
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.OpenAiCompatibleAdapter.DisplayName">
+            <inheritdoc />
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.OpenAiCompatibleAdapter.ModelName">
+            <inheritdoc />
+        </member>
+        <member name="M:AVA.UPS.Adapter.LLMAdapters.OpenAiCompatibleAdapter.#ctor(AVA.UPS.Adapter.LLMAdapters.LLMAdapterConfig,System.Net.Http.HttpClient)">
+            <summary>
+            Initializes the adapter from a config bag.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.LLMAdapters.OpenAiCompatibleAdapter.ConnectAsync(System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:AVA.UPS.Adapter.LLMAdapters.OpenAiCompatibleAdapter.SendAsync(AVA.UPS.Adapter.Models.UPSPayload,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:AVA.UPS.Adapter.LLMAdapters.OpenAiCompatibleAdapter.TestAsync(System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:AVA.UPS.Adapter.LLMAdapters.OpenAiCompatibleAdapter.DisconnectAsync">
+            <inheritdoc />
+        </member>
+        <member name="M:AVA.UPS.Adapter.LLMAdapters.OpenAiCompatibleAdapter.GetCapabilitiesAsync">
+            <inheritdoc />
+        </member>
+        <member name="T:AVA.UPS.Adapter.LLMAdapters.VeniceAdapter">
+            <summary>
+            ILLMAdapter for Venice chat completions endpoints.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.LLMAdapters.VeniceAdapter.#ctor(AVA.UPS.Adapter.LLMAdapters.LLMAdapterConfig,System.Net.Http.HttpClient)">
+            <summary>
+            Initializes a Venice adapter from a normalized config bag.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.VeniceAdapter.ProviderId">
+            <inheritdoc />
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.VeniceAdapter.DisplayName">
+            <inheritdoc />
+        </member>
+        <member name="P:AVA.UPS.Adapter.LLMAdapters.VeniceAdapter.ModelName">
+            <inheritdoc />
+        </member>
+        <member name="M:AVA.UPS.Adapter.LLMAdapters.VeniceAdapter.ConnectAsync(System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:AVA.UPS.Adapter.LLMAdapters.VeniceAdapter.SendAsync(AVA.UPS.Adapter.Models.UPSPayload,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:AVA.UPS.Adapter.LLMAdapters.VeniceAdapter.TestAsync(System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:AVA.UPS.Adapter.LLMAdapters.VeniceAdapter.DisconnectAsync">
+            <inheritdoc />
+        </member>
+        <member name="M:AVA.UPS.Adapter.LLMAdapters.VeniceAdapter.GetCapabilitiesAsync">
+            <inheritdoc />
+        </member>
+        <member name="T:AVA.UPS.Adapter.Logging.UPSDiagnosticEvent">
+            <summary>
+            High-level diagnostic events emitted by routing, dispatching, and host listeners.
+            Suitable for logging, telemetry, monitoring, and distributed tracing.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Logging.UPSDiagnosticEvent.Metadata">
+            <summary>
+            Structured diagnostic fields:
+            adapter info, bytes sent, response time, etc.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Logging.UPSMessageTrace">
+            <summary>
+            Represents the lifecycle trace of a UPSMessageEnvelope,
+            including routing, dispatch, errors, and timing.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Logging.UPSMessageTrace.Transport">
+            <summary>
+            Transport used for routing (http, mqtt, tcp, etc.)
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Logging.UPSMessageTrace.Diagnostics">
+            <summary>
+            Diagnostics collected from routing + host + dispatch.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Logging.UPSMessageTrace.ErrorCode">
+            <summary>
+            Optional error info captured during any stage.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Logging.UPSTransmissionLog">
+            <summary>
+            Transport-level transmission log for a single UPS request/response pair.
+            Captures metadata useful for analytics, reliability testing, and debugging.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Logging.UPSTransmissionLog.Metrics">
+            <summary>
+            Additional structured metrics: retries, adapter timings, etc.
+            </summary>
+        </member>
+        <!-- Badly formed XML comment ignored for member "T:AVA.UPS.Adapter.Models.UParam" -->
+        <member name="T:AVA.UPS.Adapter.Models.UPSError">
+            <summary>
+            A standard UPS error object that can be wrapped into a UParam with type "upsError".
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Models.UPSMessageEnvelope">
+            <summary>
+            Standardized envelope for UPS messages, including payload,
+            routing metadata, identity information, and diagnostics.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Models.UPSMessageEnvelope.ID">
+            <summary>
+            Canonical UPS envelope identifier.
+            MUST always be 'ID' to match UPS routing, registry, and persistence layers.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Models.UPSMessageEnvelope.CorrelationId">
+            <summary>
+            Optional correlation ID for request/response workflows.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Models.UPSMessageEnvelope.Source">
+            <summary>
+            Name of the calling module (e.g., "VaultService", "AgentCore", "MemoryBroker").
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Models.UPSMessageEnvelope.Target">
+            <summary>
+            Name of the target module (must match a key in UPSModuleRegistry).
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Models.UPSMessageEnvelope.TargetMethod">
+            <summary>
+            Name of the target module (must match a key in UPSModuleRegistry).
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Models.UPSMessageEnvelope.IdentityIdPrimary">
+            <summary>
+            The primary identity issuing this message.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Models.UPSMessageEnvelope.IdentityHandlePrimary">
+            <summary>
+            The human-readable identity handle (username, service ID).
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Models.UPSMessageEnvelope.IdentityTypePrimary">
+            <summary>
+            Indicates identity type ("User", "Service", "Agent", etc.).
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Models.UPSMessageEnvelope.IdentityList">
+            <summary>
+            Extended/secondary identities (multi-tenant, multi-agent, delegates, etc.).
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Models.UPSMessageEnvelope.Payload">
+            <summary>
+            The UPS payload (UParams) transmitted between modules.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Models.UPSMessageEnvelope.Timestamp">
+            <summary>
+            Timestamp for tracking message creation.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Models.UPSMessageEnvelope.Error">
+            <summary>
+            Optional envelope-level error info.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Models.UPSMessageEnvelope.ReplyTo">
+            <summary>
+            Optional destination for response envelopes.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Models.UPSResponse">
+            <summary>
+            Standardized response from any module or transport layer.
+            Always wraps List&lt;UParam&gt;, even for errors.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Models.UPSResponse.Success">
+            <summary>
+            Whether the request completed successfully.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Models.UPSResponse.Payload">
+            <summary>
+            Structured UPS payload returned by the provider or module.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Models.UPSResponse.ErrorMessage">
+            <summary>
+            Error message when the request fails.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Models.UPSResponse.Content">
+            <summary>
+            Convenience string content set directly by LLM adapters.
+            Avoids callers needing to walk the Payload list for simple text responses.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Models.UPSResponse.ModelId">
+            <summary>
+            Model profile ID that produced this response.
+            Set by LLM adapters so broadcast callers can correlate responses to models.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Models.UPSResponse.ProviderResponse">
+            <summary>
+            Raw provider response body captured for diagnostics.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Models.UPSResponse.RespondedAt">
+            <summary>
+            UTC timestamp when the provider response was received.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Models.UPSPayload">
+            <summary>
+            Lightweight outbound payload model used by the UI services.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Models.UPSPayload.Content">
+            <summary>
+            Request content to send to the target model.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Models.UPSPayload.Headers">
+            <summary>
+            Optional request headers or routing hints.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Models.UPSPayload.FormatHint">
+            <summary>
+            Expected content format.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.UPSProtocol">
+            <summary>
+            Central definition of the UPS protocol version.
+            This is the only place where the protocol version is defined.
+            </summary>
+        </member>
+        <member name="F:AVA.UPS.Adapter.UPSProtocol.Version">
+            <summary>
+            Current UPS protocol version.
+            Bump this only when the UPS message contract or handshake rules change.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Registry.UPSModuleDiscovery">
+            <summary>
+            Discovers UPS modules from JSON configuration files,
+            environment variables, directory scans, and future distributed sources.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.Registry.UPSModuleDiscovery.LoadFromJsonFile(System.String,AVA.UPS.Adapter.Routing.UPSModuleRegistry)">
+            <summary>
+            Loads module definitions from a single JSON file.
+            Adds them into the registry with discovery metadata.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.Registry.UPSModuleDiscovery.LoadFromDirectory(System.String,AVA.UPS.Adapter.Routing.UPSModuleRegistry)">
+            <summary>
+            Loads all *.json files from a directory, applying layered config loading.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.Registry.UPSModuleDiscovery.LoadFromEnvironment(AVA.UPS.Adapter.Routing.UPSModuleRegistry)">
+            <summary>
+            Loads modules from environment variables:
+            UPS_MODULES = "VaultService|http://host:9000, Identity|grpc://host:5001"
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Registry.UPSModuleDiscoveryFile">
+            <summary>
+            Helper model for JSON discovery file deserialization.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Routing.UPSModuleRegistry">
+            <summary>
+            Central registry of all UPS-enabled modules known to this process.
+            Tracks discovery metadata, diagnostics, and routing information.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Routing.UPSModuleRecord">
+            <summary>
+            Runtime metadata for a registry entry.
+            </summary>
+            <summary>
+            Runtime metadata for a registry entry.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Routing.UPSModuleInfo">
+            <summary>
+            Declarative metadata for a UPS-capable module.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Routing.UPSRouteDecision">
+            <summary>
+            The resolved route for a UPS message.
+            Includes target module, transport, endpoint, and timestamp.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Routing.UPSRouteDiagnostics">
+            <summary>
+            Mutable dictionary-style diagnostics object.
+            Used by ProtocolRouter and UPSRoutingService for tracing routing flow.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Transport.IProtocolAdapter">
+            <summary>
+            A dynamically provided protocol adapter used by UPS routing.
+            Implementations are supplied by the host module.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.Transport.IProtocolAdapter.InitializeAsync(System.Object)">
+            <summary>
+            Optional config object passed in by the host module.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.Transport.IProtocolAdapter.SendAsync(System.Byte[],System.Threading.CancellationToken)">
+            <summary>
+            Sends a serialized UPS envelope to the external protocol.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Utils.UParamFactory">
+            <summary>
+            Factory helpers for building strongly typed UParams.
+            Fully DUAS-compliant and compatible with ContractValidator + BaseUParamAdapter.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Utils.UPSIdComposer">
+            <summary>
+            Composes a distributed-swarm-safe ID using
+            timestamp + nodeId + moduleId + processId + sequence + random salt.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Utils.UPSIdGenerator">
+            <summary>
+            UPS ID Generator that consumes Identity layer information to produce
+            globally unique, swarm-safe identifiers for UPS message envelopes.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.Utils.UPSIdGenerator.NewEnvelopeId">
+            <summary>
+            Generates the primary unique ID for a UPSMessageEnvelope.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.Utils.UPSIdGenerator.NewCorrelationId(System.String)">
+            <summary>
+            Generates a correlation ID with a specific prefix (e.g. REQ-xxxxx).
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.Utils.UPSIdGenerator.NewHopId">
+            <summary>
+            Generates a short hop-level trace ID (router/debug).
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Utils.UPSJsonLoader">
+            <summary>
+            Loads and deserializes JSON files using UPS-standard settings.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Utils.UPSJsonSerializer">
+            <summary>
+            Central JSON serializer for all UPS components.
+            Ensures consistent JSON formatting across modules and transports.
+            Adds byte[] support for DUAS adapter routing.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Utils.UPSReflectionExtensions">
+            <summary>
+            Reflection helpers for discovering UPS-compatible methods.
+            </summary>
+        </member>
+        <!-- Badly formed XML comment ignored for member "M:AVA.UPS.Adapter.Utils.UPSReflectionExtensions.GetUPSMethods(System.Type)" -->
+        <member name="M:AVA.UPS.Adapter.Utils.UPSReflectionExtensions.GetUPSMethod(System.Type,System.String)">
+            <summary>
+            Gets a UPS method by name (case-insensitive).
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Validation.ContractValidationResult">
+            <summary>
+            Represents the full result of validating a UPS call against its contract.
+            Includes human-readable errors AND structured mismatch diagnostics.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Validation.ContractValidationResult.IsValid">
+            <summary>
+            True when no errors or mismatches were detected.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Validation.ContractValidationResult.Errors">
+            <summary>
+            Human-readable errors for quick debugging.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Validation.ContractValidationResult.Mismatches">
+            <summary>
+            Structured mismatch entries for deep inspection and automated correction.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Validation.ContractValidationResult.ExpectedContract">
+            <summary>
+            The expected method contract.
+            </summary>
+        </member>
+        <member name="P:AVA.UPS.Adapter.Validation.ContractValidationResult.ReceivedParameters">
+            <summary>
+            The received UParams from the UPS envelope.
+            Always non-null for safe reporting.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.Validation.ContractValidationResult.ToUPS(System.String,System.String)">
+            <summary>
+            Converts this validation result into a standardized UPS error payload.
+            Includes both human-readable messages AND structured mismatch data.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Validation.ContractMismatchDetail">
+            <summary>
+            Represents a single structured mismatch detected during contract validation.
+            Enables precise diagnostics and future self-repair behaviors.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Validation.ContractValidator">
+            <summary>
+            Validates incoming UPS parameters against a method contract.
+            Generates human-readable errors AND structured mismatch diagnostics.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Validation.StandardUPSErrors">
+            <summary>
+            Static factory for generating standardized UPS error responses.
+            </summary>
+        </member>
+        <member name="T:AVA.UPS.Adapter.Validation.UParamTypeChecker">
+            <summary>
+            Provides UPS-wide semantic type validation.
+            Fully supports primitives, lists, identity,
+            embeddings, domain-specific types, and a pluggable type registry.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.Validation.UParamTypeChecker.RegisterType(System.String,System.Func{System.Object,System.Boolean})">
+            <summary>
+            Registers a custom semantic type checker.
+            Module adaptors may extend UPS types dynamically.
+            </summary>
+        </member>
+        <member name="M:AVA.UPS.Adapter.Validation.UParamTypeChecker.UnregisterType(System.String)">
+            <summary>
+            Removes a registered semantic type checker.
+            </summary>
+        </member>
+    </members>
+</doc>

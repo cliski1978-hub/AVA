@@ -1,0 +1,334 @@
+@using AVA.UI.CORE.Models.UI
+@using AVA.UI.Features.Project.ViewModels
+@using Microsoft.Extensions.Logging
+@inject AppState AppState
+@inject IJSRuntime JS
+@inject IAvaRuntimeContext RuntimeContext
+@inject ILogger<ProjectNodeVM> VmLogger
+@implements IDisposable
+
+<div class="project">
+    <div class="project-row @(_vm.IsExpanded ? "open" : string.Empty)">
+
+        @if (_vm.IsRenaming)
+        {
+            <div class="node-editor" @onclick:stopPropagation="true">
+                <input class="node-rename-input"
+                       @bind="_vm.DraftName"
+                       @bind:event="oninput"
+                       @onclick:stopPropagation="true"
+                       @onkeydown:stopPropagation="true" />
+
+                <button type="button"
+                        class="node-rename-btn"
+                        @onclick:stopPropagation="true"
+                        @onclick="SaveRenameAsync">
+                    Save
+                </button>
+
+                <button type="button"
+                        class="node-rename-btn"
+                        @onclick:stopPropagation="true"
+                        @onclick="_vm.CancelRename">
+                    Cancel
+                </button>
+            </div>
+        }
+        else
+        {
+            <div class="project-main" @onclick="_vm.ToggleExpand">
+                <span class="project-chevron">></span>
+                <span class="project-name">@Project.Name</span>
+            </div>
+
+            <span class="project-count">@Project.Sessions.Count</span>
+
+            <button type="button"
+                    class="project-add-btn"
+                    @onclick:stopPropagation="true"
+                    @onclick="AddSessionAsync"
+                    title="New session">
+                +
+            </button>
+
+            <button type="button"
+                    class="project-menu-btn"
+                    @onclick:stopPropagation="true"
+                    @onclick="_vm.ToggleMenu"
+                    title="Menu">
+                ...
+            </button>
+        }
+    </div>
+
+    @if (_vm.ShowMenu)
+    {
+        <div class="project-menu" @onclick:stopPropagation="true">
+            <button type="button"
+                    class="project-menu__item"
+                    @onclick:stopPropagation="true"
+                    @onclick="_vm.BeginRename">
+                Rename project
+            </button>
+
+            <button type="button"
+                    class="project-menu__item project-menu__item--danger"
+                    @onclick:stopPropagation="true"
+                    @onclick="ConfirmRemoveProjectAsync">
+                Remove project
+            </button>
+        </div>
+    }
+
+    @if (_vm.IsExpanded)
+    {
+        <div class="project-children">
+            @foreach (var session in Project.Sessions.OrderByDescending(s => s.LastActiveAt))
+            {
+                <SessionNode @key="session.SessionId"
+                             VaultId="@VaultId"
+                             ProjectId="@Project.ProjectId"
+                             VaultStorageMode="@VaultStorageMode"
+                             Session="session"
+                             OnSessionChanged="OnProjectChanged" />
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .project {
+        margin-top: var(--RxXs);
+    }
+
+    .project-row {
+        display: flex;
+        align-items: center;
+        gap: var(--RxMd);
+        min-height: var(--SzSm);
+        padding: 0 var(--RxMd);
+        border-radius: var(--RxSm);
+        transition: background var(--T);
+    }
+
+        .project-row:hover {
+            background: var(--BgHover);
+        }
+
+        .project-row.open {
+            background: var(--BgElevated);
+        }
+
+    .project-main {
+        flex: 1;
+        min-width: 0;
+        min-height: var(--SzSm);
+        display: flex;
+        align-items: center;
+        gap: var(--RxMd);
+        cursor: pointer;
+    }
+
+    .project-chevron {
+        font-size: var(--FzXs);
+        color: var(--TextMuted);
+        transition: transform var(--T);
+        width: var(--FzSm);
+        text-align: center;
+        flex-shrink: 0;
+    }
+
+    .project-row.open .project-chevron {
+        transform: rotate(90deg);
+    }
+
+    .project-name {
+        flex: 1;
+        min-width: 0;
+        font-size: var(--FzSm);
+        color: var(--Text);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .project-count {
+        font-size: var(--FzXs);
+        color: var(--TextMuted);
+        flex-shrink: 0;
+    }
+
+    .project-add-btn {
+        width: var(--Fz2Xl);
+        height: var(--Fz2Xl);
+        border-radius: var(--RxTiny);
+        border: 1px solid var(--Border);
+        background: var(--BgBase);
+        color: var(--TextMuted);
+        font-size: var(--FzLg);
+        cursor: pointer;
+        transition: all var(--T);
+        flex-shrink: 0;
+    }
+
+        .project-add-btn:hover {
+            background: var(--BgHover);
+            color: var(--Accent);
+        }
+
+    .project-menu-btn {
+        width: var(--Fz2Xl);
+        height: var(--Fz2Xl);
+        border-radius: var(--RxTiny);
+        border: 1px solid transparent;
+        background: transparent;
+        color: var(--TextFaint);
+        font-size: var(--FzLg);
+        cursor: pointer;
+        flex-shrink: 0;
+        transition: all var(--T);
+    }
+
+        .project-menu-btn:hover {
+            background: var(--BgHover);
+            color: var(--Accent);
+        }
+
+    .project-menu {
+        display: flex;
+        flex-direction: column;
+        gap: var(--RxXs);
+        margin: var(--RxXs) 0 var(--RxSm) calc(var(--FzSm) + var(--RxMd));
+        padding: var(--RxSm);
+        background: var(--BgElevated);
+        border: 1px solid var(--Border);
+        border-radius: var(--RxMd);
+        position: relative;
+        z-index: 20;
+    }
+
+    .project-menu__item {
+        min-height: var(--SzSm);
+        text-align: left;
+        padding: 0 var(--RxMd);
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: var(--RxSm);
+        color: var(--TextMuted);
+        font-size: var(--FzSm);
+        cursor: pointer;
+    }
+
+        .project-menu__item:hover {
+            background: var(--BgHover);
+            border-color: var(--BorderMid);
+            color: var(--Text);
+        }
+
+    .project-menu__item--danger:hover {
+        color: var(--Danger);
+    }
+
+    .node-editor {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: var(--RxSm);
+    }
+
+    .node-rename-input {
+        flex: 1;
+        min-width: 120px;
+        height: var(--SzSm);
+        border-radius: var(--RxSm);
+        border: 1px solid var(--BorderMid);
+        background: var(--BgBase);
+        color: var(--Text);
+        padding: 0 var(--RxMd);
+    }
+
+    .node-rename-btn {
+        height: var(--SzSm);
+        border-radius: var(--RxSm);
+        border: 1px solid var(--Border);
+        background: var(--BgBase);
+        color: var(--TextMuted);
+        padding: 0 var(--RxMd);
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+
+        .node-rename-btn:hover {
+            color: var(--Text);
+            border-color: var(--BorderMid);
+        }
+
+    .project-children {
+        padding-left: var(--FzSm);
+    }
+</style>
+
+@code {
+    [Parameter]
+    public string VaultId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public ProjectState Project { get; set; } = default!;
+
+    [Parameter]
+    public string VaultStorageMode { get; set; } = "Database";
+
+    [Parameter]
+    public EventCallback OnProjectChanged { get; set; }
+
+    private ProjectNodeVM _vm = default!;
+    private Action? _vmHandler;
+
+    protected override void OnInitialized()
+    {
+        _vm = new ProjectNodeVM(AppState, Project, VaultId, VaultStorageMode, RuntimeContext, VmLogger);
+
+        _vmHandler = () => InvokeAsync(StateHasChanged);
+        _vm.OnChange += _vmHandler;
+    }
+
+    protected override void OnParametersSet()
+    {
+        _vm?.UpdateVaultStorageMode(VaultStorageMode);
+    }
+
+    private async Task AddSessionAsync()
+    {
+        await _vm.AddSessionAsync();
+        await OnProjectChanged.InvokeAsync();
+    }
+
+    private async Task SaveRenameAsync()
+    {
+        await _vm.SaveRenameAsync();
+        await OnProjectChanged.InvokeAsync();
+    }
+
+    private async Task ConfirmRemoveProjectAsync()
+    {
+        var confirmed = await JS.InvokeAsync<bool>(
+            "confirm",
+            $"Delete project '{Project.Name}' and all of its sessions?");
+
+        if (!confirmed)
+        {
+            _vm.ToggleMenu();
+            return;
+        }
+
+        await _vm.RemoveProjectAsync();
+        await OnProjectChanged.InvokeAsync();
+    }
+
+    public void Dispose()
+    {
+        _vm.OnChange -= _vmHandler;
+        _vm.Dispose();
+    }
+}

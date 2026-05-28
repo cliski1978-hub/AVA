@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>AVA.App.Web</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AVA.UI.CORE\AVA.UI.CORE.csproj" />
+    <ProjectReference Include="..\AVA.UI\AVA.UI.csproj" />
+  </ItemGroup>
+
+  <!--
+    To run:
+        dotnet run
+        Open http://localhost:5000
+
+    To publish as a self-contained web server:
+        dotnet publish -c Release -o ./publish
+
+    To run as a Docker container, add a Dockerfile using the aspnet:8.0 base image.
+  -->
+
+</Project>

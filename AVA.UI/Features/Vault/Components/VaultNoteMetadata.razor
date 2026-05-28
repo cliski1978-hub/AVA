@@ -1,0 +1,96 @@
+@using AVA.UI.Features.Vault.ViewModels
+@inject VaultNoteEditorVM VM
+@implements IDisposable
+
+@if (VM.HasNote)
+{
+    var note = VM.ActiveNote!;
+
+    <div class="note-meta">
+        <div class="note-meta__header">
+            <span class="note-meta__title">Metadata</span>
+        </div>
+
+        <div class="note-meta__grid">
+            <span class="note-meta__key">Vault</span>
+            <span class="note-meta__val">@note.VaultID</span>
+
+            <span class="note-meta__key">Project</span>
+            <span class="note-meta__val">@note.ProjectID</span>
+
+            @if (!string.IsNullOrWhiteSpace(note.SessionID))
+            {
+                <span class="note-meta__key">Session</span>
+                <span class="note-meta__val">@note.SessionID</span>
+            }
+
+            <span class="note-meta__key">Created</span>
+            <span class="note-meta__val">@note.CreatedAt.ToLocalTime().ToString("MMM d yyyy, HH:mm")</span>
+
+            <span class="note-meta__key">Updated</span>
+            <span class="note-meta__val">@note.UpdatedAt.ToLocalTime().ToString("MMM d yyyy, HH:mm")</span>
+
+            <span class="note-meta__key">ID</span>
+            <span class="note-meta__val note-meta__val--mono">@note.ID</span>
+        </div>
+    </div>
+}
+
+<style>
+    .note-meta {
+        border-bottom: 1px solid var(--Border);
+        padding: 10px 16px;
+    }
+
+    .note-meta__header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .note-meta__title {
+        font-size: var(--FzXs);
+        font-weight: 600;
+        color: var(--TextFaint);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .note-meta__grid {
+        display: grid;
+        grid-template-columns: 72px 1fr;
+        gap: 3px 8px;
+    }
+
+    .note-meta__key {
+        font-size: var(--FzXs);
+        color: var(--TextMuted);
+        align-self: center;
+    }
+
+    .note-meta__val {
+        font-size: var(--FzXs);
+        color: var(--Text);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .note-meta__val--mono {
+        font-size: 10px;
+        color: var(--TextFaint);
+        letter-spacing: 0.02em;
+    }
+</style>
+
+@code {
+    private Action? _vmHandler;
+
+    protected override void OnInitialized()
+    {
+        _vmHandler = () => InvokeAsync(StateHasChanged);
+        VM.OnChange += _vmHandler;
+    }
+
+    public void Dispose() { VM.OnChange -= _vmHandler; }
+}

@@ -1,0 +1,66 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   MemoryLogPane.razor
+   Namespace: AVA.UI.Memory
+   Purpose  : Timestamped event log. Replaces MemoryLogPaneView.xaml +
+              MemoryLogPaneVM.cs.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@using AVA.UI.State
+@inject AppState State
+@inject IJSRuntime JS
+@implements IDisposable
+
+<div class="memory-pane">
+    <div class="memory-pane__toolbar">
+        <span class="memory-pane__title">🧠 Memory Log</span>
+        <div class="memory-pane__controls">
+            <label class="memory-pane__toggle">
+                <input type="checkbox"
+                       @bind="_isEnabled" />
+                Logging enabled
+            </label>
+            <button class="memory-pane__btn" @onclick="State.ClearMemory">Clear</button>
+        </div>
+    </div>
+
+    <div class="memory-pane__scroll" @ref="_scrollRef">
+        @if (!State.MemoryEvents.Any())
+        {
+            <div class="memory-pane__empty">No events logged.</div>
+        }
+        else
+        {
+            @foreach (var ev in State.MemoryEvents)
+            {
+                <div class="memory-pane__event">@ev</div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private ElementReference _scrollRef;
+    private bool _isEnabled = true;
+    private int _lastCount = 0;
+
+    protected override void OnInitialized()
+    {
+        State.OnChange += OnStateChanged;
+    }
+
+    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (State.MemoryEvents.Count != _lastCount)
+        {
+            _lastCount = State.MemoryEvents.Count;
+            await JS.InvokeVoidAsync("avaScrollToBottom", _scrollRef);
+        }
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= OnStateChanged;
+    }
+}

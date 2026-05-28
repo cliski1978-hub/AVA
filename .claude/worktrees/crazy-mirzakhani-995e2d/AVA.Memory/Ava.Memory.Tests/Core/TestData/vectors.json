@@ -1,0 +1,66 @@
+[
+  {
+    "id": "vec_A",
+    "vector": [ 1.0, 0.0 ],
+    "metadata": {
+      "group": "base",
+      "desc": "unit vector along X"
+    }
+  },
+  {
+    "id": "vec_B",
+    "vector": [ 0.0, 1.0 ],
+    "metadata": {
+      "group": "base",
+      "desc": "unit vector along Y"
+    }
+  },
+  {
+    "id": "vec_C",
+    "vector": [ 0.7071, 0.7071 ],
+    "metadata": {
+      "group": "diagonal",
+      "desc": "45-degree diagonal"
+    }
+  },
+  {
+    "id": "vec_D",
+    "vector": [ 0.9659, 0.2588 ],
+    "metadata": {
+      "group": "diagonal",
+      "desc": "15-degree diagonal"
+    }
+  },
+  {
+    "id": "vec_E",
+    "vector": [ 0.2588, 0.9659 ],
+    "metadata": {
+      "group": "diagonal",
+      "desc": "75-degree diagonal"
+    }
+  },
+  {
+    "id": "vec_F",
+    "vector": [ 0.5, 0.5 ],
+    "metadata": {
+      "group": "misc",
+      "desc": "normalized midpoint"
+    }
+  },
+  {
+    "id": "vec_G",
+    "vector": [ 0.1736, 0.9848 ],
+    "metadata": {
+      "group": "misc",
+      "desc": "10-degree from Y"
+    }
+  },
+  {
+    "id": "vec_H",
+    "vector": [ 0.8660, 0.5 ],
+    "metadata": {
+      "group": "misc",
+      "desc": "30-degree from X"
+    }
+  }
+]

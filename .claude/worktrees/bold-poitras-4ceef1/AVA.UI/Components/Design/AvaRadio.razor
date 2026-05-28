@@ -1,0 +1,58 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   AvaRadio.razor
+   Purpose: Styled radio button with label and selection callback.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+<label class="ava-radio">
+    <input type="radio"
+           name="@GroupName"
+           value="@Value"
+           @onchange="OnValueChanged"
+           checked="@(SelectedValue == Value)" />
+    <div class="ava-radio__dot"></div>
+    @if (!string.IsNullOrWhiteSpace(Label))
+    {
+        <span style="font-size: 11px; color: var(--Text);">@Label</span>
+    }
+</label>
+
+@code {
+    /// <summary>
+    /// This radio button's value.
+    /// </summary>
+    [Parameter]
+    public string Value { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Currently selected value in the group.
+    /// </summary>
+    [Parameter]
+    public string? SelectedValue { get; set; }
+
+    /// <summary>
+    /// Callback when selection changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> SelectedValueChanged { get; set; }
+
+    /// <summary>
+    /// Optional label.
+    /// </summary>
+    [Parameter]
+    public string? Label { get; set; }
+
+    /// <summary>
+    /// Radio button group name (for grouping related options).
+    /// </summary>
+    [Parameter]
+    public string GroupName { get; set; } = Guid.NewGuid().ToString();
+
+    private async Task OnValueChanged(ChangeEventArgs e)
+    {
+        if (e.Value?.ToString() == Value)
+        {
+            SelectedValue = Value;
+            await SelectedValueChanged.InvokeAsync(Value);
+        }
+    }
+}

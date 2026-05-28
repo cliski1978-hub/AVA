@@ -1,0 +1,73 @@
+<div class="canvas-picks-rail">
+    <AvaTooltip Text="Save active document" Position="left">
+        <AvaButton Intent="success" Size="sm" OnClick="OnSave">Save</AvaButton>
+    </AvaTooltip>
+
+    <AvaTooltip Text="Create a copy of the active document" Position="left">
+        <AvaButton Intent="neutral" Size="sm" OnClick="OnCopy">Copy</AvaButton>
+    </AvaTooltip>
+
+    <AvaTooltip Text="Download as Markdown" Position="left">
+        <AvaButton Intent="primary" Size="sm" OnClick="OnMarkdown">MD</AvaButton>
+    </AvaTooltip>
+
+    <AvaTooltip Text="Download as plain text" Position="left">
+        <AvaButton Intent="neutral" Size="sm" OnClick="OnText">TXT</AvaButton>
+    </AvaTooltip>
+
+    <AvaTooltip Text="Download as PDF" Position="left">
+        <AvaButton Intent="warn" Size="sm" OnClick="OnPdf">PDF</AvaButton>
+    </AvaTooltip>
+
+    <AvaTooltip Text="Toggle inspector" Position="left">
+        <AvaButton Intent="neutral" Size="sm" OnClick="OnInspector">Info</AvaButton>
+    </AvaTooltip>
+    
+    <AvaTooltip Text="Focus Ask AVA prompt" Position="left">
+        <AvaButton Intent="success" Size="sm" OnClick="OnAskAva">AVA</AvaButton>
+    </AvaTooltip>
+</div>
+
+@code {
+    /// <summary>
+    /// Gets or sets the callback raised when the save action is requested.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnSave { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when the copy action is requested.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnCopy { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when Markdown export is requested.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnMarkdown { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when plain-text export is requested.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnText { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when PDF export is requested.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnPdf { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when inspector visibility is toggled.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnInspector { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when the Ask AVA prompt should be opened.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnAskAva { get; set; }
+}

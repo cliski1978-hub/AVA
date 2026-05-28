@@ -1,0 +1,175 @@
+@using AVA.UI.Features.Chat.ViewModels
+@inject ChatPaneVM VM
+@implements IDisposable
+
+<div class="session-list-pane">
+    <div class="session-list-pane__header">
+        <span class="session-list-pane__title">Chat Sessions</span>
+        <button class="session-list-pane__new"
+                title="New chat session"
+                @onclick="CreateNewAsync"
+                disabled="@VM.IsLoading">
+            +
+        </button>
+    </div>
+
+    @if (VM.IsLoading)
+    {
+        <div class="session-list-pane__loading">Loading…</div>
+    }
+    else if (!VM.SessionIndex.Any())
+    {
+        <div class="session-list-pane__empty">No sessions yet. Click + to start.</div>
+    }
+    else
+    {
+        <div class="session-list-pane__list">
+            @foreach (var item in VM.SessionIndex.OrderByDescending(s => s.UpdatedUtc))
+            {
+                var s = item;
+                <button class="session-list-pane__item @(VM.ActiveSessionId == s.SessionId ? "session-list-pane__item--active" : "")"
+                        @onclick="() => SelectAsync(s.SessionId)">
+                    <span class="session-list-pane__item-title">@s.Title</span>
+                    <div class="session-list-pane__item-meta">
+                        <span class="session-list-pane__item-count">@s.MessageCount msg@(s.MessageCount == 1 ? "" : "s")</span>
+                        <span class="session-list-pane__item-date">@s.UpdatedUtc.ToLocalTime().ToString("MMM d, HH:mm")</span>
+                    </div>
+                </button>
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .session-list-pane {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        background: var(--BgSurface);
+        border-right: 1px solid var(--Border);
+    }
+
+    .session-list-pane__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 12px 8px;
+        border-bottom: 1px solid var(--Border);
+        flex-shrink: 0;
+    }
+
+    .session-list-pane__title {
+        font-size: var(--FzXs);
+        font-weight: 600;
+        color: var(--TextFaint);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .session-list-pane__new {
+        width: 22px;
+        height: 22px;
+        border-radius: var(--RxTiny);
+        border: 1px solid transparent;
+        background: transparent;
+        color: var(--TextFaint);
+        font-size: var(--FzLg);
+        cursor: pointer;
+        transition: all var(--T);
+    }
+
+    .session-list-pane__new:hover {
+        background: var(--BgHover);
+        border-color: var(--Border);
+        color: var(--Accent);
+    }
+
+    .session-list-pane__loading,
+    .session-list-pane__empty {
+        padding: 16px 12px;
+        font-size: var(--FzSm);
+        color: var(--TextMuted);
+        text-align: center;
+    }
+
+    .session-list-pane__list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 4px 0;
+    }
+
+    .session-list-pane__item {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        width: 100%;
+        text-align: left;
+        padding: 8px 12px;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        color: var(--TextMuted);
+        font-family: var(--Font);
+        cursor: pointer;
+        transition: background var(--T);
+    }
+
+    .session-list-pane__item:hover {
+        background: var(--BgHover);
+        color: var(--Text);
+    }
+
+    .session-list-pane__item--active {
+        background: var(--BgElevated);
+        color: var(--Text);
+        border-left: 2px solid var(--Accent);
+        padding-left: 10px;
+    }
+
+    .session-list-pane__item-title {
+        font-size: var(--FzSm);
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .session-list-pane__item-meta {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .session-list-pane__item-count,
+    .session-list-pane__item-date {
+        font-size: var(--FzXs);
+        color: var(--TextFaint);
+    }
+</style>
+
+@code {
+    private Action? _vmHandler;
+
+    protected override void OnInitialized()
+    {
+        _vmHandler = () => InvokeAsync(StateHasChanged);
+        VM.OnChange += _vmHandler;
+    }
+
+    private async Task CreateNewAsync()
+    {
+        // Section 10: new session — create, add to index, set active, hydrate empty pane
+        await VM.CreateNewSessionAsync();
+    }
+
+    private async Task SelectAsync(string sessionId)
+    {
+        // Section 10: selection — load full log, hydrate active chat, set active session ID
+        await VM.LoadSessionAsync(sessionId);
+    }
+
+    public void Dispose()
+    {
+        VM.OnChange -= _vmHandler;
+    }
+}

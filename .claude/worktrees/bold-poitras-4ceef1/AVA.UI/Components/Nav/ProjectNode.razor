@@ -1,0 +1,393 @@
+@using AVA.UI.CORE.Models.UI
+@inject AppState AppState
+@inject AvaSettingsService SettingsService
+@inject IJSRuntime JS
+
+<div class="project">
+    <div class="project-row @(Project.IsExpanded ? "open" : string.Empty)">
+
+        @if (_isRenaming)
+        {
+            <div class="node-editor" @onclick:stopPropagation="true">
+                <input class="node-rename-input"
+                       @bind="_draftName"
+                       @bind:event="oninput"
+                       @onclick:stopPropagation="true"
+                       @onkeydown:stopPropagation="true" />
+
+                <button type="button"
+                        class="node-rename-btn"
+                        @onclick:stopPropagation="true"
+                        @onclick="SaveRenameAsync">
+                    Save
+                </button>
+
+                <button type="button"
+                        class="node-rename-btn"
+                        @onclick:stopPropagation="true"
+                        @onclick="CancelRename">
+                    Cancel
+                </button>
+            </div>
+        }
+        else
+        {
+            <div class="project-main" @onclick="ToggleExpand">
+                <span class="project-chevron">></span>
+                <span class="project-name">@Project.Name</span>
+            </div>
+
+            <span class="project-count">@Project.Sessions.Count</span>
+
+            <button type="button"
+                    class="project-add-btn"
+                    @onclick:stopPropagation="true"
+                    @onclick="HandleAddSessionClickAsync"
+                    title="New session">
+                +
+            </button>
+
+            <button type="button"
+                    class="project-menu-btn"
+                    @onclick:stopPropagation="true"
+                    @onclick="ToggleMenu"
+                    title="Menu">
+                ...
+            </button>
+        }
+    </div>
+
+    @if (_showMenu)
+    {
+        <div class="project-menu" @onclick:stopPropagation="true">
+            <button type="button"
+                    class="project-menu__item"
+                    @onclick:stopPropagation="true"
+                    @onclick="BeginRename">
+                Rename project
+            </button>
+
+            <button type="button"
+                    class="project-menu__item project-menu__item--danger"
+                    @onclick:stopPropagation="true"
+                    @onclick="ConfirmRemoveProjectAsync">
+                Remove project
+            </button>
+        </div>
+    }
+
+    @if (Project.IsExpanded)
+    {
+        <div class="project-children">
+            @foreach (var session in Project.Sessions.OrderByDescending(s => s.LastActiveAt))
+            {
+                <SessionNode @key="session.SessionId"
+                             VaultId="@VaultId"
+                             ProjectId="@Project.ProjectId"
+                             Session="session"
+                             OnSessionChanged="OnProjectChanged" />
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .project {
+        margin-top: var(--RxXs);
+    }
+
+    .project-row {
+        display: flex;
+        align-items: center;
+        gap: var(--RxMd);
+        min-height: var(--SzSm);
+        padding: 0 var(--RxMd);
+        border-radius: var(--RxSm);
+        transition: background var(--T);
+    }
+
+        .project-row:hover {
+            background: var(--BgHover);
+        }
+
+        .project-row.open {
+            background: var(--BgElevated);
+        }
+
+    .project-main {
+        flex: 1;
+        min-width: 0;
+        min-height: var(--SzSm);
+        display: flex;
+        align-items: center;
+        gap: var(--RxMd);
+        cursor: pointer;
+    }
+
+    .project-chevron {
+        font-size: var(--FzXs);
+        color: var(--TextMuted);
+        transition: transform var(--T);
+        width: var(--FzSm);
+        text-align: center;
+        flex-shrink: 0;
+    }
+
+    .project-row.open .project-chevron {
+        transform: rotate(90deg);
+    }
+
+    .project-name {
+        flex: 1;
+        min-width: 0;
+        font-size: var(--FzSm);
+        color: var(--Text);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .project-count {
+        font-size: var(--FzXs);
+        color: var(--TextMuted);
+        flex-shrink: 0;
+    }
+
+    .project-add-btn {
+        width: var(--Fz2Xl);
+        height: var(--Fz2Xl);
+        border-radius: var(--RxTiny);
+        border: 1px solid var(--Border);
+        background: var(--BgBase);
+        color: var(--TextMuted);
+        font-size: var(--FzLg);
+        cursor: pointer;
+        transition: all var(--T);
+        flex-shrink: 0;
+    }
+
+        .project-add-btn:hover {
+            background: var(--BgHover);
+            color: var(--Accent);
+        }
+
+    .project-menu-btn {
+        width: var(--Fz2Xl);
+        height: var(--Fz2Xl);
+        border-radius: var(--RxTiny);
+        border: 1px solid transparent;
+        background: transparent;
+        color: var(--TextFaint);
+        font-size: var(--FzLg);
+        cursor: pointer;
+        flex-shrink: 0;
+        transition: all var(--T);
+    }
+
+        .project-menu-btn:hover {
+            background: var(--BgHover);
+            color: var(--Accent);
+        }
+
+    .project-menu {
+        display: flex;
+        flex-direction: column;
+        gap: var(--RxXs);
+        margin: var(--RxXs) 0 var(--RxSm) calc(var(--FzSm) + var(--RxMd));
+        padding: var(--RxSm);
+        background: var(--BgElevated);
+        border: 1px solid var(--Border);
+        border-radius: var(--RxMd);
+        position: relative;
+        z-index: 20;
+    }
+
+    .project-menu__item {
+        min-height: var(--SzSm);
+        text-align: left;
+        padding: 0 var(--RxMd);
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: var(--RxSm);
+        color: var(--TextMuted);
+        font-size: var(--FzSm);
+        cursor: pointer;
+    }
+
+        .project-menu__item:hover {
+            background: var(--BgHover);
+            border-color: var(--BorderMid);
+            color: var(--Text);
+        }
+
+    .project-menu__item--danger:hover {
+        color: var(--Danger);
+    }
+
+    .node-editor {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: var(--RxSm);
+    }
+
+    .node-rename-input {
+        flex: 1;
+        min-width: 120px;
+        height: var(--SzSm);
+        border-radius: var(--RxSm);
+        border: 1px solid var(--BorderMid);
+        background: var(--BgBase);
+        color: var(--Text);
+        padding: 0 var(--RxMd);
+    }
+
+    .node-rename-btn {
+        height: var(--SzSm);
+        border-radius: var(--RxSm);
+        border: 1px solid var(--Border);
+        background: var(--BgBase);
+        color: var(--TextMuted);
+        padding: 0 var(--RxMd);
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+
+        .node-rename-btn:hover {
+            color: var(--Text);
+            border-color: var(--BorderMid);
+        }
+
+    .project-children {
+        padding-left: var(--FzSm);
+    }
+</style>
+
+@code {
+    [Parameter]
+    public string VaultId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public ProjectState Project { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback OnProjectChanged { get; set; }
+
+    private bool _showMenu;
+    private bool _isRenaming;
+    private string _draftName = string.Empty;
+
+    private async Task ToggleExpand()
+    {
+        _showMenu = false;
+        Project.IsExpanded = !Project.IsExpanded;
+
+        await OnProjectChanged.InvokeAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleAddSessionClickAsync()
+    {
+        _showMenu = false;
+        _isRenaming = false;
+        Project.IsExpanded = true;
+
+        var sessionName = $"Session {Project.Sessions.Count + 1}";
+        var session = await AppState.CreateWorkspaceSessionAsync(
+            VaultId,
+            Project.ProjectId,
+            sessionName);
+
+        if (session == null)
+        {
+            var now = DateTime.UtcNow;
+
+            session = new SessionState
+                {
+                    Name = sessionName,
+                    CreatedAt = now,
+                    LastActiveAt = now
+                };
+
+            Project.Sessions.Add(session);
+            await SettingsService.SaveSessionAsync(VaultId, Project.ProjectId, session);
+        }
+
+        AppState.SelectSession(VaultId, Project.ProjectId, session.SessionId);
+        AppState.SetSelectedNavigationItem("Chat");
+        AppState.NotifyStateChanged();
+
+        await OnProjectChanged.InvokeAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void ToggleMenu()
+    {
+        _showMenu = !_showMenu;
+        StateHasChanged();
+    }
+
+    private void BeginRename()
+    {
+        _showMenu = false;
+        _isRenaming = true;
+        _draftName = Project.Name;
+        StateHasChanged();
+    }
+
+    private void CancelRename()
+    {
+        _isRenaming = false;
+        _draftName = string.Empty;
+        StateHasChanged();
+    }
+
+    private async Task SaveRenameAsync()
+    {
+        var trimmed = _draftName.Trim();
+
+        if (string.IsNullOrWhiteSpace(trimmed))
+        {
+            CancelRename();
+            return;
+        }
+
+        _isRenaming = false;
+        _draftName = string.Empty;
+
+        await AppState.RenameProjectAsync(VaultId, Project.ProjectId, trimmed);
+        AppState.NotifyStateChanged();
+
+        await OnProjectChanged.InvokeAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ConfirmRemoveProjectAsync()
+    {
+        var confirmed = await JS.InvokeAsync<bool>(
+            "confirm",
+            $"Delete project '{Project.Name}' and all of its sessions?");
+
+        if (!confirmed)
+        {
+            _showMenu = false;
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        await RemoveProjectAsync();
+    }
+
+    private async Task RemoveProjectAsync()
+    {
+        _showMenu = false;
+        _isRenaming = false;
+
+        await AppState.RemoveProjectAsync(VaultId, Project.ProjectId);
+        AppState.NotifyStateChanged();
+
+        await OnProjectChanged.InvokeAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+}

@@ -1,0 +1,42 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   PromptPreviewPane.razor
+   Namespace: AVA.UI.Chat
+   Purpose  : Shows the compiled prompt before sending, with token estimate.
+              Replaces PromptPreviewPaneView.xaml + PromptPreviewPaneVM.cs.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@using AVA.UI.State
+@inject AppState State
+
+<div class="preview-pane">
+    <div class="preview-pane__header">
+        <span class="preview-pane__title">Prompt Preview</span>
+        <button class="preview-pane__close" @onclick="Close">✕</button>
+    </div>
+
+    <div class="preview-pane__meta">
+        <span class="preview-pane__token-count">
+            ~@State.PromptTokenEstimate tokens
+        </span>
+    </div>
+
+    <div class="preview-pane__body">
+        <textarea class="preview-pane__text"
+                  @bind="State.PromptPreviewText"
+                  rows="12" />
+    </div>
+
+    <div class="preview-pane__footer">
+        <span class="preview-pane__note">
+            ℹ️ Token count is a word-split estimate. Connect a tokenizer for accuracy.
+        </span>
+    </div>
+</div>
+
+@code {
+    private void Close()
+    {
+        State.ShowPromptPreview = false;
+        StateHasChanged();
+    }
+}

@@ -1,0 +1,121 @@
+<div class="ava-slider-field">
+    @if (ChildContent is not null || ShowValue)
+    {
+        <div class="ava-slider-field__meta">
+            <div class="ava-slider-field__label">@ChildContent</div>
+            @if (ShowValue)
+            {
+                <div class="ava-slider-field__value">@Value</div>
+            }
+        </div>
+    }
+
+    <input type="range"
+           class="@CssClass"
+           min="@Min"
+           max="@Max"
+           step="@Step"
+           value="@Value"
+           disabled="@IsDisabled"
+           @oninput="HandleInput"
+           @attributes="AdditionalAttributes" />
+</div>
+
+@code {
+    /// <summary>
+    /// Gets or sets the visual intent for the slider.
+    /// </summary>
+    [Parameter]
+    public string Intent { get; set; } = "primary";
+
+    /// <summary>
+    /// Gets or sets the size variant for the slider.
+    /// </summary>
+    [Parameter]
+    public string Size { get; set; } = "md";
+
+    /// <summary>
+    /// Gets or sets an optional state class for the slider.
+    /// </summary>
+    [Parameter]
+    public string State { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the current slider value.
+    /// </summary>
+    [Parameter]
+    public int Value { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when the slider value changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<int> ValueChanged { get; set; }
+
+    /// <summary>
+    /// Gets or sets the minimum slider value.
+    /// </summary>
+    [Parameter]
+    public int Min { get; set; }
+
+    /// <summary>
+    /// Gets or sets the maximum slider value.
+    /// </summary>
+    [Parameter]
+    public int Max { get; set; } = 100;
+
+    /// <summary>
+    /// Gets or sets the slider step interval.
+    /// </summary>
+    [Parameter]
+    public int Step { get; set; } = 1;
+
+    /// <summary>
+    /// Gets or sets whether the slider is disabled.
+    /// </summary>
+    [Parameter]
+    public bool IsDisabled { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether to render the current numeric value.
+    /// </summary>
+    [Parameter]
+    public bool ShowValue { get; set; }
+
+    /// <summary>
+    /// Gets or sets optional label content.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Gets or sets additional HTML attributes for the slider.
+    /// </summary>
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string CssClass =>
+        string.Join(" ",
+            "ava-slider",
+            Normalize("ava-slider", Intent, "primary"),
+            Normalize("ava-slider", Size, "md"),
+            IsDisabled ? "is-disabled" : string.Empty,
+            string.IsNullOrWhiteSpace(State) ? string.Empty : State);
+
+    private async Task HandleInput(ChangeEventArgs args)
+    {
+        if (int.TryParse(args.Value?.ToString(), out var parsed))
+        {
+            Value = parsed;
+            await ValueChanged.InvokeAsync(Value);
+        }
+    }
+
+    private static string Normalize(string prefix, string value, string fallback)
+    {
+        var resolved = string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
+        return resolved.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            ? resolved
+            : $"{prefix}-{resolved}";
+    }
+}

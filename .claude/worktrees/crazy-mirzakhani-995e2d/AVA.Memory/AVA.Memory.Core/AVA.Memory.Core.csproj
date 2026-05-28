@@ -1,0 +1,57 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<!-- Core must target runtime frameworks but stay portable -->
+		<TargetFrameworks>netstandard2.0;net8.0</TargetFrameworks>
+		<LangVersion>latest</LangVersion>
+	</PropertyGroup>
+
+	<!-- Framework-specific dependencies -->
+	<ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
+		<PackageReference Include="System.Text.Json" Version="9.0.9" />
+	</ItemGroup>
+
+	<!-- Common runtime dependencies -->
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.10" />
+		<PackageReference Include="System.Net.Http.Json" Version="9.0.9" />
+	</ItemGroup>
+
+	<!-- Only depend on Abstractions -->
+	<ItemGroup>
+		<ProjectReference Include="..\AVA.Memory.Abstractions\AVA.Memory.Abstractions.csproj" />
+	</ItemGroup>
+
+	<PropertyGroup>
+		<!-- Local NuGet packaging -->
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<IncludeReferencedProjects>true</IncludeReferencedProjects>
+
+		<!-- Identification -->
+		<PackageId>AVA.Memory.Core</PackageId>
+		<Version>1.0.0-local</Version>
+		<Authors>AVA Systems</Authors>
+		<Company>AVA</Company>
+		<Description>
+			Core memory logic for the AVA agentic architecture — provides vector handling,
+			in-memory storage, and broker functionality.  Depends only on AVA.Memory.Abstractions.
+		</Description>
+
+		<!-- Local build only -->
+		<PackageOutputPath>C:\NuGetLocal\</PackageOutputPath>
+		<NoWarn>NU5105</NoWarn>
+		<PublishRepositoryUrl>false</PublishRepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+
+		<!-- Cosmetic metadata -->
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<RepositoryUrl>https://github.com/AVA-Systems/AVA.Memory</RepositoryUrl>
+		<PackageProjectUrl>https://github.com/AVA-Systems</PackageProjectUrl>
+		<PackageTags>AVA Memory Core Vector InMemory Abstractions</PackageTags>
+	</PropertyGroup>
+
+</Project>

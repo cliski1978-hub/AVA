@@ -1,0 +1,190 @@
+@* Broadcasts a prompt to all participating cards on the canvas. *@
+
+@using AVA.UI.CORE.Models.UI
+@inject AppState State
+
+<div class="global-bar">
+    <div class="global-bar__info">
+        <div class="global-bar__label">Broadcast</div>
+        <div class="global-bar__target">@GetTargetInfo()</div>
+    </div>
+    <textarea class="global-bar__input"
+              placeholder="Send to all cards..."
+              @bind="_text"
+              @bind:event="oninput"
+              @onkeydown="HandleKeydown"
+              rows="1"></textarea>
+    <button class="global-bar__send" @onclick="Send" disabled="@_sending">
+        @(_sending ? "..." : "Send")
+    </button>
+</div>
+
+<style>
+.global-bar {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--CardBg);
+    border: 1px solid var(--BorderMid);
+    border-radius: 28px;
+    padding: 8px 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    z-index: 100;
+}
+
+.global-bar__info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 78px;
+}
+
+.global-bar__label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--TextMuted);
+    white-space: nowrap;
+    padding-left: 4px;
+    text-transform: uppercase;
+}
+
+.global-bar__target {
+    color: var(--TextMuted);
+    font-size: 10px;
+    padding-left: 4px;
+    white-space: nowrap;
+}
+
+.global-bar__input {
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--Text);
+    font-size: 15px;
+    resize: none;
+    line-height: 1.55;
+    max-height: 80px;
+    overflow-y: auto;
+}
+
+.global-bar__input::placeholder {
+    color: var(--TextMuted);
+}
+
+.global-bar__send {
+    min-width: 48px;
+    height: 28px;
+    border-radius: 999px;
+    border: none;
+    background: var(--Success);
+    color: #000;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: opacity 0.15s;
+}
+
+.global-bar__send:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+</style>
+
+@code {
+    private string _text = string.Empty;
+    private bool _sending;
+
+    private async Task Send()
+    {
+        if (string.IsNullOrWhiteSpace(_text) || _sending) return;
+
+        var prompt = _text.Trim();
+        var participatingCards = GetParticipatingCards();
+        var targetModelIds = participatingCards
+            .SelectMany(card => card.ModelProfileIds)
+            .Where(modelId => !string.IsNullOrWhiteSpace(modelId))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (targetModelIds.Count == 0)
+        {
+            return;
+        }
+
+        _text = string.Empty;
+        _sending = true;
+        StateHasChanged();
+
+        try
+        {
+            var turnId = Guid.NewGuid().ToString("N");
+
+            foreach (var card in participatingCards)
+                card.IsMinimised = false;
+
+            foreach (var modelId in targetModelIds)
+            {
+                State.AppendUserConversationMessage(
+                    modelId,
+                    prompt,
+                    State.GetModelName(modelId),
+                    turnId);
+            }
+
+            var results = await State.Sessions.BroadcastAsync(prompt, targetModelIds);
+
+            for (var i = 0; i < results.Count; i++)
+            {
+                var modelId = i < targetModelIds.Count ? targetModelIds[i] : null;
+                if (string.IsNullOrWhiteSpace(modelId))
+                {
+                    continue;
+                }
+
+                var content = AppState.ExtractContent(results[i]);
+                State.AppendAssistantConversationMessage(
+                    modelId,
+                    string.IsNullOrEmpty(content) ? "(empty response)" : content,
+                    State.GetModelName(modelId),
+                    !results[i].Success,
+                    turnId);
+            }
+
+            State.SaveCanvasState();
+        }
+        finally
+        {
+            _sending = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleKeydown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+            await Send();
+    }
+
+    private List<CardState> GetParticipatingCards()
+    {
+        return State.CurrentSession?.Canvas.Cards
+            .Where(card => card.ParticipatesInGlobal)
+            .ToList() ?? new();
+    }
+
+    private string GetTargetInfo()
+    {
+        var count = GetParticipatingCards().Count;
+        return $"{count} card{(count == 1 ? "" : "s")}";
+    }
+}

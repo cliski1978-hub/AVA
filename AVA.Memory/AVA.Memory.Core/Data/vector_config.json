@@ -1,0 +1,32 @@
+﻿{
+  // ----------------------------------------------------------
+  // AVA MEMORY VECTOR DATABASE CONFIGURATION
+  // ----------------------------------------------------------
+  // Defines connection, driver, and operational parameters
+  // for all VectorDB components (drivers, router, maintenance, etc.)
+  // ----------------------------------------------------------
+
+  "activeDriver": "Qdrant", // "Qdrant" or "InMemory"
+  "endpoint": "http://localhost:6333", // Base URL for Qdrant service
+  "apiKey": null, // Optional API key (if using secured endpoint)
+
+  // Default Collection
+  "defaultCollection": "ava_memory", // Fallback collection when no topic is detected
+  "dimension": 768, // Embedding vector dimension
+  "metric": "cosine", // Distance metric ("cosine", "dot", or "euclidean")
+
+  // Runtime Behavior
+  "timeoutMs": 10000, // Default request timeout
+  "enableLogging": true, // Enable driver-level console logging for diagnostics
+
+  // Maintenance and Routing
+  "autoCreateCollections": true, // Allow router to auto-create missing collections
+  "defaultTopic": "general_memory", // Default topic label when none is present
+  "maxCollections": 50, // Safety cap for total number of collections
+
+  // Maintenance Tuning
+  "decayRate": 0.05, // Global decay rate for vector importance
+  "pruneThreshold": 0.25, // Minimum salience before pruning
+  "maxAgeDays": 30, // Global max age before archival
+  "maintenanceIntervalMinutes": 60 // Default periodic maintenance interval
+}

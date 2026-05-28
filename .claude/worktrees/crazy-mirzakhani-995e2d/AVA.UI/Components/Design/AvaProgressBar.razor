@@ -1,0 +1,78 @@
+<div class="ava-progress-field">
+    @if (ChildContent is not null || ShowValue)
+    {
+        <div class="ava-progress-field__meta">
+            <div class="ava-progress-field__label">@ChildContent</div>
+            @if (ShowValue)
+            {
+                <div class="ava-progress-field__value">@ClampedValue%</div>
+            }
+        </div>
+    }
+
+    <progress class="@CssClass"
+              value="@ClampedValue"
+              max="100"
+              @attributes="AdditionalAttributes"></progress>
+</div>
+
+@code {
+    /// <summary>
+    /// Gets or sets the visual intent for the progress bar.
+    /// </summary>
+    [Parameter]
+    public string Intent { get; set; } = "primary";
+
+    /// <summary>
+    /// Gets or sets the size variant for the progress bar.
+    /// </summary>
+    [Parameter]
+    public string Size { get; set; } = "md";
+
+    /// <summary>
+    /// Gets or sets an optional state class for the progress bar.
+    /// </summary>
+    [Parameter]
+    public string State { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the progress value.
+    /// </summary>
+    [Parameter]
+    public int Value { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether to show the numeric value.
+    /// </summary>
+    [Parameter]
+    public bool ShowValue { get; set; }
+
+    /// <summary>
+    /// Gets or sets optional label content.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Gets or sets additional HTML attributes for the progress bar.
+    /// </summary>
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private int ClampedValue => Math.Clamp(Value, 0, 100);
+
+    private string CssClass =>
+        string.Join(" ",
+            "ava-progress",
+            Normalize("ava-progress", Intent, "primary"),
+            Normalize("ava-progress", Size, "md"),
+            string.IsNullOrWhiteSpace(State) ? string.Empty : State);
+
+    private static string Normalize(string prefix, string value, string fallback)
+    {
+        var resolved = string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
+        return resolved.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            ? resolved
+            : $"{prefix}-{resolved}";
+    }
+}

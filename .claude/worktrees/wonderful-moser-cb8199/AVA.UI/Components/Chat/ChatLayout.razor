@@ -1,0 +1,136 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   ChatLayout.razor
+   Namespace: AVA.UI.Components.Chat
+   Purpose  : Two-column chat layout.
+              Left  = ModelPickerPane + Session tabs + Output + Input
+              Right = PromptPreview (optional)
+              Model selection is delegated to ModelPickerPane.
+              Session tabs manage active sessions and broadcast grouping.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@using AVA.UI.State
+@using AVA.UI.CORE.Models.Settings
+@inject AppState State
+
+<div class="chat-layout">
+
+    <div class="chat-layout__left">
+
+        <!-- ── Session Bar ──────────────────────────────────────────── -->
+        @if (State.IsConnected)
+        {
+            <div class="session-bar">
+
+                <ModelPickerPane />
+
+                @if (State.Sessions.Sessions.Any())
+                {
+                    <label class="session-bar__broadcast">
+                        <input type="checkbox"
+                               checked="@_BroadcastMode"
+                               @onchange="E => _BroadcastMode = (bool)(E.Value ?? false)" />
+                        Broadcast
+                    </label>
+                }
+
+            </div>
+
+            <!-- ── Session Tabs ───────────────────────────────────────── -->
+            @if (State.Sessions.Sessions.Any())
+            {
+                <div class="session-tabs">
+                    @foreach (var Session in State.Sessions.Sessions)
+                    {
+                        var S = Session;
+                        var IsActive = State.Sessions.ActiveSession?.SessionId == S.SessionId;
+                        var InBroadcast = State.Sessions.BroadcastGroup.Contains(S);
+
+                        <div class="session-tab @(IsActive ? "session-tab--active" : "") @(InBroadcast ? "session-tab--broadcast" : "")"
+                             @onclick="() => SelectSession(S.SessionId)">
+
+                            @if (_BroadcastMode)
+                            {
+                                <input type="checkbox"
+                                       checked="@InBroadcast"
+                                       @onclick:stopPropagation="true"
+                                       @onchange="E => ToggleBroadcast(S.SessionId, (bool)(E.Value ?? false))" />
+                            }
+
+                            <span class="session-tab__label">@S.DisplayName</span>
+
+                            @if (S.IsSending)
+                            {
+                                <span class="session-tab__sending">●</span>
+                            }
+
+                            <button class="session-tab__close"
+                                    @onclick:stopPropagation="true"
+                                    @onclick="() => CloseSession(S.SessionId)">
+                                ✕
+                            </button>
+
+                        </div>
+                    }
+                </div>
+            }
+        }
+        else
+        {
+            <div class="session-bar session-bar--disconnected">
+                <span class="session-bar__hint">
+                    ⚠️ Not connected — go to Settings to connect.
+                </span>
+            </div>
+        }
+
+        <!-- ── Output ──────────────────────────────────────────────────── -->
+        <div class="chat-layout__output">
+            <OutputPane />
+        </div>
+
+        <!-- ── Input ───────────────────────────────────────────────────── -->
+        <div class="chat-layout__input">
+            <InputPane />
+        </div>
+
+    </div>
+
+    <!-- ── Prompt Preview ──────────────────────────────────────────────── -->
+    @if (State.ShowPromptPreview)
+    {
+        <div class="chat-layout__preview">
+            <PromptPreviewPane />
+        </div>
+    }
+
+</div>
+
+@code {
+    private bool _BroadcastMode = false;
+
+    // ── Session Management ────────────────────────────────────────────────
+
+    private void SelectSession(string SessionId)
+    {
+        State.Sessions.SetActiveSession(SessionId);
+        StateHasChanged();
+    }
+
+    private void CloseSession(string SessionId)
+    {
+        State.Sessions.CloseSession(SessionId);
+        StateHasChanged();
+    }
+
+    // ── Broadcast ─────────────────────────────────────────────────────────
+
+    private void ToggleBroadcast(string SessionId, bool Include)
+    {
+        if (Include)
+            State.Sessions.AddToBroadcast(SessionId);
+        else
+            State.Sessions.RemoveFromBroadcast(SessionId);
+
+        StateHasChanged();
+    }
+}

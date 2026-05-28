@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir C:\\\\Apps\\\\AVA /s /b)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Apps\\\\AVA\" -Recurse -File | Where-Object { $_.Extension -in @\\('.cs','.csproj','.sln','.json','.html','.razor','.css'\\) } | ForEach-Object { $_.FullName })",
+      "Bash(dotnet build *)",
+      "Bash(grep \"\\\\.cs$\")",
+      "Bash(grep -v \"\\\\.cs:[[:space:]]*//\")",
+      "Bash(dotnet restore *)",
+      "Bash(xargs grep *)",
+      "Bash(grep -i \"\\\\.cs$\")",
+      "Bash(grep -v \"//.*File\\\\.\")",
+      "Bash(grep -v \"bin\\\\|obj\\\\|//\")",
+      "Bash(grep -v \"^$\")",
+      "Bash(dotnet test *)",
+      "Bash(AVA_TEST_DB=\"Server=4D-C76\\\\SQLEXPRESS;Database=AvaVaultParityTest;Trusted_Connection=True;TrustServerCertificate=True;\" dotnet test AVA.Vault/VaultTests/VaultTests.csproj --filter \"FullyQualifiedName~Parity\")",
+      "Bash(AVA_TEST_DB=\"Server=4D-C76\\\\SQLEXPRESS;Database=AvaVaultParityTest;Trusted_Connection=True;TrustServerCertificate=True;\" dotnet test AVA.Vault/VaultTests/VaultTests.csproj --filter \"FullyQualifiedName~DbProviderParity\")",
+      "Bash(AVA_TEST_DB=\"Server=4D-C76\\\\SQLEXPRESS;Database=AvaVaultParityTest;Trusted_Connection=True;TrustServerCertificate=True;\" dotnet test AVA.Vault/VaultTests/VaultTests.csproj --filter \"FullyQualifiedName~DbProviderParity.CreateNote\")",
+      "Bash(AVA_TEST_DB=\"Server=4D-C76\\\\SQLEXPRESS;Database=AvaVault;Trusted_Connection=True;TrustServerCertificate=True;\" dotnet test AVA.Vault/VaultTests/VaultTests.csproj --filter \"FullyQualifiedName~Parity\")",
+      "Bash(AVA_TEST_DB=\"Server=4D-C76\\\\SQLEXPRESS;Database=AvaVault;Trusted_Connection=True;TrustServerCertificate=True;\" dotnet test AVA.Vault/VaultTests/VaultTests.csproj --filter \"FullyQualifiedName~DbProviderParity.CreateNote\")",
+      "Bash(AVA_TEST_DB=\"Server=4D-C76\\\\SQLEXPRESS;Database=AvaVault;Trusted_Connection=True;TrustServerCertificate=True;\" dotnet test AVA.Vault/VaultTests/VaultTests.csproj --filter \"FullyQualifiedName~DbProviderParity\")",
+      "Bash(AVA_TEST_DB=\"Server=4D-C76\\\\SQLEXPRESS;Database=AvaVault;Trusted_Connection=True;TrustServerCertificate=True;\" dotnet test AVA.Vault/VaultTests/VaultTests.csproj --filter \"Name=CreateNote_ReturnsNoteWithCorrectFields\")",
+      "Bash(dotnet ef *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Apps\\\\AVA\" -Directory)",
+      "Bash(Select-Object Name)"
+    ]
+  }
+}

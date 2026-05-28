@@ -1,0 +1,257 @@
+@inject AppState AppState
+@implements IDisposable
+
+<div class="session-toolbar">
+    <span class="session-name">@GetSessionName()</span>
+    <span class="session-vault">@GetVaultPath()</span>
+
+    <div class="tb-sep"></div>
+
+    <div class="model-chips">
+        @foreach (var modelId in AppState.CurrentSession?.AttachedModelIds ?? new List<string>())
+        {
+            <ModelChip ModelId="@modelId" />
+        }
+        <button class="chip-add" title="Add model" @onclick="AddModelAsync">+</button>
+    </div>
+
+    <div class="tb-sep"></div>
+
+    @if (AppState.CurrentSession?.BroadcastGroupIds?.Count > 0)
+    {
+        <div class="broadcast-pill">BROADCAST ON</div>
+    }
+
+    <div class="tb-spacer"></div>
+
+    @if (AppState.SelectedNavigationItem == "Document")
+    {
+        <button class="tb-btn" @onclick="BackToCanvas">← Canvas</button>
+        <button class="tb-btn accent" @onclick="OpenDocumentAsync">Document</button>
+    }
+    else
+    {
+        <button class="tb-btn" @onclick="CycleLayoutAsync">Layout</button>
+        <button class="tb-btn" @onclick="AddFileAsync">Files</button>
+        <button class="tb-btn" @onclick="ToggleKnowledgeBaseAsync">KB</button>
+        <button class="tb-btn" @onclick="OpenDocumentAsync">Doc</button>
+        <button class="tb-btn accent" @onclick="AddCardAsync">+ Card</button>
+    }
+</div>
+
+<style>
+    .session-toolbar {
+        display: flex;
+        align-items: center;
+        gap: var(--FzSm);
+        padding: 0 var(--FzXl);
+        min-height: calc(var(--SzXl) + 8px);
+        background: var(--BgSurface);
+        border-bottom: 1px solid var(--Border);
+        position: relative;
+        z-index: 2;
+        flex-shrink: 0;
+    }
+
+    .session-toolbar::after {
+        content: "";
+        position: absolute;
+        inset-inline: 0;
+        bottom: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, var(--Accent), transparent);
+        opacity: 0.2;
+    }
+
+    .session-name {
+        font-size: calc(var(--FzLg) + 1px);
+        font-weight: 600;
+        color: var(--Text);
+        letter-spacing: 0.03em;
+    }
+
+    .session-vault {
+        font-size: calc(var(--FzSm) + 1px);
+        color: var(--TextMuted);
+        padding: 0 var(--RxMd);
+        line-height: calc(var(--SzXs) + 2px);
+        background: var(--BgElevated);
+        border: 1px solid var(--Border);
+        border-radius: var(--RxPill);
+    }
+
+    .tb-sep {
+        width: 1px;
+        height: var(--SzXs);
+        background: var(--Border);
+        flex-shrink: 0;
+    }
+
+    .model-chips {
+        display: flex;
+        gap: var(--RxSm);
+        align-items: center;
+        min-width: 0;
+        overflow: auto hidden;
+    }
+
+    .chip-add {
+        height: calc(var(--SzXs) + 4px);
+        width: calc(var(--SzXs) + 4px);
+        border-radius: var(--RxCircle);
+        border: 1px dashed var(--BorderMid);
+        background: transparent;
+        color: var(--TextMuted);
+        font-size: calc(var(--Fz2Xl) - 1px);
+        cursor: pointer;
+        transition: all var(--T);
+        flex-shrink: 0;
+    }
+
+    .chip-add:hover {
+        border-color: var(--Accent);
+        color: var(--Accent);
+    }
+
+    .broadcast-pill {
+        height: calc(var(--SzXs) + 4px);
+        padding: 0 var(--FzSm);
+        border-radius: var(--RxCapsule);
+        background: var(--AccentGlow);
+        border: 1px solid var(--AccentLine);
+        color: var(--Accent);
+        font-size: calc(var(--FzXs) + 1px);
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        display: flex;
+        align-items: center;
+        animation: bc-pulse 2s ease-in-out infinite;
+    }
+
+    @@keyframes bc-pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+
+    .tb-spacer {
+        flex: 1;
+    }
+
+    .tb-btn {
+        height: calc(var(--SzSm) + 4px);
+        padding: 0 var(--FzSm);
+        background: var(--BgElevated);
+        border: 1px solid var(--Border);
+        border-radius: var(--RxSm);
+        color: var(--TextMuted);
+        font-family: var(--Font);
+        font-size: calc(var(--FzSm) + 1px);
+        font-weight: 500;
+        cursor: pointer;
+        transition: all var(--T);
+        white-space: nowrap;
+    }
+
+    .tb-btn:hover {
+        background: var(--BgHover);
+        border-color: var(--BorderMid);
+        color: var(--Text);
+    }
+
+    .tb-btn.accent {
+        color: var(--Accent);
+        border-color: var(--AccentLine);
+        background: var(--AccentGlow);
+    }
+
+    .tb-btn.accent:hover {
+        background: var(--AccentLine);
+        color: var(--TextInverse);
+    }
+</style>
+
+@code {
+    protected override void OnInitialized()
+    {
+        AppState.OnChange += HandleAppStateChanged;
+    }
+
+    private string GetSessionName() => AppState.CurrentSession?.Name ?? "New Session";
+
+    private string GetVaultPath()
+    {
+        var vaultName = AppState.ActiveVault?.Name ?? "Vault";
+        var projectName = AppState.ActiveProject?.Name;
+        return string.IsNullOrWhiteSpace(projectName)
+            ? vaultName
+            : $"{vaultName} > {projectName}";
+    }
+
+    private void HandleAppStateChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task AddModelAsync()
+    {
+        var modelId = await AppState.AttachNextModelToActiveSessionAsync();
+        AppState.AppendOutputSystem(
+            string.IsNullOrWhiteSpace(modelId)
+                ? "No additional models are available to attach."
+                : $"Attached model {modelId} to the active session.");
+    }
+
+    private async Task CycleLayoutAsync()
+    {
+        var layout = await AppState.CycleActiveSessionLayoutAsync();
+        AppState.AppendOutputSystem(
+            string.IsNullOrWhiteSpace(layout)
+                ? "Select a session before changing layout."
+                : $"Session layout anchor set to {layout}.");
+    }
+
+    private async Task AddFileAsync()
+    {
+        var fileRef = await AppState.AddPlaceholderFileToActiveProjectAsync();
+        AppState.AppendOutputSystem(
+            fileRef == null
+                ? "Select a project to attach files."
+                : $"Attached {fileRef.Name} to {AppState.ActiveProject?.Name}.");
+    }
+
+    private async Task ToggleKnowledgeBaseAsync()
+    {
+        var knowledgeBaseId = await AppState.ToggleKnowledgeBaseForActiveProjectAsync();
+        AppState.AppendOutputSystem(
+            AppState.ActiveProject == null
+                ? "Select a project to manage knowledge base links."
+                : string.IsNullOrWhiteSpace(knowledgeBaseId)
+                    ? $"Knowledge base cleared for {AppState.ActiveProject.Name}."
+                    : $"Knowledge base {knowledgeBaseId} linked to {AppState.ActiveProject.Name}.");
+    }
+
+    private async Task AddCardAsync()
+    {
+        var card = await AppState.AddCardToActiveSessionAsync();
+        AppState.AppendOutputSystem(
+            card == null
+                ? "Select a session before adding a card."
+                : $"{card.Title} added to the active canvas.");
+    }
+
+    private Task OpenDocumentAsync()
+    {
+        AppState.OpenOrCreateDocument();
+        return Task.CompletedTask;
+    }
+
+    private void BackToCanvas()
+    {
+        AppState.SetSelectedNavigationItem("Canvas");
+    }
+
+    public void Dispose()
+    {
+        AppState.OnChange -= HandleAppStateChanged;
+    }
+}

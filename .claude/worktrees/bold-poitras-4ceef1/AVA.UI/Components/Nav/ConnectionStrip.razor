@@ -1,0 +1,87 @@
+@inject AppState AppState
+@implements IDisposable
+
+<div class="connection-strip @(IsCollapsed ? "collapsed" : string.Empty)">
+    <div class="connection-strip__dot @(AppState.IsConnected ? "online" : "offline")"></div>
+    @if (!IsCollapsed)
+    {
+        <div class="connection-strip__text">
+            <span class="connection-strip__label">@AppState.ConnectionStatus</span>
+            <span class="connection-strip__detail">@GetConnectionCount() profiles</span>
+        </div>
+    }
+</div>
+
+<style>
+    .connection-strip {
+        display: flex;
+        align-items: center;
+        gap: var(--RxMd);
+        margin: 0 var(--FzXs) var(--FzXs);
+        padding: var(--RxMd) var(--FzSm);
+        border: 1px solid var(--Border);
+        border-radius: var(--RxMd);
+        background: var(--BgElevated);
+    }
+
+    .connection-strip.collapsed {
+        justify-content: center;
+        padding-inline: 0;
+    }
+
+    .connection-strip__dot {
+        width: var(--FzSm);
+        height: var(--FzSm);
+        border-radius: var(--RxCircle);
+        background: var(--Danger);
+        box-shadow: 0 0 var(--FzLg) var(--DangerDim);
+        flex-shrink: 0;
+    }
+
+    .connection-strip__dot.online {
+        background: var(--Success);
+        box-shadow: 0 0 var(--FzLg) var(--SuccessDim);
+    }
+
+    .connection-strip__text {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+    }
+
+    .connection-strip__label {
+        font-size: var(--FzSm);
+        color: var(--Text);
+        font-weight: 600;
+    }
+
+    .connection-strip__detail {
+        font-size: var(--FzXs);
+        color: var(--TextMuted);
+    }
+</style>
+
+@code {
+    [Parameter]
+    public bool IsCollapsed { get; set; }
+
+    protected override void OnInitialized()
+    {
+        AppState.OnChange += HandleStateChanged;
+    }
+
+    private int GetConnectionCount()
+    {
+        return AppState.LLMProfiles.Count(p => p.IsActive);
+    }
+
+    private void HandleStateChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        AppState.OnChange -= HandleStateChanged;
+    }
+}

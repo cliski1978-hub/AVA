@@ -1,0 +1,217 @@
+<AvaCard Intent="neutral" Size="sm">
+    <HeaderContent>
+        <div class="canvas-shell__header-line">
+            <div class="canvas-shell__mini-title">Design Validation</div>
+            <AvaToggle Intent="primary"
+                       Size="sm"
+                       Checked="@_isExpanded"
+                       CheckedChanged="HandleExpandedChangedAsync">
+                Show
+            </AvaToggle>
+        </div>
+    </HeaderContent>
+    <ChildContent>
+        @if (_isExpanded)
+        {
+            <div class="canvas-validation">
+                <div class="canvas-validation__group">
+                    <div class="canvas-validation__label">Buttons</div>
+                    <div class="canvas-validation__row">
+                        <AvaButton Intent="primary" Size="sm">Primary</AvaButton>
+                        <AvaButton Intent="neutral" Size="sm">Neutral</AvaButton>
+                        <AvaButton Intent="warn" Size="sm">Warn</AvaButton>
+                        <AvaButton Intent="danger" Size="sm">Danger</AvaButton>
+                    </div>
+                </div>
+
+                <AvaDivider Intent="neutral">Fields</AvaDivider>
+
+                <div class="canvas-validation__group">
+                    <div class="canvas-validation__label">Inputs</div>
+                    <div class="canvas-validation__stack">
+                        <AvaInput Intent="primary"
+                                  Size="md"
+                                  Value="@_sampleInput"
+                                  ValueChanged="HandleInputChangedAsync"
+                                  Placeholder="AvaInput" />
+
+                        <AvaTextarea Intent="neutral"
+                                     Size="md"
+                                     Value="@_sampleTextarea"
+                                     ValueChanged="HandleTextareaChangedAsync"
+                                     Rows="4"
+                                     Placeholder="AvaTextarea" />
+
+                        <AvaSelect Intent="neutral"
+                                   Size="md"
+                                   Value="@_selectedPreset"
+                                   ValueChanged="HandlePresetChangedAsync">
+                            <option value="draft">Draft</option>
+                            <option value="review">Review</option>
+                            <option value="final">Final</option>
+                        </AvaSelect>
+                    </div>
+                </div>
+
+                <AvaDivider Intent="neutral">Choices</AvaDivider>
+
+                <div class="canvas-validation__group">
+                    <div class="canvas-validation__label">Choice Controls</div>
+                    <div class="canvas-validation__stack">
+                        <AvaToggle Intent="success"
+                                   Size="sm"
+                                   Checked="@_toggleEnabled"
+                                   CheckedChanged="HandleToggleChangedAsync">
+                            AvaToggle
+                        </AvaToggle>
+
+                        <div class="canvas-validation__row">
+                            <AvaCheckbox Intent="primary"
+                                         Size="sm"
+                                         Checked="@_checkboxEnabled"
+                                         CheckedChanged="HandleCheckboxChangedAsync">
+                                AvaCheckbox
+                            </AvaCheckbox>
+
+                            <AvaRadio Intent="primary"
+                                      Size="sm"
+                                      Name="canvas-validation-mode"
+                                      Value="simple"
+                                      SelectedValue="@_selectedMode"
+                                      SelectedValueChanged="HandleModeChangedAsync">
+                                Simple
+                            </AvaRadio>
+
+                            <AvaRadio Intent="success"
+                                      Size="sm"
+                                      Name="canvas-validation-mode"
+                                      Value="structured"
+                                      SelectedValue="@_selectedMode"
+                                      SelectedValueChanged="HandleModeChangedAsync">
+                                Structured
+                            </AvaRadio>
+                        </div>
+                    </div>
+                </div>
+
+                <AvaDivider Intent="neutral">Feedback</AvaDivider>
+
+                <div class="canvas-validation__group">
+                    <div class="canvas-validation__label">Range + Progress</div>
+                    <div class="canvas-validation__stack">
+                        <AvaSlider Intent="primary"
+                                   Size="md"
+                                   Value="@_progressValue"
+                                   ValueChanged="HandleProgressChangedAsync"
+                                   Min="0"
+                                   Max="100"
+                                   ShowValue="true">
+                            AvaSlider
+                        </AvaSlider>
+
+                        <AvaProgressBar Intent="success"
+                                        Size="md"
+                                        Value="@_progressValue"
+                                        ShowValue="true">
+                            AvaProgressBar
+                        </AvaProgressBar>
+
+                        <AvaStatusIndicator Intent="@(_toggleEnabled ? "success" : "warn")"
+                                            Size="sm">
+                            AvaStatusIndicator
+                        </AvaStatusIndicator>
+                    </div>
+                </div>
+
+                <AvaDivider Intent="neutral">Display</AvaDivider>
+
+                <div class="canvas-validation__group">
+                    <div class="canvas-validation__label">Badges, Chips, Tooltips, Cards</div>
+                    <div class="canvas-validation__row">
+                        <AvaBadge Intent="primary" Size="sm">Badge</AvaBadge>
+                        <AvaChip Intent="success" Size="sm">Chip</AvaChip>
+                        <AvaTooltip Text="AvaTooltip is active here." Position="top">
+                            <AvaChip Intent="neutral" Size="sm">Hover</AvaChip>
+                        </AvaTooltip>
+                    </div>
+
+                    <AvaCard Intent="primary" Size="sm" IsElevated="true">
+                        <HeaderContent>
+                            <div class="canvas-shell__mini-title">AvaCard</div>
+                        </HeaderContent>
+                        <ChildContent>
+                            <div class="canvas-shell__placeholder-copy">
+                                This nested sample keeps the validation panel honest.
+                            </div>
+                        </ChildContent>
+                    </AvaCard>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="canvas-shell__placeholder-copy">
+                Expand to validate all 15 design-system components without polluting the primary editor flow.
+            </div>
+        }
+    </ChildContent>
+</AvaCard>
+
+@code {
+    private bool _isExpanded;
+    private bool _toggleEnabled = true;
+    private bool _checkboxEnabled = true;
+    private int _progressValue = 64;
+    private string _selectedPreset = "draft";
+    private string _selectedMode = "simple";
+    private string _sampleInput = "Validation input";
+    private string _sampleTextarea = "Canvas validation panel for design-system checks.";
+
+    private Task HandleExpandedChangedAsync(bool value)
+    {
+        _isExpanded = value;
+        return Task.CompletedTask;
+    }
+
+    private Task HandleToggleChangedAsync(bool value)
+    {
+        _toggleEnabled = value;
+        return Task.CompletedTask;
+    }
+
+    private Task HandleCheckboxChangedAsync(bool value)
+    {
+        _checkboxEnabled = value;
+        return Task.CompletedTask;
+    }
+
+    private Task HandleProgressChangedAsync(int value)
+    {
+        _progressValue = value;
+        return Task.CompletedTask;
+    }
+
+    private Task HandlePresetChangedAsync(string value)
+    {
+        _selectedPreset = value;
+        return Task.CompletedTask;
+    }
+
+    private Task HandleModeChangedAsync(string value)
+    {
+        _selectedMode = value;
+        return Task.CompletedTask;
+    }
+
+    private Task HandleInputChangedAsync(string value)
+    {
+        _sampleInput = value;
+        return Task.CompletedTask;
+    }
+
+    private Task HandleTextareaChangedAsync(string value)
+    {
+        _sampleTextarea = value;
+        return Task.CompletedTask;
+    }
+}

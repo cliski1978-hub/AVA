@@ -1,0 +1,74 @@
+@if (IsVisible)
+{
+    <div class="canvas-selection-toolbar"
+         style="@($"left:{LeftPx}px; top:{TopPx}px;")">
+        <AvaButton Intent="success" Size="xs" OnClick="OnAskAva">Ask AVA</AvaButton>
+        <AvaButton Intent="neutral" Size="xs" IsDisabled="@IsFormattingDisabled" OnClick="OnBold">B</AvaButton>
+        <AvaButton Intent="neutral" Size="xs" IsDisabled="@IsFormattingDisabled" OnClick="OnItalic">I</AvaButton>
+        <AvaButton Intent="warn" Size="xs" IsDisabled="@IsFormattingDisabled" OnClick="OnInlineCode">Code</AvaButton>
+        <AvaButton Intent="primary" Size="xs" OnClick="OnHeading">H1</AvaButton>
+        <AvaButton Intent="warn" Size="xs" OnClick="OnCodeBlock">Block</AvaButton>
+    </div>
+}
+
+@code {
+    /// <summary>
+    /// Gets or sets a value indicating whether the selection toolbar is visible.
+    /// </summary>
+    [Parameter]
+    public bool IsVisible { get; set; }
+
+    /// <summary>
+    /// Gets or sets the horizontal pixel position of the toolbar.
+    /// </summary>
+    [Parameter]
+    public double LeftPx { get; set; }
+
+    /// <summary>
+    /// Gets or sets the vertical pixel position of the toolbar.
+    /// </summary>
+    [Parameter]
+    public double TopPx { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether inline formatting actions should be disabled.
+    /// </summary>
+    [Parameter]
+    public bool IsFormattingDisabled { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when Ask AVA is requested.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnAskAva { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when bold formatting is requested.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnBold { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when italic formatting is requested.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnItalic { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when inline code formatting is requested.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnInlineCode { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when heading conversion is requested.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnHeading { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when code block conversion is requested.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnCodeBlock { get; set; }
+}

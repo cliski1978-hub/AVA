@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>AVA.App.Desktop</RootNamespace>
+    <AssemblyName>AVA</AssemblyName>
+
+    <!--
+      Photino self-contained publish settings.
+      Use 'dotnet publish -r linux-x64 --self-contained true' for Ubuntu.
+      Use 'dotnet publish -r win-x64  --self-contained true' for Windows.
+      Use 'dotnet publish -r osx-x64  --self-contained true' for macOS.
+    -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AVA.UI\AVA.UI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Photino.Blazor hosts Blazor inside a native OS webview -->
+    <PackageReference Include="Photino.Blazor" Version="3.1.0" />
+  </ItemGroup>
+
+  <!--
+    Ubuntu runtime dependency note:
+    sudo apt install libwebkit2gtk-4.1-0
+
+    macOS: WebKit is built-in, no extras needed.
+    Windows: WebView2 runtime required (ships with Windows 11 / Edge).
+  -->
+
+</Project>

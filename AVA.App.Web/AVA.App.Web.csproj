@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+<PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>AVA.App.Web</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AVA.Memory\AVA.Memory.Abstractions\AVA.Memory.Abstractions.csproj" />
+    <ProjectReference Include="..\AVA.Memory\AVA.Memory.Core\AVA.Memory.Core.csproj" />
+    <ProjectReference Include="..\AVA.Memory\AVA.Memory.Data\AVA.Memory.Data.csproj" />
+    <ProjectReference Include="..\AVA.Memory\AVA.Memory.Sql\AVA.Memory.Sql.csproj" />
+    <ProjectReference Include="..\AVA.UI.CORE\AVA.UI.CORE.csproj" />
+    <ProjectReference Include="..\AVA.UI\AVA.UI.csproj" />
+    <ProjectReference Include="..\AVA.Vault\AVA.Vault.Core\AVA.Vault.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.11" />
+  </ItemGroup>
+
+</Project>

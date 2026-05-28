@@ -1,0 +1,268 @@
+@inject AppState AppState
+
+<div class="user-hero @(IsCollapsed ? "collapsed" : string.Empty)">
+    <div class="user-row">
+        <div class="avatar-wrap">
+            <div class="avatar">@GetInitials()</div>
+            <div class="status-dot @GetStatusClass()"></div>
+        </div>
+        @if (!IsCollapsed)
+        {
+            <div class="user-info">
+                <div class="user-name">@AppState.CurrentUser.Name</div>
+                <div class="user-handle">@GetHandle()</div>
+                <div class="user-status-row">
+                    <div class="user-status-label @GetStatusClass()">@GetStatusText()</div>
+                    <div class="conn-badge">@GetActiveConnectionCount() active</div>
+                </div>
+            </div>
+        }
+    </div>
+
+    @if (!IsCollapsed)
+    {
+        <div class="user-actions">
+            <button class="ua-btn" @onclick="CycleStatus">Status</button>
+            <button class="ua-btn" @onclick="ShowProfile">Profile</button>
+            <button class="ua-btn danger" @onclick="SignOut">Out</button>
+        </div>
+    }
+</div>
+
+<style>
+    .user-hero {
+        padding: var(--Fz2Xl) var(--FzXl) var(--FzXl);
+        border-bottom: 1px solid var(--Border);
+        position: relative;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+
+    .user-hero::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at top left, var(--AccentGlow) 0%, transparent 70%);
+        pointer-events: none;
+        opacity: 0.9;
+    }
+
+    .user-row,
+    .user-actions {
+        position: relative;
+        z-index: 1;
+    }
+
+    .user-row {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--FzSm);
+    }
+
+    .user-hero.collapsed {
+        padding: var(--FzXl) var(--FzXs);
+    }
+
+    .user-hero.collapsed .user-row {
+        justify-content: center;
+    }
+
+    .avatar-wrap {
+        position: relative;
+        flex-shrink: 0;
+    }
+
+    .avatar {
+        width: var(--SzLg);
+        height: var(--SzLg);
+        border-radius: var(--RxCircle);
+        background: linear-gradient(135deg, var(--BgElevated) 0%, var(--BgActive) 100%);
+        border: 1px solid var(--BorderMid);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: var(--Fz2Xl);
+        font-weight: 600;
+        color: var(--Accent);
+        transition: border-color var(--T), box-shadow var(--T);
+    }
+
+    .avatar:hover {
+        border-color: var(--Accent);
+        box-shadow: 0 0 var(--Fz2Xl) var(--AccentGlow);
+    }
+
+    .status-dot {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: var(--FzSm);
+        height: var(--FzSm);
+        border-radius: var(--RxCircle);
+        border: var(--RxXs) solid var(--BgSurface);
+        background: var(--Success);
+        box-shadow: 0 0 var(--FzLg) var(--SuccessDim);
+        animation: pulse-dot 3s ease-in-out infinite;
+    }
+
+    .status-dot.away {
+        background: var(--Warn);
+        box-shadow: 0 0 var(--FzLg) var(--WarnDim);
+        animation: none;
+    }
+
+    .status-dot.error {
+        background: var(--Danger);
+        box-shadow: 0 0 var(--FzLg) var(--DangerDim);
+        animation: none;
+    }
+
+    @@keyframes pulse-dot {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.4; }
+    }
+
+    .user-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .user-name {
+        font-size: var(--FzXl);
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .user-handle {
+        font-size: var(--FzSm);
+        color: var(--TextMuted);
+        margin-top: var(--RxXs);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .user-status-row {
+        display: flex;
+        align-items: center;
+        gap: var(--RxSm);
+        margin-top: var(--FzXs);
+    }
+
+    .user-status-label {
+        font-size: var(--FzSm);
+        color: var(--Success);
+        font-weight: 600;
+        letter-spacing: 0.04em;
+    }
+
+    .user-status-label.away {
+        color: var(--Warn);
+    }
+
+    .user-status-label.error {
+        color: var(--Danger);
+    }
+
+    .conn-badge {
+        margin-left: auto;
+        font-size: var(--FzXs);
+        font-weight: 600;
+        color: var(--Accent);
+        background: var(--AccentGlow);
+        border: 1px solid var(--AccentLine);
+        border-radius: var(--RxPill);
+        padding: 0 var(--RxMd);
+        line-height: var(--SzXs);
+        white-space: nowrap;
+    }
+
+    .user-actions {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: var(--RxSm);
+        margin-top: var(--FzSm);
+    }
+
+    .ua-btn {
+        height: var(--SzXs);
+        background: var(--BgElevated);
+        border: 1px solid var(--Border);
+        border-radius: var(--RxSm);
+        color: var(--TextMuted);
+        font-family: var(--Font);
+        font-size: var(--FzXs);
+        font-weight: 500;
+        letter-spacing: 0;
+        cursor: pointer;
+        transition: all var(--T);
+        min-width: 0;
+        padding: 0 var(--RxSm);
+        white-space: nowrap;
+    }
+
+    .ua-btn:hover {
+        background: var(--BgHover);
+        border-color: var(--BorderMid);
+        color: var(--Text);
+    }
+
+    .ua-btn.danger:hover {
+        border-color: var(--DangerLine);
+        color: var(--Danger);
+    }
+</style>
+
+@code {
+    [Parameter]
+    public bool IsCollapsed { get; set; }
+
+    private string _currentStatus = "online";
+
+    private string GetInitials()
+    {
+        var parts = AppState.CurrentUser.Name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length > 1)
+        {
+            return $"{parts[0][0]}{parts[1][0]}".ToUpperInvariant();
+        }
+
+        return AppState.CurrentUser.Name[..1].ToUpperInvariant();
+    }
+
+    private string GetHandle()
+    {
+        return $"{AppState.CurrentUser.Email} | AVA";
+    }
+
+    private string GetStatusText() => _currentStatus.ToUpperInvariant();
+
+    private string GetStatusClass() => _currentStatus;
+
+    private int GetActiveConnectionCount()
+    {
+        return AppState.Settings.LLMProfiles?.Count(p => p.IsActive) ?? 0;
+    }
+
+    private void CycleStatus()
+    {
+        _currentStatus = _currentStatus switch
+        {
+            "online" => "away",
+            "away" => "error",
+            _ => "online"
+        };
+    }
+
+    private void ShowProfile()
+    {
+        AppState.OpenProfile();
+    }
+
+    private void SignOut()
+    {
+        AppState.SignOut();
+    }
+}

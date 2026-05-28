@@ -1,0 +1,22 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   AvaBadge.razor
+   Purpose: Inline label badge with intent (ok, warn, err, info, muted) and size.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+<span class="ava-badge ava-badge--@Intent">
+    @ChildContent
+</span>
+
+@code {
+    /// <summary>
+    /// Intent: ok, warn, err, info, muted
+    /// </summary>
+    [Parameter]
+    public string Intent { get; set; } = "info";
+
+    /// <summary>
+    /// Badge content.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

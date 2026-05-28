@@ -1,0 +1,61 @@
+@using AVA.UI.CORE.ChatContext.Models
+
+@if (Metrics != null)
+{
+    <div class="ctx-usage ctx-usage--@StateClass">
+        <div class="ctx-usage__top">
+            <span class="ctx-usage__title">Context Usage</span>
+            <span class="ctx-usage__pct">@Metrics.UsagePercent.ToString("F0")%</span>
+        </div>
+
+        <div class="ctx-usage__bar" title="@StateLabel">
+            <div class="ctx-usage__fill" style="width:@BarWidth"></div>
+        </div>
+
+        <div class="ctx-usage__grid">
+            <span>Used</span>
+            <strong>@Metrics.UsedTokens / @Metrics.ContextWindow</strong>
+            <span>Remaining</span>
+            <strong>@Metrics.RemainingTokens</strong>
+            <span>Reserved Output</span>
+            <strong>@Metrics.ReservedOutputTokens</strong>
+            <span>Response Capacity</span>
+            <strong>@Metrics.EstimatedResponseCapacity</strong>
+        </div>
+    </div>
+}
+
+<style>
+.ctx-usage { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; background: var(--BgElevated); border: 1px solid var(--Border); border-radius: var(--RxSm); }
+.ctx-usage__top { display: flex; align-items: center; justify-content: space-between; font-size: var(--FzXs); color: var(--TextMuted); }
+.ctx-usage__title { font-weight: 600; color: var(--Text); }
+.ctx-usage__pct { font-family: var(--FontMono); }
+.ctx-usage__bar { height: 6px; border-radius: 3px; background: var(--BgSurface); overflow: hidden; }
+.ctx-usage__fill { height: 100%; border-radius: 3px; background: #4caf50; transition: width 0.2s; }
+.ctx-usage--near .ctx-usage__fill { background: var(--Warn); }
+.ctx-usage--over .ctx-usage__fill { background: var(--Err); }
+.ctx-usage--over { border-color: var(--Err); }
+.ctx-usage--near { border-color: var(--Warn); }
+.ctx-usage__grid { display: grid; grid-template-columns: repeat(4, auto); gap: 4px 10px; align-items: center; font-size: var(--FzXs); color: var(--TextMuted); }
+.ctx-usage__grid strong { color: var(--Text); font-family: var(--FontMono); font-weight: 500; }
+</style>
+
+@code {
+    [Parameter] public ContextUsageMetrics? Metrics { get; set; }
+
+    private string BarWidth => $"{Math.Min(Math.Max(Metrics?.UsagePercent ?? 0, 0), 100).ToString("F0")}%";
+
+    private string StateClass => Metrics switch
+    {
+        { IsOverBudget: true } => "over",
+        { IsNearLimit: true } => "near",
+        _ => "normal"
+    };
+
+    private string StateLabel => Metrics switch
+    {
+        { IsOverBudget: true } => "Prompt may truncate or fail",
+        { IsNearLimit: true } => "Context nearing saturation",
+        _ => "Context usage healthy"
+    };
+}

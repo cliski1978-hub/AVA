@@ -1,0 +1,832 @@
+@using AVA.UI.State
+@using AVA.UI.CORE.Models.Settings
+@inject AppState State
+@inject IJSRuntime JS
+
+<div class="llm-profiles-panel">
+    <section class="settings-architecture-section">
+        <div class="settings-architecture-section__header">
+            <div>
+                <h4>Provider Profiles</h4>
+                <p>How AVA connects to each platform. Provider profiles only own transport, auth, endpoint, and streaming behavior.</p>
+            </div>
+            <button class="settings-btn settings-btn--sm" @onclick="AddProvider">+ Add Provider</button>
+        </div>
+
+        @if (!Providers.Any())
+        {
+            <div class="settings-empty">No provider profiles defined yet.</div>
+        }
+        else
+        {
+            @foreach (var provider in Providers.ToList())
+            {
+                <section class="settings-card">
+                    <div class="settings-card__header">
+                        <div>
+                            <strong>@DisplayProviderName(provider)</strong>
+                            <span>@provider.ProviderType</span>
+                        </div>
+                        <div class="settings-card__actions">
+                            <button class="settings-btn settings-btn--sm"
+                                    @onclick="async () => await TestProvider(provider)"
+                                    disabled="@_TestingProviders.Contains(provider.ProviderProfileId)">
+                                @(_TestingProviders.Contains(provider.ProviderProfileId) ? "Testing..." : "Test")
+                            </button>
+                            <button class="settings-btn settings-btn--primary settings-btn--sm"
+                                    @onclick="async () => await ConnectProvider(provider)"
+                                    disabled="@_ConnectingProviders.Contains(provider.ProviderProfileId)">
+                                @(_ConnectingProviders.Contains(provider.ProviderProfileId) ? "Connecting..." : "Connect")
+                            </button>
+                            <button class="settings-btn settings-btn--danger settings-btn--sm"
+                                    @onclick="async () => await RemoveProvider(provider)">
+                                Remove
+                            </button>
+                        </div>
+                    </div>
+
+                    @if (_ProviderMessages.TryGetValue(provider.ProviderProfileId, out var message) &&
+                        !string.IsNullOrWhiteSpace(message.Text))
+                    {
+                        <div class="settings-feedback @(message.Ok ? "settings-feedback--ok" : "settings-feedback--err")">
+                            @message.Text
+                        </div>
+                    }
+
+                    <div class="settings-grid">
+                        <label class="settings-field">
+                            <span>Provider Label</span>
+                            <input @bind="provider.Name" />
+                        </label>
+                        <label class="settings-field">
+                            <span>Provider Type</span>
+                            <select @bind="provider.ProviderType">
+                                @foreach (var option in ProviderTypeOptions)
+                                {
+                                    <option value="@option">@option</option>
+                                }
+                            </select>
+                        </label>
+                        <label class="settings-field settings-field--wide">
+                            <span>Endpoint / Base URL</span>
+                            <input @bind="provider.Endpoint" />
+                        </label>
+                        <label class="settings-field">
+                            <span>Transport</span>
+                            <select @bind="provider.TransportType">
+                                @foreach (var option in TransportTypeOptions)
+                                {
+                                    <option value="@option">@option</option>
+                                }
+                            </select>
+                        </label>
+                        <label class="settings-field">
+                            <span>Timeout Seconds</span>
+                            <input type="number" min="1" @bind="provider.TimeoutSeconds" />
+                        </label>
+                        <label class="settings-field">
+                            <span>Retry Count</span>
+                            <input type="number" min="0" @bind="provider.RetryCount" />
+                        </label>
+                        <label class="settings-field">
+                            <span>API/Auth Value</span>
+                            <input type="password" @bind="provider.ApiKey" autocomplete="off" />
+                        </label>
+                        <label class="settings-field">
+                            <span>Secondary Secret</span>
+                            <input type="password" @bind="provider.Secret" autocomplete="off" />
+                        </label>
+                        <label class="settings-field settings-field--check">
+                            <input type="checkbox" @bind="provider.SupportsStreaming" />
+                            <span>Streaming Supported</span>
+                        </label>
+                        <label class="settings-field settings-field--wide">
+                            <span>Custom Headers</span>
+                            <textarea rows="3" @bind="provider.CustomHeadersAsText"></textarea>
+                        </label>
+                    </div>
+
+                    <div class="settings-card__footer">
+                        <button class="settings-btn settings-btn--sm"
+                                data-settings-action="model-nav"
+                                @onclick="() => ShowModels(provider)">
+                            Show Models
+                        </button>
+                        <button class="settings-btn settings-btn--sm" @onclick="SaveSettings">Save Provider</button>
+                    </div>
+                </section>
+            }
+        }
+    </section>
+
+    @if (_ModelsProvider != null)
+    {
+        var providerModels = ModelsForProvider(_ModelsProvider).ToList();
+
+        <div class="settings-model-list__scrim" @onclick="CloseModels"></div>
+        <section class="settings-model-list"
+                 role="dialog"
+                 aria-modal="true"
+                 aria-label="Models for @DisplayProviderName(_ModelsProvider)">
+            <div class="settings-model-dialog__header">
+                <div>
+                    <h4>Models</h4>
+                    <p>@DisplayProviderName(_ModelsProvider)</p>
+                </div>
+                <div class="settings-card__actions">
+                    <button class="settings-btn settings-btn--sm"
+                            @onclick="() => AddModelDefinition(_ModelsProvider)">
+                        + Add Model
+                    </button>
+                    <button class="settings-btn settings-btn--sm" @onclick="CloseModels">Close</button>
+                </div>
+            </div>
+
+            <div class="settings-model-dialog__body">
+                <p class="settings-model-dialog__hint">
+                    Basic model settings are shown here. Use Show Details for full capability and context-window configuration.
+                </p>
+
+                @if (!providerModels.Any())
+                {
+                    <div class="settings-empty">No models configured for this provider.</div>
+                }
+                else
+                {
+                    @foreach (var model in providerModels)
+                    {
+                        <section class="settings-model-summary">
+                            <div class="settings-model-summary__main">
+                                <strong>@DisplayModelName(model)</strong>
+                                <span>@model.ModelId</span>
+                            </div>
+                            <div class="settings-model-summary__stats">
+                                <span>Context @model.ContextWindow</span>
+                                <span>Output @model.MaxOutputTokens</span>
+                                <span>Chars @(model.MaxInputCharacters > 0 ? model.MaxInputCharacters.ToString() : "Auto")</span>
+                                @if (model.SupportsToolCalls)
+                                {
+                                    <span>Tools</span>
+                                }
+                                @if (model.SupportsProviderMemory)
+                                {
+                                    <span>Memory</span>
+                                }
+                            </div>
+                            <div class="settings-card__actions">
+                                <button class="settings-btn settings-btn--sm"
+                                        data-settings-action="model-nav"
+                                        @onclick="() => ShowModelDetails(model)">
+                                    Show Details
+                                </button>
+                                <button class="settings-btn settings-btn--sm"
+                                        data-settings-action="model-nav"
+                                        @onclick="async () => await AttachModel(model)">
+                                    Attach
+                                </button>
+                                <button class="settings-btn settings-btn--danger settings-btn--sm"
+                                        @onclick="async () => await RemoveModelDefinition(model)">
+                                    Remove
+                                </button>
+                            </div>
+                        </section>
+                    }
+                }
+            </div>
+        </section>
+    }
+
+    @if (_DetailsModel != null)
+    {
+        <div class="settings-model-details__scrim" @onclick="CloseModelDetails"></div>
+        <section class="settings-model-details"
+                 role="dialog"
+                 aria-modal="true"
+                 aria-label="Model details for @DisplayModelName(_DetailsModel)">
+            <div class="settings-model-dialog__header">
+                <div>
+                    <h4>@DisplayModelName(_DetailsModel)</h4>
+                    <p>Full model definition</p>
+                </div>
+                <div class="settings-card__actions">
+                    <button class="settings-btn settings-btn--primary settings-btn--sm" @onclick="SaveSettings">Save</button>
+                    <button class="settings-btn settings-btn--sm" @onclick="CloseModelDetails">Close</button>
+                </div>
+            </div>
+
+            <div class="settings-model-dialog__body">
+                <div class="settings-grid">
+                    <label class="settings-field">
+                        <span>Model ID</span>
+                        <input @bind="_DetailsModel.ModelId" />
+                    </label>
+                    <label class="settings-field">
+                        <span>Display Label</span>
+                        <input @bind="_DetailsModel.DisplayName" />
+                    </label>
+                    <label class="settings-field">
+                        <span>Model Type</span>
+                        <input @bind="_DetailsModel.ModelType" />
+                    </label>
+                    <label class="settings-field">
+                        <span>Provider</span>
+                        <select @bind="_DetailsModel.ProviderProfileId">
+                            @foreach (var provider in Providers)
+                            {
+                                <option value="@provider.ProviderProfileId">@DisplayProviderName(provider)</option>
+                            }
+                        </select>
+                    </label>
+                    <label class="settings-field">
+                        <span>Context Window</span>
+                        <input type="number" min="1" @bind="_DetailsModel.ContextWindow" />
+                    </label>
+                    <label class="settings-field">
+                        <span>Max Output Tokens</span>
+                        <input type="number" min="1" @bind="_DetailsModel.MaxOutputTokens" />
+                    </label>
+                    <label class="settings-field">
+                        <span>Max Input Characters</span>
+                        <input type="number" min="0" @bind="_DetailsModel.MaxInputCharacters" />
+                    </label>
+                    <label class="settings-field">
+                        <span>Default Temperature</span>
+                        <input type="number" step="0.1" min="0" max="2" @bind="_DetailsModel.DefaultTemperature" />
+                    </label>
+                    <label class="settings-field settings-field--check">
+                        <input type="checkbox" @bind="_DetailsModel.IsDiscovered" />
+                        <span>Discovered From Provider</span>
+                    </label>
+                    <label class="settings-field settings-field--check">
+                        <input type="checkbox" @bind="_DetailsModel.SupportsToolCalls" />
+                        <span>Supports Tools</span>
+                    </label>
+                    <label class="settings-field settings-field--check">
+                        <input type="checkbox" @bind="_DetailsModel.SupportsVision" />
+                        <span>Supports Vision</span>
+                    </label>
+                    <label class="settings-field settings-field--check">
+                        <input type="checkbox" @bind="_DetailsModel.SupportsReasoning" />
+                        <span>Supports Reasoning</span>
+                    </label>
+                    <label class="settings-field settings-field--check">
+                        <input type="checkbox" @bind="_DetailsModel.SupportsProviderMemory" />
+                        <span>Provider-Managed Memory</span>
+                    </label>
+                    <label class="settings-field settings-field--wide">
+                        <span>System Prompt Default</span>
+                        <textarea rows="5" @bind="_DetailsModel.SystemPrompt"></textarea>
+                    </label>
+                </div>
+            </div>
+        </section>
+    }
+</div>
+
+<style>
+    .llm-profiles-panel,
+    .settings-architecture-section {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    .settings-architecture-section {
+        padding: 14px;
+        border: 1px solid var(--Border);
+        border-radius: 8px;
+        background: var(--BgElevated);
+    }
+
+    .settings-architecture-section__header,
+    .settings-card__header,
+    .settings-card__footer {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .settings-architecture-section__header h4 {
+        margin: 0 0 4px;
+        color: var(--Text);
+        font-size: 14px;
+    }
+
+    .settings-architecture-section__header p,
+    .settings-card__header span {
+        margin: 0;
+        color: var(--TextMuted);
+        font-size: 11px;
+    }
+
+    .settings-card {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 12px;
+        border: 1px solid var(--Border);
+        border-radius: 8px;
+        background: var(--BgBase);
+    }
+
+    .settings-card__header strong {
+        display: block;
+        color: var(--Text);
+        font-size: 13px;
+    }
+
+    .settings-card__actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 6px;
+    }
+
+    .settings-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .settings-field {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        color: var(--TextMuted);
+        font-size: 11px;
+    }
+
+    .settings-field--wide {
+        grid-column: 1 / -1;
+    }
+
+    .settings-field--check {
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+        min-height: 30px;
+    }
+
+    .settings-field input,
+    .settings-field select,
+    .settings-field textarea {
+        width: 100%;
+        min-height: 30px;
+        border: 1px solid var(--Border);
+        border-radius: 6px;
+        background: var(--BgElevated);
+        color: var(--Text);
+        font-family: var(--Font);
+        font-size: 12px;
+        padding: 5px 8px;
+    }
+
+    .settings-field textarea {
+        resize: vertical;
+        min-height: 70px;
+    }
+
+    .settings-field input[type="checkbox"] {
+        width: auto;
+        min-height: auto;
+    }
+
+    .settings-empty {
+        padding: 14px;
+        border: 1px dashed var(--Border);
+        border-radius: 8px;
+        color: var(--TextMuted);
+        font-size: 12px;
+        background: var(--BgBase);
+    }
+
+    .settings-model-list__scrim {
+        position: fixed;
+        inset: 0;
+        z-index: 200;
+        background: rgba(0, 0, 0, 0.48);
+    }
+
+    .settings-model-list {
+        position: fixed;
+        z-index: 201;
+        top: 7vh;
+        left: 50%;
+        transform: translateX(-50%);
+        width: min(780px, calc(100vw - 40px));
+        max-height: 86vh;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 16px;
+        border: 1px solid var(--Border);
+        border-radius: 8px;
+        background: var(--BgElevated);
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
+    }
+
+    .settings-model-details__scrim {
+        position: fixed;
+        inset: 0;
+        z-index: 220;
+        background: rgba(0, 0, 0, 0.55);
+    }
+
+    .settings-model-details {
+        position: fixed;
+        z-index: 221;
+        top: 5vh;
+        left: 50%;
+        transform: translateX(-50%);
+        width: min(1040px, calc(100vw - 40px));
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 16px;
+        border: 1px solid var(--Border);
+        border-radius: 8px;
+        background: var(--BgElevated);
+        box-shadow: 0 28px 80px rgba(0, 0, 0, 0.55);
+    }
+
+    .settings-model-dialog__header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--Border);
+    }
+
+    .settings-model-dialog__header h4 {
+        margin: 0 0 4px;
+        color: var(--Text);
+        font-size: 15px;
+    }
+
+    .settings-model-dialog__header p,
+    .settings-model-dialog__hint {
+        margin: 0;
+        color: var(--TextMuted);
+        font-size: 12px;
+    }
+
+    .settings-model-dialog__body {
+        min-height: 0;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding-right: 4px;
+    }
+
+    .settings-model-summary {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        border: 1px solid var(--Border);
+        border-radius: 8px;
+        background: var(--BgBase);
+    }
+
+    .settings-model-summary__main {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .settings-model-summary__main strong {
+        color: var(--Text);
+        font-size: 13px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .settings-model-summary__main span {
+        color: var(--TextMuted);
+        font-size: 11px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .settings-model-summary__stats {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 6px;
+    }
+
+    .settings-model-summary__stats span {
+        padding: 3px 7px;
+        border: 1px solid var(--Border);
+        border-radius: 999px;
+        color: var(--TextMuted);
+        background: var(--BgElevated);
+        font-size: 10px;
+        white-space: nowrap;
+    }
+
+    .llm-profiles-panel .settings-btn[data-settings-action="model-nav"] {
+        background: linear-gradient(180deg, rgba(146, 100, 255, 0.96), rgba(95, 62, 205, 0.96));
+        border-color: rgba(176, 142, 255, 0.72);
+        color: #fbf8ff;
+        box-shadow: 0 0 0 1px rgba(146, 100, 255, 0.18), 0 8px 18px rgba(0, 0, 0, 0.18);
+    }
+
+    .llm-profiles-panel .settings-btn[data-settings-action="model-nav"]:hover:not(:disabled) {
+        background: linear-gradient(180deg, rgba(178, 144, 255, 1), rgba(118, 78, 230, 1));
+        border-color: rgba(204, 184, 255, 0.9);
+        color: #ffffff;
+    }
+
+    @@media (max-width: 850px) {
+        .settings-grid,
+        .settings-architecture-section__header,
+        .settings-card__header,
+        .settings-card__footer,
+        .settings-model-dialog__header,
+        .settings-model-summary {
+            grid-template-columns: 1fr;
+            flex-direction: column;
+        }
+
+        .settings-card__actions {
+            justify-content: flex-start;
+        }
+    }
+</style>
+
+@code {
+    private static readonly string[] ProviderTypeOptions =
+    {
+        "OpenAI",
+        "Anthropic",
+        "Ollama",
+        "Venice",
+        "LM Studio",
+        "vLLM",
+        "DeepSeek",
+        "HuggingFace",
+        "Custom"
+    };
+
+    private static readonly string[] TransportTypeOptions =
+    {
+        "Http",
+        "WebSocket",
+        "Grpc",
+        "Custom"
+    };
+
+    private readonly HashSet<string> _TestingProviders = new();
+    private readonly HashSet<string> _ConnectingProviders = new();
+    private readonly Dictionary<string, (string Text, bool Ok)> _ProviderMessages = new();
+    private ProviderProfile? _ModelsProvider;
+    private ModelDefinition? _DetailsModel;
+
+    private IReadOnlyList<ProviderProfile> Providers => State.AppSettings.ProviderProfiles;
+
+    private void AddProvider()
+    {
+        var provider = new ProviderProfile
+        {
+            Name = "New Provider",
+            ProviderType = "OpenAI",
+            TransportType = "Http",
+            TimeoutSeconds = 60
+        };
+
+        State.AppSettings.ProviderProfiles.Add(provider);
+        State.SaveSettings();
+        StateHasChanged();
+    }
+
+    private async Task RemoveProvider(ProviderProfile provider)
+    {
+        var confirmed = await JS.InvokeAsync<bool>("confirm",
+            $"Remove provider '{DisplayProviderName(provider)}' and its model definitions?");
+        if (!confirmed)
+        {
+            return;
+        }
+
+        State.AppSettings.ModelDefinitions.RemoveAll(model =>
+            string.Equals(model.ProviderProfileId, provider.ProviderProfileId, StringComparison.OrdinalIgnoreCase));
+        State.AppSettings.ProviderProfiles.Remove(provider);
+
+        var legacy = State.AppSettings.LLMProfiles.FirstOrDefault(profile =>
+            string.Equals(profile.ProfileId, provider.ProviderProfileId, StringComparison.OrdinalIgnoreCase));
+        if (legacy != null)
+        {
+            State.AppSettings.LLMProfiles.Remove(legacy);
+        }
+
+        State.SaveSettings();
+        StateHasChanged();
+    }
+
+    private void ShowModels(ProviderProfile provider)
+    {
+        SaveSettings();
+        _ModelsProvider = provider;
+    }
+
+    private void CloseModels()
+    {
+        SaveSettings();
+        _DetailsModel = null;
+        _ModelsProvider = null;
+    }
+
+    private void ShowModelDetails(ModelDefinition definition)
+    {
+        SaveSettings();
+        _DetailsModel = definition;
+    }
+
+    private void CloseModelDetails()
+    {
+        SaveSettings();
+        _DetailsModel = null;
+    }
+
+    private void AddModelDefinition(ProviderProfile provider)
+    {
+        var definition = new ModelDefinition
+        {
+            ProviderProfileId = provider.ProviderProfileId,
+            ModelId = "new-model",
+            DisplayName = "New Model",
+            ModelType = provider.ProviderType,
+            ContextWindow = 8192,
+            MaxOutputTokens = 1024
+        };
+
+        State.AppSettings.ModelDefinitions.Add(definition);
+        State.SaveSettings();
+        StateHasChanged();
+    }
+
+    private async Task RemoveModelDefinition(ModelDefinition definition)
+    {
+        var confirmed = await JS.InvokeAsync<bool>("confirm",
+            $"Remove model definition '{DisplayModelName(definition)}'?");
+        if (!confirmed)
+        {
+            return;
+        }
+
+        State.AppSettings.ModelDefinitions.Remove(definition);
+        State.SaveSettings();
+        StateHasChanged();
+    }
+
+    private async Task AttachModel(ModelDefinition definition)
+    {
+        SaveSettings();
+        await State.AttachModelToActiveSessionAsync(definition.ModelId);
+    }
+
+    private async Task TestProvider(ProviderProfile provider)
+    {
+        _TestingProviders.Add(provider.ProviderProfileId);
+        _ProviderMessages.Remove(provider.ProviderProfileId);
+        SaveSettings();
+        StateHasChanged();
+
+        var legacy = GetLegacyProfile(provider);
+        if (legacy == null)
+        {
+            _ProviderMessages[provider.ProviderProfileId] = ("Provider compatibility profile was not created.", false);
+        }
+        else
+        {
+            var (ok, message) = await State.TestEndpointAsync(legacy);
+            _ProviderMessages[provider.ProviderProfileId] = (message, ok);
+        }
+
+        _TestingProviders.Remove(provider.ProviderProfileId);
+        StateHasChanged();
+    }
+
+    private async Task ConnectProvider(ProviderProfile provider)
+    {
+        _ConnectingProviders.Add(provider.ProviderProfileId);
+        _ProviderMessages.Remove(provider.ProviderProfileId);
+        SaveSettings();
+        StateHasChanged();
+
+        var legacy = GetLegacyProfile(provider);
+        if (legacy == null)
+        {
+            _ProviderMessages[provider.ProviderProfileId] = ("Provider compatibility profile was not created.", false);
+        }
+        else
+        {
+            await State.ConnectProfileAsync(legacy);
+
+            var ok = State.IsConnected;
+            var message = ok
+                ? $"Connected - {legacy.Models.Count} model(s) available."
+                : State.ConnectionDetails;
+            _ProviderMessages[provider.ProviderProfileId] = (message, ok);
+        }
+
+        _ConnectingProviders.Remove(provider.ProviderProfileId);
+        StateHasChanged();
+    }
+
+    private void SaveSettings()
+    {
+        NormalizeProviderProfiles();
+        NormalizeModelDefinitions();
+        State.SaveSettings();
+        StateHasChanged();
+    }
+
+    private void NormalizeProviderProfiles()
+    {
+        foreach (var provider in State.AppSettings.ProviderProfiles)
+        {
+            if (string.IsNullOrWhiteSpace(provider.ProviderProfileId))
+            {
+                provider.ProviderProfileId = Guid.NewGuid().ToString();
+            }
+
+            provider.Name = string.IsNullOrWhiteSpace(provider.Name)
+                ? "Provider"
+                : provider.Name.Trim();
+            provider.ProviderType = string.IsNullOrWhiteSpace(provider.ProviderType)
+                ? "Custom"
+                : provider.ProviderType.Trim();
+            provider.TransportType = string.IsNullOrWhiteSpace(provider.TransportType)
+                ? "Http"
+                : provider.TransportType.Trim();
+            provider.TimeoutSeconds = Math.Max(1, provider.TimeoutSeconds);
+            provider.RetryCount = Math.Max(0, provider.RetryCount);
+        }
+    }
+
+    private void NormalizeModelDefinitions()
+    {
+        foreach (var definition in State.AppSettings.ModelDefinitions)
+        {
+            definition.ProviderProfileId = string.IsNullOrWhiteSpace(definition.ProviderProfileId)
+                ? Providers.FirstOrDefault()?.ProviderProfileId ?? string.Empty
+                : definition.ProviderProfileId;
+            definition.ModelId = string.IsNullOrWhiteSpace(definition.ModelId)
+                ? "model"
+                : definition.ModelId.Trim();
+            definition.DisplayName = string.IsNullOrWhiteSpace(definition.DisplayName)
+                ? definition.ModelId
+                : definition.DisplayName.Trim();
+            definition.ModelType = string.IsNullOrWhiteSpace(definition.ModelType)
+                ? ProviderType(definition.ProviderProfileId)
+                : definition.ModelType.Trim();
+            definition.ContextWindow = Math.Max(1, definition.ContextWindow);
+            definition.MaxOutputTokens = Math.Max(1, definition.MaxOutputTokens);
+            definition.MaxInputCharacters = Math.Max(0, definition.MaxInputCharacters);
+        }
+    }
+
+    private IEnumerable<ModelDefinition> ModelsForProvider(ProviderProfile provider)
+    {
+        return State.AppSettings.ModelDefinitions
+            .Where(model => string.Equals(model.ProviderProfileId, provider.ProviderProfileId, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(DisplayModelName);
+    }
+
+    private LLMProfile? GetLegacyProfile(ProviderProfile provider)
+    {
+        return State.AppSettings.LLMProfiles.FirstOrDefault(profile =>
+            string.Equals(profile.ProfileId, provider.ProviderProfileId, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private string ProviderType(string providerProfileId)
+    {
+        var provider = Providers.FirstOrDefault(entry =>
+            string.Equals(entry.ProviderProfileId, providerProfileId, StringComparison.OrdinalIgnoreCase));
+        return provider?.ProviderType ?? "Custom";
+    }
+
+    private static string DisplayProviderName(ProviderProfile provider)
+    {
+        return string.IsNullOrWhiteSpace(provider.Name)
+            ? provider.ProviderType
+            : provider.Name;
+    }
+
+    private static string DisplayModelName(ModelDefinition definition)
+    {
+        return string.IsNullOrWhiteSpace(definition.DisplayName)
+            ? definition.ModelId
+            : definition.DisplayName;
+    }
+}

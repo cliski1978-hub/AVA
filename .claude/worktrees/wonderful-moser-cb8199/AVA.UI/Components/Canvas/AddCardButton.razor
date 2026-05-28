@@ -1,0 +1,105 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   AddCardButton.razor
+   Namespace: AVA.UI.Components.Canvas
+   Purpose  : Floating button to add new cards to the canvas.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@inject AppState State
+
+<div class="add-card">
+    <button class="add-card__btn" @onclick="ToggleMenu" title="Add card">+</button>
+
+    @if (_open)
+    {
+        <div class="add-card__menu">
+            <button class="add-card__option" @onclick='() => Add("SingleModel")'>
+                <span class="add-card__dot" style="background:var(--Success)"></span>
+                Single Model
+            </button>
+            <button class="add-card__option" @onclick='() => Add("Broadcast")'>
+                <span class="add-card__dot" style="background:linear-gradient(135deg,var(--Success),var(--Purple))"></span>
+                Broadcast
+            </button>
+        </div>
+    }
+</div>
+
+<style>
+.add-card {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 200;
+}
+
+.add-card__btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--BorderMid);
+    background: var(--BgCard);
+    color: var(--Text);
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    transition: background 0.15s;
+}
+
+.add-card__btn:hover {
+    background: var(--BgSurface);
+}
+
+.add-card__menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    background: var(--BgCard);
+    border: 1px solid var(--BorderMid);
+    border-radius: 10px;
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    min-width: 148px;
+}
+
+.add-card__option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border: none;
+    background: transparent;
+    color: var(--Text);
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+    border-radius: 7px;
+    transition: background 0.1s;
+}
+
+.add-card__option:hover {
+    background: var(--BgSurface);
+}
+
+.add-card__dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+</style>
+
+@code {
+    private bool _open;
+
+    private void ToggleMenu() => _open = !_open;
+
+    private void Add(string cardType)
+    {
+        _open = false;
+        State.AddCard(cardType);
+    }
+}

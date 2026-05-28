@@ -1,0 +1,252 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   DockShell.razor
+   Namespace: AVA.UI.Components.Dock
+   Purpose  : Root docking shell.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@using AVA.UI.CORE.Models.UI
+@using AVA.UI.CORE.Services
+@using AVA.UI.State
+@using AVA.UI.Components.Chat
+@using AVA.UI.Components.Memory
+@using AVA.UI.Components.Reflection
+@using AVA.UI.Components.Settings
+@using AVA.UI.Components.Shared
+@inject AppState State
+@inject DockLayoutService Dock
+@implements IDisposable
+
+<div class="dock-shell">
+
+    <NavSidebar ActiveTab="@_ActiveTab" OnTabChanged="@SetTab" />
+
+    <div class="dock-content">
+
+        @if (Dock.GetPanelsInZone(DockZoneId.Top).Any())
+        {
+            <div class="dock-zone dock-zone--top">
+                @foreach (var Panel in Dock.GetPanelsInZone(DockZoneId.Top))
+                {
+                    var P = Panel;
+                    @if (P.PanelId != AVA.UI.CORE.Models.UI.PanelId.SessionTabs)
+                    {
+                        @RenderPanel(P.PanelId)
+                    }
+                }
+            </div>
+        }
+
+        <div class="dock-mid">
+
+            @if (!Dock.Layout.LeftCollapsed)
+            {
+                <div class="dock-zone dock-zone--left"
+                     style="width: @(Dock.Layout.LeftZoneWidth)px">
+                    @foreach (var Panel in Dock.GetPanelsInZone(DockZoneId.Left))
+                    {
+                        var P = Panel;
+                        <DockPanelWrapper PanelState="@P">
+                            @RenderPanel(P.PanelId)
+                        </DockPanelWrapper>
+                    }
+                </div>
+            }
+
+            <div class="dock-zone dock-zone--center">
+                @foreach (var Panel in Dock.GetPanelsInZone(DockZoneId.Center))
+                {
+                    var P = Panel;
+
+                    @if (P.IsVisible && !P.IsCollapsed && IsPanelForActiveTab(P.PanelId))
+                    {
+                        <DockPanelWrapper PanelState="@P">
+                            @RenderPanel(P.PanelId)
+                        </DockPanelWrapper>
+                    }
+                }
+            </div>
+
+            @if (!Dock.Layout.RightCollapsed)
+            {
+                <div class="dock-zone dock-zone--right"
+                     style="width: @(Dock.Layout.RightZoneWidth)px">
+                    @foreach (var Panel in Dock.GetPanelsInZone(DockZoneId.Right))
+                    {
+                        var P = Panel;
+                        <DockPanelWrapper PanelState="@P">
+                            @RenderPanel(P.PanelId)
+                        </DockPanelWrapper>
+                    }
+                </div>
+            }
+
+        </div>
+
+        @if (Dock.GetPanelsInZone(DockZoneId.Bottom).Any())
+        {
+            <div class="dock-zone dock-zone--bottom"
+                 style="height: @(Dock.Layout.BottomCollapsed ? "32px" : $"{Dock.Layout.BottomZoneHeight}px")">
+                <button class="dock-zone__collapse-btn dock-zone__collapse-btn--horizontal"
+                        @onclick="() => Dock.SetBottomCollapsed(!Dock.Layout.BottomCollapsed)">
+                    @(Dock.Layout.BottomCollapsed ? "▲" : "▼")
+                </button>
+
+                @if (!Dock.Layout.BottomCollapsed)
+                {
+                    @foreach (var Panel in Dock.GetPanelsInZone(DockZoneId.Bottom))
+                    {
+                        var P = Panel;
+                        <DockPanelWrapper PanelState="@P">
+                            @RenderPanel(P.PanelId)
+                        </DockPanelWrapper>
+                    }
+                }
+            </div>
+        }
+
+    </div>
+
+    <StatusBar />
+
+    @foreach (var Panel in Dock.GetPanelsInZone(DockZoneId.FloatLayer))
+    {
+        var P = Panel;
+
+        @if (P.IsVisible)
+        {
+            <FloatingPanel PanelState="@P">
+                @RenderPanel(P.PanelId)
+            </FloatingPanel>
+        }
+    }
+
+</div>
+
+@code {
+    private string _ActiveTab = "Chat";
+
+    protected override void OnInitialized()
+    {
+        Dock.OnLayoutChanged += StateHasChanged;
+        State.OnChange += StateHasChanged;
+        HideSessionTabsPanel();
+
+        ActivatePanelForTab(_ActiveTab);
+    }
+
+    private void SetTab(string Tab)
+    {
+        _ActiveTab = Tab;
+        ActivatePanelForTab(Tab);
+        StateHasChanged();
+    }
+
+    private void ActivatePanelForTab(string Tab)
+    {
+        string PanelId = GetPanelIdForTab(Tab);
+
+        if (string.IsNullOrWhiteSpace(PanelId))
+        {
+            return;
+        }
+
+        foreach (var Panel in Dock.Layout.Panels.Values)
+        {
+            if (Panel.ZoneId == DockZoneId.Center)
+            {
+                Panel.IsVisible = false;
+                Panel.IsCollapsed = true;
+            }
+        }
+
+        HideChatInput();
+
+        ActivatePanel(PanelId, DockZoneId.Center);
+
+        if (Tab == "Chat")
+        {
+            ActivatePanel(AVA.UI.CORE.Models.UI.PanelId.ChatInput, DockZoneId.Bottom);
+            Dock.Layout.BottomCollapsed = false;
+        }
+
+        if (Tab == "Canvas")
+        {
+            Dock.Layout.BottomCollapsed = true;
+        }
+    }
+
+    private void ActivatePanel(string PanelId, string ZoneId)
+    {
+        if (!Dock.Layout.Panels.TryGetValue(PanelId, out var Target))
+        {
+            return;
+        }
+
+        Target.ZoneId = ZoneId;
+        Target.IsVisible = true;
+        Target.IsCollapsed = false;
+        Target.IsFloating = false;
+    }
+
+    private void HideChatInput()
+    {
+        if (!Dock.Layout.Panels.TryGetValue(AVA.UI.CORE.Models.UI.PanelId.ChatInput, out var InputPanel))
+        {
+            return;
+        }
+
+        InputPanel.IsVisible = false;
+        InputPanel.IsCollapsed = true;
+    }
+
+    private void HideSessionTabsPanel()
+    {
+        if (!Dock.Layout.Panels.TryGetValue(AVA.UI.CORE.Models.UI.PanelId.SessionTabs, out var sessionTabsPanel))
+        {
+            return;
+        }
+
+        sessionTabsPanel.IsVisible = false;
+        sessionTabsPanel.IsCollapsed = true;
+    }
+
+    private string GetPanelIdForTab(string Tab) => Tab switch
+    {
+        "Chat"       => AVA.UI.CORE.Models.UI.PanelId.ChatOutput,
+        "Memory"     => AVA.UI.CORE.Models.UI.PanelId.MemoryLog,
+        "Reflection" => AVA.UI.CORE.Models.UI.PanelId.Reflection,
+        "Settings"   => AVA.UI.CORE.Models.UI.PanelId.Settings,
+        "Canvas"     => AVA.UI.CORE.Models.UI.PanelId.Canvas,
+        _            => AVA.UI.CORE.Models.UI.PanelId.ChatOutput
+    };
+
+    private bool IsPanelForActiveTab(string Id) => _ActiveTab switch
+    {
+        "Chat"       => Id == AVA.UI.CORE.Models.UI.PanelId.ChatOutput,
+        "Memory"     => Id == AVA.UI.CORE.Models.UI.PanelId.MemoryLog,
+        "Reflection" => Id == AVA.UI.CORE.Models.UI.PanelId.Reflection,
+        "Settings"   => Id == AVA.UI.CORE.Models.UI.PanelId.Settings,
+        "Canvas"     => Id == AVA.UI.CORE.Models.UI.PanelId.Canvas,
+        _            => true
+    };
+
+    private RenderFragment RenderPanel(string Id) => Id switch
+    {
+        AVA.UI.CORE.Models.UI.PanelId.ChatOutput   => @<OutputPane />,
+        AVA.UI.CORE.Models.UI.PanelId.ChatInput     => @<InputPane />,
+        AVA.UI.CORE.Models.UI.PanelId.ModelPicker   => @<ModelPickerPane />,
+        AVA.UI.CORE.Models.UI.PanelId.SessionTabs   => @<div></div>,
+        AVA.UI.CORE.Models.UI.PanelId.MemoryLog     => @<MemoryLogPane />,
+        AVA.UI.CORE.Models.UI.PanelId.Reflection    => @<ReflectionPane />,
+        AVA.UI.CORE.Models.UI.PanelId.PromptPreview => @<PromptPreviewPane />,
+        AVA.UI.CORE.Models.UI.PanelId.Settings      => @<SettingsPane />,
+        AVA.UI.CORE.Models.UI.PanelId.Canvas        => @<SessionCanvas />,
+        _                                            => @<div class="dock-unknown">Unknown panel: @Id</div>
+    };
+
+    public void Dispose()
+    {
+        Dock.OnLayoutChanged -= StateHasChanged;
+        State.OnChange -= StateHasChanged;
+    }
+}

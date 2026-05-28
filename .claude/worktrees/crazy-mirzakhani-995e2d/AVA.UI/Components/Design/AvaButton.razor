@@ -1,0 +1,94 @@
+<button type="@Type"
+        class="@CssClass"
+        disabled="@(IsDisabled || IsLoading)"
+        @onclick="HandleClick"
+        @attributes="AdditionalAttributes">
+    @if (IsLoading)
+    {
+        <span class="ava-btn__spinner" aria-hidden="true"></span>
+    }
+    <span>@ChildContent</span>
+</button>
+
+@code {
+    /// <summary>
+    /// Gets or sets the visual intent for the button.
+    /// Accepts values like <c>primary</c> or <c>ava-btn-primary</c>.
+    /// </summary>
+    [Parameter]
+    public string Intent { get; set; } = "primary";
+
+    /// <summary>
+    /// Gets or sets the size variant for the button.
+    /// Accepts values like <c>md</c> or <c>ava-btn-md</c>.
+    /// </summary>
+    [Parameter]
+    public string Size { get; set; } = "md";
+
+    /// <summary>
+    /// Gets or sets an optional state class for the button.
+    /// </summary>
+    [Parameter]
+    public string State { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets whether the button is disabled.
+    /// </summary>
+    [Parameter]
+    public bool IsDisabled { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the button is in a loading state.
+    /// </summary>
+    [Parameter]
+    public bool IsLoading { get; set; }
+
+    /// <summary>
+    /// Gets or sets the button type attribute.
+    /// </summary>
+    [Parameter]
+    public string Type { get; set; } = "button";
+
+    /// <summary>
+    /// Gets or sets the button content.
+    /// </summary>
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = default!;
+
+    /// <summary>
+    /// Gets or sets additional HTML attributes for the button.
+    /// </summary>
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    /// <summary>
+    /// Gets or sets the click callback.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnClick { get; set; }
+
+    private string CssClass =>
+        string.Join(" ",
+            "ava-btn",
+            Normalize("ava-btn", Intent, "primary"),
+            Normalize("ava-btn", Size, "md"),
+            string.IsNullOrWhiteSpace(State) ? string.Empty : State,
+            IsDisabled ? "is-disabled" : string.Empty,
+            IsLoading ? "is-loading" : string.Empty);
+
+    private async Task HandleClick()
+    {
+        if (!IsDisabled && !IsLoading)
+        {
+            await OnClick.InvokeAsync();
+        }
+    }
+
+    private static string Normalize(string prefix, string value, string fallback)
+    {
+        var resolved = string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
+        return resolved.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            ? resolved
+            : $"{prefix}-{resolved}";
+    }
+}

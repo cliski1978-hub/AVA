@@ -1,0 +1,37 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   AvaProgressBar.razor
+   Purpose: Horizontal progress fill with optional label.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+<div>
+    @if (ShowLabel)
+    {
+        <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 10px;">
+            <span style="color: var(--TextMuted);">Progress</span>
+            <span style="color: var(--Text);">@Value%</span>
+        </div>
+    }
+    <div class="ava-progress">
+        <div class="ava-progress__bar" style="width: @(Value)%;"></div>
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// Progress value (0-100).
+    /// </summary>
+    [Parameter]
+    public int Value { get; set; } = 0;
+
+    /// <summary>
+    /// Intent color (not yet fully styled, but prepared).
+    /// </summary>
+    [Parameter]
+    public string Intent { get; set; } = "primary";
+
+    /// <summary>
+    /// Whether to show percentage label.
+    /// </summary>
+    [Parameter]
+    public bool ShowLabel { get; set; } = false;
+}

@@ -1,0 +1,255 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   EditLLMProfileDialog.razor
+   Namespace: AVA.UI.Components.Settings
+   Purpose  : Modal dialog for creating/editing an LLM profile.
+              Supports any endpoint type and provider including custom.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@using AVA.UI.CORE.Models.Settings
+
+<div class="dialog-overlay">
+    <div class="dialog">
+
+        <div class="dialog__header">
+            <span class="dialog__title">Edit LLM Profile</span>
+            <button class="dialog__close" @onclick="Cancel">✕</button>
+        </div>
+
+        <div class="dialog__body">
+
+            <!-- Name -->
+            <div class="settings-field">
+                <label>Name <span class="dialog__required">*</span></label>
+                <input value="@_Draft.Name"
+                       @oninput="E => { _Draft.Name = E.Value?.ToString() ?? string.Empty; Validate(); }"
+                       placeholder="e.g. My DeepSeek Instance" />
+                @if (_ShowNameError)
+                {
+                    <span class="dialog__error">Name is required.</span>
+                }
+            </div>
+
+            <!-- Provider -->
+            <div class="settings-field">
+                <label>Provider <span class="dialog__required">*</span></label>
+                <select value="@_Draft.ModelType"
+                        @onchange="OnProviderChanged">
+                    <option value="OpenAI">OpenAI</option>
+                    <option value="Anthropic">Anthropic</option>
+                    <option value="Nomi">Nomi</option>
+                    <option value="DeepSeek">DeepSeek</option>
+                    <option value="Venice">Venice</option>
+                    <option value="HuggingFace">HuggingFace</option>
+                    <option value="Ollama">Ollama</option>
+                    <option value="vLLM">vLLM</option>
+                    <option value="LmStudio">LM Studio</option>
+                    <option value="Custom">Custom</option>
+                </select>
+            </div>
+
+            <!-- Custom Provider -->
+            @if (_Draft.ModelType == "Custom")
+            {
+                <div class="settings-field">
+                    <label>Custom Provider Name <span class="dialog__required">*</span></label>
+                    <input value="@_Draft.CustomModelType"
+                           @oninput="E => { _Draft.CustomModelType = E.Value?.ToString() ?? string.Empty; Validate(); }"
+                           placeholder="e.g. MyCustomLLM, LocalGPT, PrivateAPI" />
+                    @if (_ShowCustomProviderError)
+                    {
+                        <span class="dialog__error">Custom provider name is required.</span>
+                    }
+                </div>
+            }
+
+            <!-- Endpoint Type -->
+            <div class="settings-field">
+                <label>Endpoint Type <span class="dialog__required">*</span></label>
+                <select value="@_Draft.EndpointType"
+                        @onchange="OnEndpointTypeChanged">
+                    <option value="Http">Http</option>
+                    <option value="WebSocket">WebSocket</option>
+                    <option value="Grpc">gRPC</option>
+                    <option value="Custom">Custom</option>
+                </select>
+            </div>
+
+            <!-- Custom Endpoint Type -->
+            @if (_Draft.EndpointType == "Custom")
+            {
+                <div class="settings-field">
+                    <label>Custom Protocol / Scheme <span class="dialog__required">*</span></label>
+                    <input value="@_Draft.CustomEndpointType"
+                           @oninput="E => { _Draft.CustomEndpointType = E.Value?.ToString() ?? string.Empty; Validate(); }"
+                           placeholder="e.g. mqtt, amqp, tcp, custom-rest" />
+                    @if (_ShowCustomTypeError)
+                    {
+                        <span class="dialog__error">Custom protocol is required when type is Custom.</span>
+                    }
+                </div>
+            }
+
+            <!-- Endpoint URL -->
+            <div class="settings-field">
+                <label>Endpoint URL <span class="dialog__required">*</span></label>
+                <input value="@_Draft.Endpoint"
+                       @oninput="E => { _Draft.Endpoint = E.Value?.ToString() ?? string.Empty; Validate(); }"
+                       placeholder="e.g. http://localhost:8080/v1/chat/completions" />
+                @if (_ShowEndpointError)
+                {
+                    <span class="dialog__error">Endpoint URL is required.</span>
+                }
+            </div>
+
+            <!-- API Key -->
+            <div class="settings-field">
+                <label>API Key</label>
+                <div class="input-reveal">
+                    <input type="@(_ShowApiKey ? "text" : "password")"
+                           @bind="_Draft.ApiKey"
+                           placeholder="sk-…" />
+                    <button class="input-reveal__btn"
+                            type="button"
+                            @onclick="() => _ShowApiKey = !_ShowApiKey">
+                        @(_ShowApiKey ? "Hide" : "Show")
+                    </button>
+                </div>
+            </div>
+
+            <!-- Secret -->
+            <div class="settings-field">
+                <label>Secret</label>
+                <input type="text" @bind="_Draft.Secret"
+                       placeholder="Optional org secret or secondary token" />
+            </div>
+
+            <!-- Custom Headers -->
+            <div class="settings-field">
+                <label>
+                    Custom Headers
+                    <span class="settings-hint"> — Key=Value, one per line</span>
+                </label>
+                <textarea rows="4"
+                          @bind="_Draft.CustomHeadersAsText"
+                          placeholder="X-Custom-Header=Value&#10;Authorization=Bearer token&#10;X-Api-Version=2024-01" />
+            </div>
+
+            <!-- Temperature + Max Tokens -->
+            <div class="settings-field settings-field--row">
+                <div>
+                    <label>Temperature</label>
+                    <input type="number" step="0.05" min="0" max="2"
+                           @bind="_Draft.Temperature" />
+                </div>
+                <div>
+                    <label>Max Tokens</label>
+                    <input type="number" step="128" min="1" max="131072"
+                           @bind="_Draft.MaxTokens" />
+                </div>
+            </div>
+
+            <!-- Default -->
+            <div class="settings-field">
+                <label class="settings-row">
+                    <input type="checkbox" @bind="_Draft.IsDefault" />
+                    Set as default profile
+                </label>
+            </div>
+
+        </div>
+
+        <div class="dialog__footer">
+            @if (!string.IsNullOrWhiteSpace(_ValidationSummary))
+            {
+                <span class="dialog__error dialog__error--footer">@_ValidationSummary</span>
+            }
+            <button class="settings-btn" @onclick="Cancel">Cancel</button>
+            <button class="settings-btn settings-btn--primary"
+                    @onclick="Save"
+                    disabled="@(!_IsValid)">
+                Save
+            </button>
+        </div>
+
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public LLMProfile Profile { get; set; } = default!;
+    [Parameter] public EventCallback<LLMProfile> OnSave { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private LLMProfile _Draft = new();
+    private bool _IsValid = false;
+    private bool _ShowApiKey = false;
+    private bool _ShowNameError = false;
+    private bool _ShowEndpointError = false;
+    private bool _ShowCustomTypeError = false;
+    private bool _ShowCustomProviderError = false;
+    private string _ValidationSummary = string.Empty;
+
+    protected override void OnParametersSet()
+    {
+        _Draft = new LLMProfile
+            {
+                ProfileId = Profile.ProfileId,
+                Name = Profile.Name,
+                ModelType = string.IsNullOrWhiteSpace(Profile.ModelType) ? "OpenAI" : Profile.ModelType,
+                CustomModelType = Profile.CustomModelType,
+                EndpointType = string.IsNullOrWhiteSpace(Profile.EndpointType) ? "Http" : Profile.EndpointType,
+                CustomEndpointType = Profile.CustomEndpointType,
+                Endpoint = Profile.Endpoint,
+                ApiKey = Profile.ApiKey,
+                Secret = Profile.Secret,
+                CustomHeadersAsText = Profile.CustomHeadersAsText,
+                Temperature = Profile.Temperature,
+                MaxTokens = Profile.MaxTokens,
+                IsActive = Profile.IsActive,
+                IsDefault = Profile.IsDefault
+            };
+
+        Validate();
+    }
+
+    private void OnProviderChanged(ChangeEventArgs E)
+    {
+        _Draft.ModelType = E.Value?.ToString() ?? "OpenAI";
+        Validate();
+    }
+
+    private void OnEndpointTypeChanged(ChangeEventArgs E)
+    {
+        _Draft.EndpointType = E.Value?.ToString() ?? "Http";
+        Validate();
+    }
+
+    private void Validate()
+    {
+        _ShowNameError = string.IsNullOrWhiteSpace(_Draft.Name);
+        _ShowEndpointError = string.IsNullOrWhiteSpace(_Draft.Endpoint);
+        _ShowCustomTypeError = _Draft.EndpointType == "Custom"
+                                   && string.IsNullOrWhiteSpace(_Draft.CustomEndpointType);
+        _ShowCustomProviderError = _Draft.ModelType == "Custom"
+                                   && string.IsNullOrWhiteSpace(_Draft.CustomModelType);
+
+        var Errors = new List<string>();
+        if (_ShowNameError) Errors.Add("Name");
+        if (_ShowEndpointError) Errors.Add("Endpoint URL");
+        if (_ShowCustomTypeError) Errors.Add("Custom Protocol");
+        if (_ShowCustomProviderError) Errors.Add("Custom Provider");
+
+        _IsValid = Errors.Count == 0;
+        _ValidationSummary = _IsValid
+            ? string.Empty
+            : $"Required: {string.Join(", ", Errors)}";
+    }
+
+    private async Task Save()
+    {
+        Validate();
+        if (!_IsValid) return;
+        await OnSave.InvokeAsync(_Draft);
+    }
+
+    private async Task Cancel() => await OnCancel.InvokeAsync();
+}

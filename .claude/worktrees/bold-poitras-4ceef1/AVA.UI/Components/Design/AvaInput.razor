@@ -1,0 +1,71 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   AvaInput.razor
+   Purpose: Text input with value binding, placeholder, and size variants.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+<div style="display: flex; align-items: center; gap: 4px;">
+    @if (!string.IsNullOrWhiteSpace(LeadingIcon))
+    {
+        <span style="font-size: 11px; color: var(--TextMuted);">@LeadingIcon</span>
+    }
+    <input type="@(Password ? "password" : "text")"
+           class="ava-input ava-input--@Size"
+           value="@Value"
+           @onchange="async (e) => { Value = e.Value?.ToString(); await ValueChanged.InvokeAsync(Value ?? string.Empty); }"
+           placeholder="@Placeholder"
+           disabled="@Disabled" />
+    @if (TrailingContent != null)
+    {
+        @TrailingContent
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// Input value.
+    /// </summary>
+    [Parameter]
+    public string? Value { get; set; }
+
+    /// <summary>
+    /// Callback when value changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> ValueChanged { get; set; }
+
+    /// <summary>
+    /// Placeholder text.
+    /// </summary>
+    [Parameter]
+    public string? Placeholder { get; set; }
+
+    /// <summary>
+    /// Size: sm, md, lg
+    /// </summary>
+    [Parameter]
+    public string Size { get; set; } = "md";
+
+    /// <summary>
+    /// Whether the input is disabled.
+    /// </summary>
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    /// <summary>
+    /// Whether to render as a password field.
+    /// </summary>
+    [Parameter]
+    public bool Password { get; set; }
+
+    /// <summary>
+    /// Optional leading icon/emoji.
+    /// </summary>
+    [Parameter]
+    public string? LeadingIcon { get; set; }
+
+    /// <summary>
+    /// Optional trailing content (e.g., reveal toggle for password).
+    /// </summary>
+    [Parameter]
+    public RenderFragment? TrailingContent { get; set; }
+}

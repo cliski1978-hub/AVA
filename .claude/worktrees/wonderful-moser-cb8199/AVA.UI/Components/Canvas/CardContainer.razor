@@ -1,0 +1,105 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   CardContainer.razor
+   Namespace: AVA.UI.Components.Canvas
+   Purpose  : Absolutely-positioned wrapper for all card types.
+              Delegates drag-start up to the canvas via callback.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@using AVA.UI.CORE.Models.UI
+
+<div class="card @Card.CardType.ToLower() @(_dragging ? "dragging" : "")"
+     style="left:@(Card.X.ToString("F0"))px;
+            top:@(Card.Y.ToString("F0"))px;
+            width:@(Card.Width.ToString("F0"))px;
+            z-index:@Card.ZIndex;"
+     @onmousedown="OnMouseDown">
+
+    @if (Card.CardType == "SingleModel")
+    {
+        <SingleModelCard Card="Card" />
+    }
+    else if (Card.CardType == "Broadcast")
+    {
+        <BroadcastCard Card="Card" />
+    }
+    else
+    {
+        <div class="card-unknown">Unknown card type: @Card.CardType</div>
+    }
+
+</div>
+
+<style>
+.card {
+    position: absolute;
+    min-height: 280px;
+    max-height: 600px;
+    background: var(--BgCard);
+    border: 1px solid var(--Border);
+    border-radius: var(--RxLg, 12px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: box-shadow 0.15s;
+    cursor: grab;
+}
+
+.card:hover {
+    border-color: var(--BorderMid);
+}
+
+.card.dragging {
+    box-shadow: 0 16px 48px rgba(0,0,0,0.7), 0 4px 16px rgba(0,200,255,0.1);
+    cursor: grabbing;
+    user-select: none;
+}
+
+.card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    border-radius: var(--RxLg, 12px) var(--RxLg, 12px) 0 0;
+}
+
+.card.singlemodel::before {
+    background: var(--Success);
+}
+
+.card.broadcast::before {
+    background: linear-gradient(90deg, var(--Success), var(--Orange, #f97316), var(--Purple, #a855f7), var(--Pink, #ec4899));
+}
+
+.card-unknown {
+    padding: 16px;
+    color: var(--TextMuted);
+    font-size: 13px;
+}
+</style>
+
+@code {
+    [Parameter, EditorRequired]
+    public CardState Card { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<(CardState Card, double OffsetX, double OffsetY)> OnDragStart { get; set; }
+
+    private bool _dragging;
+
+    private async Task OnMouseDown(MouseEventArgs e)
+    {
+        _dragging = true;
+        var offsetX = e.ClientX - Card.X;
+        var offsetY = e.ClientY - Card.Y;
+        await OnDragStart.InvokeAsync((Card, offsetX, offsetY));
+    }
+
+    internal void SetDragging(bool dragging)
+    {
+        _dragging = dragging;
+        StateHasChanged();
+    }
+}

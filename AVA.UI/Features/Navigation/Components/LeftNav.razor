@@ -1,0 +1,313 @@
+@inject AppState AppState
+@inject AvaSettingsService SettingsService
+@inject LeftNavVM VM
+@implements IDisposable
+@using AVA.UI.Features.Navigation.ViewModels
+
+<nav class="left-nav @(VM.IsCollapsed ? "collapsed" : string.Empty)">
+    <UserHero IsCollapsed="VM.IsCollapsed" />
+
+    <div class="section-header">
+        <span class="section-label">Vaults</span>
+
+        <button class="section-btn"
+                title="New Vault"
+                @onclick="VM.BeginCreate">
+            +
+        </button>
+    </div>
+
+    @if (VM.IsCreating && !VM.IsCollapsed)
+    {
+        <div class="vault-create-form">
+            <input class="vault-create-input"
+                   @bind="VM.NewVaultName"
+                   @bind:event="oninput"
+                   placeholder="Vault name…"
+                   @onkeydown="HandleCreateKeyDown" />
+
+            <div class="vault-create-modes">
+                <button class="vault-mode-btn @(VM.NewVaultStorageMode == "Database" ? "vault-mode-btn--active" : "")"
+                        title="Store in database"
+                        @onclick='() => VM.SetStorageMode("Database")'>
+                    DB
+                </button>
+                <button class="vault-mode-btn @(VM.NewVaultStorageMode == "File" ? "vault-mode-btn--active" : "")"
+                        title="Store in file"
+                        @onclick='() => VM.SetStorageMode("File")'>
+                    FILE
+                </button>
+            </div>
+
+            <div class="vault-create-actions">
+                <button class="vault-create-btn vault-create-btn--cancel"
+                        @onclick="VM.CancelCreate">
+                    Cancel
+                </button>
+                <button class="vault-create-btn vault-create-btn--confirm"
+                        @onclick="ConfirmCreate">
+                    Create
+                </button>
+            </div>
+        </div>
+    }
+
+    <div class="vault-list">
+        @foreach (var vault in AppState.Vaults)
+        {
+            <VaultNode @key="vault.VaultId"
+                       Vault="vault"
+                       IsCollapsed="VM.IsCollapsed"
+                       OnVaultChanged="HandleVaultChanged" />
+        }
+    </div>
+
+    <ConnectionStrip IsCollapsed="VM.IsCollapsed" />
+    <QuickActions IsCollapsed="VM.IsCollapsed" />
+
+    <button class="collapse-btn" @onclick="ToggleCollapse">
+        @(VM.IsCollapsed ? ">" : "<")
+    </button>
+</nav>
+
+<style>
+    .left-nav {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        background: var(--BgSurface);
+        border-right: 1px solid var(--Border);
+        overflow: hidden;
+        position: relative;
+    }
+
+        .left-nav::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--Accent), transparent);
+            opacity: 0.3;
+        }
+
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: var(--RxLg);
+        padding: var(--FzSm) var(--Fz2Xl) var(--RxSm);
+        flex-shrink: 0;
+    }
+
+    .section-label {
+        font-size: var(--FzXs);
+        font-weight: 600;
+        color: var(--TextFaint);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        flex: 1;
+        transition: opacity var(--T);
+    }
+
+    .left-nav.collapsed .section-label {
+        opacity: 0;
+    }
+
+    /* ── Vault creation form ──────────────────────────────────────────────── */
+    .vault-create-form {
+        display: flex;
+        flex-direction: column;
+        gap: var(--RxSm);
+        padding: var(--RxSm) var(--FzXs);
+        margin: 0 var(--FzXs) var(--RxSm);
+        background: var(--BgElevated);
+        border: 1px solid var(--BorderMid);
+        border-radius: var(--RxMd);
+    }
+
+    .vault-create-input {
+        width: 100%;
+        box-sizing: border-box;
+        height: var(--SzSm);
+        border-radius: var(--RxSm);
+        border: 1px solid var(--BorderMid);
+        background: var(--BgBase);
+        color: var(--Text);
+        font-family: var(--Font);
+        font-size: var(--FzSm);
+        padding: 0 var(--RxMd);
+        outline: none;
+    }
+
+    .vault-create-input:focus {
+        border-color: var(--Accent);
+    }
+
+    .vault-create-modes {
+        display: flex;
+        gap: var(--RxXs);
+    }
+
+    .vault-mode-btn {
+        flex: 1;
+        height: 22px;
+        border-radius: var(--RxSm);
+        border: 1px solid var(--Border);
+        background: transparent;
+        color: var(--TextMuted);
+        font-family: var(--Font);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        cursor: pointer;
+        transition: all var(--T);
+    }
+
+    .vault-mode-btn--active {
+        border-color: var(--Accent);
+        color: var(--Accent);
+        background: rgba(0, 200, 255, 0.08);
+    }
+
+    .vault-mode-btn:hover:not(.vault-mode-btn--active) {
+        border-color: var(--BorderMid);
+        color: var(--Text);
+    }
+
+    .vault-create-actions {
+        display: flex;
+        gap: var(--RxXs);
+        justify-content: flex-end;
+    }
+
+    .vault-create-btn {
+        height: 22px;
+        border-radius: var(--RxSm);
+        border: 1px solid var(--Border);
+        background: transparent;
+        font-family: var(--Font);
+        font-size: var(--FzXs);
+        padding: 0 var(--RxMd);
+        cursor: pointer;
+        transition: all var(--T);
+    }
+
+    .vault-create-btn--cancel {
+        color: var(--TextMuted);
+    }
+
+    .vault-create-btn--cancel:hover {
+        color: var(--Text);
+        border-color: var(--BorderMid);
+    }
+
+    .vault-create-btn--confirm {
+        color: var(--Accent);
+        border-color: rgba(0, 200, 255, 0.4);
+        background: rgba(0, 200, 255, 0.08);
+    }
+
+    .vault-create-btn--confirm:hover {
+        background: rgba(0, 200, 255, 0.15);
+        border-color: var(--Accent);
+    }
+
+    .section-btn {
+        min-width: var(--RxCapsule);
+        height: var(--RxCapsule);
+        border-radius: var(--RxTiny);
+        background: transparent;
+        border: 1px solid transparent;
+        color: var(--TextFaint);
+        font-size: var(--FzSm);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        padding: 0 var(--RxSm);
+        transition: all var(--T);
+    }
+
+        .section-btn:hover {
+            background: var(--BgHover);
+            border-color: var(--Border);
+            color: var(--Accent);
+        }
+
+    .vault-list {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 0 var(--FzXs) var(--FzXs);
+    }
+
+    .collapse-btn {
+        position: absolute;
+        top: 50%;
+        right: calc(var(--FzLg) * -1);
+        transform: translateY(-50%);
+        width: var(--SzXs);
+        height: var(--SzXs);
+        border-radius: var(--RxCircle);
+        background: var(--BgElevated);
+        border: 1px solid var(--BorderMid);
+        color: var(--TextMuted);
+        font-size: var(--FzSm);
+        cursor: pointer;
+        z-index: 10;
+        transition: all var(--T);
+    }
+
+        .collapse-btn:hover {
+            background: var(--BgHover);
+            border-color: var(--Accent);
+            color: var(--Accent);
+        }
+</style>
+
+@code {
+    [Parameter]
+    public EventCallback<bool> OnCollapsedChanged { get; set; }
+
+    private Action? _appStateHandler;
+    private Action? _vmHandler;
+
+    protected override void OnInitialized()
+    {
+        _appStateHandler = () => InvokeAsync(StateHasChanged);
+        _vmHandler       = () => InvokeAsync(StateHasChanged);
+        AppState.OnChange += _appStateHandler;
+        VM.OnChange       += _vmHandler;
+    }
+
+    private async Task ConfirmCreate()
+    {
+        await VM.ConfirmCreateAsync();
+    }
+
+    private async Task HandleCreateKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")  await VM.ConfirmCreateAsync();
+        if (e.Key == "Escape") VM.CancelCreate();
+    }
+
+    private async Task HandleVaultChanged()
+    {
+        await SettingsService.SaveAsync();
+        AppState.NotifyStateChanged();
+    }
+
+    private async Task ToggleCollapse()
+    {
+        VM.ToggleCollapse();
+        await OnCollapsedChanged.InvokeAsync(VM.IsCollapsed);
+    }
+
+    public void Dispose()
+    {
+        AppState.OnChange -= _appStateHandler;
+        VM.OnChange       -= _vmHandler;
+    }
+}

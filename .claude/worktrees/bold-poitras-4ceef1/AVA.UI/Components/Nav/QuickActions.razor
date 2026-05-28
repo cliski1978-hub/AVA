@@ -1,0 +1,59 @@
+@inject AppState AppState
+
+<div class="quick-actions @(IsCollapsed ? "collapsed" : string.Empty)">
+    <button class="quick-actions__btn @(IsSelected("Chat") ? "active" : string.Empty)" @onclick='() => SetTab("Chat")'>@(IsCollapsed ? "C" : "Chat")</button>
+    <button class="quick-actions__btn @(IsSelected("Memory") ? "active" : string.Empty)" @onclick='() => SetTab("Memory")'>@(IsCollapsed ? "M" : "Memory")</button>
+    <button class="quick-actions__btn @(IsSelected("Reflection") ? "active" : string.Empty)" @onclick='() => SetTab("Reflection")'>@(IsCollapsed ? "R" : "Reflection")</button>
+    <button class="quick-actions__btn @(IsSelected("Settings") ? "active" : string.Empty)" @onclick='() => SetTab("Settings")'>@(IsCollapsed ? "S" : "Settings")</button>
+    <button class="quick-actions__btn @(IsSelected("Canvas") ? "active" : string.Empty)" @onclick='() => SetTab("Canvas")'>@(IsCollapsed ? "Cv" : "Canvas")</button>
+</div>
+
+<style>
+    .quick-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--RxSm);
+        padding: 0 var(--FzXs) var(--FzXs);
+        flex-shrink: 0;
+    }
+
+    .quick-actions.collapsed {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .quick-actions__btn {
+        height: var(--SzSm);
+        border-radius: var(--RxSm);
+        border: 1px solid var(--Border);
+        background: var(--BgElevated);
+        color: var(--TextMuted);
+        font-family: var(--Font);
+        font-size: var(--FzXs);
+        cursor: pointer;
+        transition: all var(--T);
+        padding: 0 var(--RxMd);
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .quick-actions__btn:hover,
+    .quick-actions__btn.active {
+        background: var(--BgHover);
+        border-color: var(--AccentLine);
+        color: var(--Accent);
+    }
+</style>
+
+@code {
+    [Parameter]
+    public bool IsCollapsed { get; set; }
+
+    private void SetTab(string tab)
+    {
+        AppState.SetSelectedNavigationItem(tab);
+    }
+
+    private bool IsSelected(string tab) => AppState.SelectedNavigationItem == tab;
+}

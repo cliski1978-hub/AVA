@@ -1,0 +1,658 @@
+@* Broadcast card that fans prompts to multiple models and renders their shared conversations. *@
+
+@using AVA.UI.CORE.Models.UI
+@inject AppState State
+@implements IDisposable
+
+<div class="card-header">
+    <div class="card-model-dot bc-dot"></div>
+    <div class="card-header-info" @onmousedown:stopPropagation="true">
+        <button class="card-model-picker-btn" @onclick="() => _showModelPicker = !_showModelPicker">
+            <span class="card-title">Broadcast</span>
+            <span class="card-picker-chevron">@(_showModelPicker ? "^" : "v")</span>
+        </button>
+        <div class="card-subtitle">@Card.ModelProfileIds.Count model@(Card.ModelProfileIds.Count == 1 ? "" : "s") selected</div>
+    </div>
+    <div class="bc-layout-picker" @onmousedown:stopPropagation="true">
+        @foreach (var layout in _layouts)
+        {
+            <button class="@LayoutBtnClass(layout.Key)"
+                    title="@(layout.Key)"
+                    @onclick="() => SetLayout(layout.Key)">@(layout.Icon)</button>
+        }
+    </div>
+    <div class="card-header-actions" @onmousedown:stopPropagation="true">
+        <button class="card-hdr-btn" title="Minimise" @onclick="ToggleMinimise">-</button>
+        <button class="card-hdr-btn card-hdr-btn--close" title="Close" @onclick="Close">x</button>
+    </div>
+</div>
+
+@if (_showModelPicker)
+{
+    <div class="model-picker-dropdown" @onmousedown:stopPropagation="true">
+        @foreach (var entry in State.Sessions.AvailableModels)
+        {
+            var model = entry.Model;
+            var profile = entry.Profile;
+            var isOn = Card.ModelProfileIds.Contains(model.Id);
+            <button class="model-picker-item @(isOn ? "selected" : "")"
+                    @onclick="() => ToggleModel(model.Id)">
+                <span class="model-picker-dot" style="background:var(--Success)"></span>
+                <span class="model-picker-label">@model.Label</span>
+                <span class="model-picker-profile">@profile.Name</span>
+                <span class="model-picker-check">@(isOn ? "OK" : "")</span>
+            </button>
+        }
+        @if (!State.Sessions.AvailableModels.Any())
+        {
+            <div class="model-picker-empty">No models connected - go to Settings</div>
+        }
+    </div>
+}
+
+<div class="card-body" @onmousedown:stopPropagation="true">
+    @if (ResolvedLayout == "Stacked")
+    {
+        @foreach (var msg in Responses)
+        {
+            <MessageBubble Message="msg" />
+        }
+    }
+    else if (ResolvedLayout == "Split")
+    {
+        <div class="bc-split">
+            @foreach (var modelId in SelectedModelIds)
+            {
+                var id = modelId;
+                var label = ResolveModelLabel(id);
+                <div class="bc-split-col">
+                    <div class="bc-split-label">@label</div>
+                    @foreach (var msg in Responses.Where(r => r.ModelId == id))
+                    {
+                        <MessageBubble Message="msg" />
+                    }
+                </div>
+            }
+        </div>
+    }
+    else if (ResolvedLayout == "Tabbed")
+    {
+        var models = SelectedModelIds.ToList();
+        <div class="bc-tabs">
+            @foreach (var modelId in models)
+            {
+                var id = modelId;
+                var label = ResolveModelLabel(id);
+                <button class="bc-tab @(_activeTab == id ? "bc-tab--active" : "")"
+                        @onclick="() => _activeTab = id">@label</button>
+            }
+        </div>
+        <div class="bc-tab-content">
+            @foreach (var msg in Responses.Where(r => r.ModelId == _activeTab))
+            {
+                <MessageBubble Message="msg" />
+            }
+        </div>
+    }
+    else if (ResolvedLayout == "Collapsed")
+    {
+        @foreach (var modelId in SelectedModelIds)
+        {
+            var id = modelId;
+            var label = ResolveModelLabel(id);
+            var expanded = _expandedIds.Contains(id);
+            <div class="bc-collapsed-row">
+                <button class="bc-collapsed-hdr" @onclick="() => ToggleExpand(id)">
+                    <span>@label</span>
+                    <span>@(expanded ? "^" : "v")</span>
+                </button>
+                @if (expanded)
+                {
+                    @foreach (var msg in Responses.Where(r => r.ModelId == id))
+                    {
+                        <MessageBubble Message="msg" />
+                    }
+                }
+            </div>
+        }
+    }
+
+    @if (_sending)
+    {
+        <div class="bc-sending-float" aria-live="polite" aria-label="Waiting for responses">
+            <span></span><span></span><span></span>
+        </div>
+        <div class="bc-sending">Broadcasting to @Card.ModelProfileIds.Count model@(Card.ModelProfileIds.Count == 1 ? "" : "s")...</div>
+    }
+</div>
+
+@if (!Card.IsMinimised)
+{
+    <div class="card-input-area" @onmousedown:stopPropagation="true">
+        <textarea class="card-textarea"
+                  placeholder="Broadcast to all..."
+                  @bind="_input"
+                  @bind:event="oninput"
+                  @onkeydown="HandleKeydown"></textarea>
+        <button class="card-send-btn" @onclick="SendBroadcast" disabled="@_sending">^</button>
+    </div>
+}
+
+<style>
+.bc-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--Success);
+    flex-shrink: 0;
+}
+
+.bc-layout-picker {
+    display: flex;
+    gap: 2px;
+    margin-right: 4px;
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--Border);
+    cursor: grab;
+    user-select: none;
+    flex-shrink: 0;
+}
+
+.card-header-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.card-model-picker-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    max-width: 100%;
+}
+
+.card-picker-chevron {
+    font-size: 9px;
+    color: var(--TextMuted);
+    flex-shrink: 0;
+}
+
+.card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--Text);
+}
+
+.card-subtitle {
+    font-size: 11px;
+    color: var(--TextMuted);
+}
+
+.model-picker-dropdown {
+    background: var(--BgElevated);
+    border-bottom: 1px solid var(--Border);
+    display: flex;
+    flex-direction: column;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.model-picker-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border: none;
+    background: transparent;
+    color: var(--Text);
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.1s;
+    width: 100%;
+}
+
+.model-picker-item:hover {
+    background: var(--BgHover);
+}
+
+.model-picker-item.selected {
+    background: var(--BgActive);
+}
+
+.model-picker-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.model-picker-label {
+    flex: 1;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.model-picker-profile {
+    font-size: 11px;
+    color: var(--TextMuted);
+    white-space: nowrap;
+}
+
+.model-picker-check {
+    color: var(--Success);
+    font-size: 11px;
+    width: 18px;
+    flex-shrink: 0;
+}
+
+.model-picker-empty {
+    padding: 12px;
+    font-size: 12px;
+    color: var(--TextMuted);
+    text-align: center;
+}
+
+.card-body {
+    background: var(--CardBg);
+    position: relative;
+}
+
+.bc-layout-btn {
+    width: 32px;
+    height: 32px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--TextMuted);
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+
+.bc-layout-btn:hover {
+    background: var(--BgSurface);
+    border-color: var(--Border);
+    color: var(--Text);
+}
+
+.bc-layout-btn--active {
+    background: var(--BgActive);
+    border-color: var(--AccentLine);
+    color: var(--Accent);
+}
+
+.bc-split {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 4px;
+}
+
+.bc-split-col {
+    flex: 1;
+    min-width: 140px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.bc-split-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--TextMuted);
+    padding: 0 4px;
+    margin-bottom: 4px;
+    text-align: center;
+}
+
+.bc-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--Border);
+    overflow-x: auto;
+}
+
+.bc-tab {
+    padding: 6px 12px;
+    border: none;
+    background: transparent;
+    color: var(--TextMuted);
+    font-size: 12px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: color 0.1s;
+}
+
+.bc-tab--active {
+    color: var(--Text);
+    border-bottom-color: var(--Success);
+}
+
+.bc-tab-content {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 0;
+}
+
+.bc-collapsed-row {
+    border-bottom: 1px solid var(--Border);
+}
+
+.bc-collapsed-hdr {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: transparent;
+    border: none;
+    color: var(--Text);
+    font-size: 13px;
+    cursor: pointer;
+    text-align: left;
+}
+
+.bc-collapsed-hdr:hover {
+    background: var(--BgSurface);
+}
+
+.bc-sending {
+    font-size: 12px;
+    color: var(--TextMuted);
+    text-align: center;
+    padding: 8px;
+    font-style: italic;
+}
+
+.bc-sending-float {
+    position: absolute;
+    right: 14px;
+    bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 8px 10px;
+    border-radius: 999px;
+    background: rgba(12, 18, 24, 0.88);
+    border: 1px solid var(--Border);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+    z-index: 2;
+    pointer-events: none;
+}
+
+.bc-sending-float span {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--Success);
+    opacity: 0.35;
+    animation: bc-pulse 1.1s infinite ease-in-out;
+}
+
+.bc-sending-float span:nth-child(2) {
+    animation-delay: 0.15s;
+}
+
+.bc-sending-float span:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+@@keyframes bc-pulse {
+    0%, 80%, 100% {
+        transform: translateY(0) scale(0.9);
+        opacity: 0.35;
+    }
+
+    40% {
+        transform: translateY(-2px) scale(1);
+        opacity: 1;
+    }
+}
+
+.card-input-area {
+    position: relative;
+    padding: 8px 10px;
+    border-top: 1px solid var(--Border);
+    flex-shrink: 0;
+}
+
+.card-textarea {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 44px 10px 12px;
+    background: var(--BgSurface, #111);
+    border: 1px solid var(--Border);
+    border-radius: 10px;
+    color: var(--Text);
+    font-size: 15px;
+    font-family: inherit;
+    resize: none;
+    outline: none;
+    line-height: 1.55;
+    min-height: 44px;
+    max-height: 120px;
+    overflow-y: auto;
+    transition: border-color 0.15s;
+}
+
+.card-textarea:focus {
+    border-color: var(--BorderMid);
+}
+
+.card-textarea::placeholder {
+    color: var(--TextMuted);
+}
+
+.card-send-btn {
+    position: absolute;
+    right: 18px;
+    bottom: 16px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: var(--Success);
+    color: #000;
+    font-size: 14px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+
+.card-send-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+</style>
+
+@code {
+    [Parameter, EditorRequired]
+    public CardState Card { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<CardState> OnActivate { get; set; }
+
+    private string _input = string.Empty;
+    private bool _sending;
+    private string? _activeTab;
+    private HashSet<string> _expandedIds = new();
+    private bool _showModelPicker;
+    private const string DefaultLayout = "Stacked";
+
+    private List<Message> Responses => State.GetBroadcastConversation(Card.ModelProfileIds);
+    private string ResolvedLayout =>
+        string.IsNullOrWhiteSpace(Card.ResponseLayout) ? DefaultLayout : Card.ResponseLayout;
+
+    private IEnumerable<string> SelectedModelIds =>
+        Card.ModelProfileIds
+            .Where(modelId => !string.IsNullOrWhiteSpace(modelId))
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+
+    protected override void OnInitialized()
+    {
+        EnsureValidLayout();
+        State.OnChange += StateHasChanged;
+        if (Card.ParticipatesInGlobal)
+            State.OnGlobalBroadcast += HandleGlobalBroadcast;
+    }
+
+    private async Task HandleGlobalBroadcast(string prompt)
+    {
+        await InvokeAsync(async () =>
+        {
+            _input = prompt;
+            await SendBroadcast();
+        });
+    }
+
+    private string LayoutBtnClass(string key) =>
+        ResolvedLayout == key ? "bc-layout-btn bc-layout-btn--active" : "bc-layout-btn";
+
+    private static readonly (string Key, string Icon)[] _layouts = new[]
+    {
+        ("Stacked", "S"),
+        ("Split", "P"),
+        ("Tabbed", "T"),
+        ("Collapsed", "C")
+    };
+
+    private async Task SendBroadcast()
+    {
+        if (string.IsNullOrWhiteSpace(_input) || _sending) return;
+        var selectedModelIds = SelectedModelIds.ToList();
+        if (selectedModelIds.Count == 0) return;
+
+        var prompt = _input.Trim();
+        var turnId = Guid.NewGuid().ToString("N");
+        _input = string.Empty;
+        _sending = true;
+        StateHasChanged();
+
+        try
+        {
+            foreach (var modelId in selectedModelIds)
+            {
+                State.AppendUserConversationMessage(
+                    modelId,
+                    prompt,
+                    State.GetModelName(modelId),
+                    turnId);
+            }
+
+            var results = await State.Sessions.BroadcastAsync(prompt, selectedModelIds);
+
+            for (var i = 0; i < results.Count; i++)
+            {
+                var modelId = i < selectedModelIds.Count ? selectedModelIds[i] : null;
+                if (string.IsNullOrWhiteSpace(modelId))
+                {
+                    continue;
+                }
+
+                var content = AppState.ExtractContent(results[i]);
+                State.AppendAssistantConversationMessage(
+                    modelId,
+                    string.IsNullOrEmpty(content) ? "(empty response)" : content,
+                    State.GetModelName(modelId),
+                    !results[i].Success,
+                    turnId);
+            }
+
+            _activeTab ??= selectedModelIds.FirstOrDefault();
+            State.SaveCanvasState();
+        }
+        catch (Exception ex)
+        {
+            foreach (var modelId in selectedModelIds)
+            {
+                State.AppendAssistantConversationMessage(
+                    modelId,
+                    ex.Message,
+                    State.GetModelName(modelId),
+                    true,
+                    turnId);
+            }
+        }
+        finally
+        {
+            _sending = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleKeydown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+            await SendBroadcast();
+    }
+
+    private void ToggleModel(string modelId)
+    {
+        if (Card.ModelProfileIds.Contains(modelId))
+            Card.ModelProfileIds.Remove(modelId);
+        else
+            Card.ModelProfileIds.Add(modelId);
+
+        _activeTab ??= Card.ModelProfileIds.FirstOrDefault();
+        State.SaveCanvasState();
+    }
+
+    private void SetLayout(string layout)
+    {
+        Card.ResponseLayout = layout;
+        State.SaveCanvasState();
+        StateHasChanged();
+    }
+
+    private void ToggleExpand(string id)
+    {
+        if (!_expandedIds.Remove(id))
+            _expandedIds.Add(id);
+    }
+
+    private void ToggleMinimise()
+    {
+        Card.IsMinimised = !Card.IsMinimised;
+        State.NotifyStateChanged();
+    }
+
+    private void Close() => State.RemoveCard(Card.CardId);
+
+    private void EnsureValidLayout()
+    {
+        if (string.IsNullOrWhiteSpace(Card.ResponseLayout))
+        {
+            Card.ResponseLayout = DefaultLayout;
+        }
+    }
+
+    private string ResolveModelLabel(string modelId)
+    {
+        return Responses.FirstOrDefault(r => r.ModelId == modelId)?.ModelLabel
+            ?? State.GetModelName(modelId);
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= StateHasChanged;
+        State.OnGlobalBroadcast -= HandleGlobalBroadcast;
+    }
+}

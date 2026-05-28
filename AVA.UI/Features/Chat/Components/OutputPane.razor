@@ -1,0 +1,280 @@
+@* MessageBubble is in the same namespace — no explicit using needed *@
+@using AVA.UI.CORE.Models.UI
+@using AVA.UI.State
+@using AVA.UI.Features.Chat.ViewModels
+@inject AppState State
+@inject OutputPaneVM VM
+@inject IJSRuntime JS
+@implements IDisposable
+
+<div class="output-pane">
+    <div class="output-pane__toolbar">
+        <span class="output-pane__title">@VM.GetTitle()</span>
+        <button class="output-pane__clear" @onclick="VM.Clear">Clear</button>
+    </div>
+
+    <div class="output-pane__scroll" @ref="_scrollContainer" @onscroll="HandleScroll">
+        @if (!Messages.Any())
+        {
+            <div class="output-pane__empty">No messages yet.</div>
+        }
+        else
+        {
+            <div class="output-pane__messages">
+                @foreach (var message in Messages)
+                {
+                    <MessageBubble Message="message" />
+                }
+            </div>
+        }
+
+        @if (VM.IsWaiting)
+        {
+            <div class="output-pane__typing" aria-live="polite" aria-label="Waiting for response">
+                <span></span><span></span><span></span>
+            </div>
+        }
+
+        <div @ref="_bottomSentinel" style="height:0;overflow:hidden;"></div>
+    </div>
+
+    @if (!_isAtBottom)
+    {
+        <button class="output-pane__down-btn"
+                title="Scroll to bottom"
+                @onclick="ScrollToBottomAsync">
+            @if (_unreadCount > 0)
+            {
+                <span class="output-pane__down-badge">@(_unreadCount > 99 ? "99+" : _unreadCount.ToString())</span>
+            }
+            <span>↓</span>
+        </button>
+    }
+</div>
+
+<style>
+.output-pane {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    position: relative;
+}
+
+.output-pane__toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px 10px;
+    border-bottom: 1px solid var(--Border);
+}
+
+.output-pane__title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--Text);
+}
+
+.output-pane__clear {
+    border: 1px solid var(--Border);
+    background: var(--BgElevated);
+    color: var(--TextMuted);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.output-pane__scroll {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 12px 10px 48px;
+}
+
+.output-pane__messages {
+    display: flex;
+    flex-direction: column;
+}
+
+.output-pane__empty {
+    display: grid;
+    place-items: center;
+    min-height: 100%;
+    color: var(--TextMuted);
+    font-size: 12px;
+}
+
+.output-pane__typing {
+    position: sticky;
+    margin-left: auto;
+    right: 14px;
+    bottom: 14px;
+    width: fit-content;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 8px 10px;
+    border-radius: 999px;
+    background: rgba(12, 18, 24, 0.88);
+    border: 1px solid var(--Border);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+    pointer-events: none;
+}
+
+.output-pane__typing span {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--Success);
+    opacity: 0.35;
+    animation: main-chat-pulse 1.1s infinite ease-in-out;
+}
+
+.output-pane__typing span:nth-child(2) { animation-delay: 0.15s; }
+.output-pane__typing span:nth-child(3) { animation-delay: 0.3s; }
+
+@@keyframes main-chat-pulse {
+    0%, 80%, 100% {
+        transform: translateY(0) scale(0.9);
+        opacity: 0.35;
+    }
+
+    40% {
+        transform: translateY(-2px) scale(1);
+        opacity: 1;
+    }
+}
+
+.output-pane__down-btn {
+    position: absolute;
+    bottom: 20px;
+    right: 16px;
+    width: 36px;
+    min-height: 36px;
+    border-radius: 999px;
+    border: 1px solid var(--BorderMid);
+    background: rgba(12, 18, 24, 0.92);
+    color: var(--TextMuted);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    padding: 4px;
+    font-size: 14px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.36);
+    transition: border-color var(--T), color var(--T);
+    z-index: 3;
+}
+
+.output-pane__down-btn:hover {
+    border-color: #4caf50;
+    color: #4caf50;
+}
+
+.output-pane__down-badge {
+    font-size: 10px;
+    font-weight: 700;
+    color: #4caf50;
+    font-family: var(--FontMono);
+    line-height: 1;
+}
+</style>
+
+@code {
+    private const int ScrollThreshold = 75;
+
+    private ElementReference _scrollContainer;
+    private ElementReference _bottomSentinel;
+    private int     _lastCount;
+    private string? _lastSessionId;
+    private bool    _isAtBottom  = true;
+    private int     _unreadCount = 0;
+    private Action? _vmHandler;
+
+    private IReadOnlyList<Message> Messages => VM.GetMessages();
+
+    protected override void OnInitialized()
+    {
+        _vmHandler = () => InvokeAsync(StateHasChanged);
+        VM.OnChange += _vmHandler;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        var count     = Messages.Count;
+        var sessionId = VM.GetActiveSessionId();
+
+        if (firstRender)
+        {
+            _lastSessionId = sessionId;
+            _lastCount     = count;
+            await ScrollInstantAsync();
+            return;
+        }
+
+        if (sessionId != _lastSessionId)
+        {
+            // Session switched — reset badge, snap to bottom.
+            _lastSessionId = sessionId;
+            _lastCount     = count;
+            _unreadCount   = 0;
+            _isAtBottom    = true;
+            await ScrollInstantAsync();
+            return;
+        }
+
+        if (count == _lastCount) return;
+
+        var added  = count - _lastCount;
+        _lastCount = count;
+
+        if (_isAtBottom)
+        {
+            // Bulk insert (history load) — snap; single new message — smooth.
+            if (added > 1) await ScrollInstantAsync();
+            else           await ScrollSmoothAsync();
+        }
+        else if (added > 0)
+        {
+            // User scrolled up — accumulate badge count and show button.
+            _unreadCount += added;
+            StateHasChanged();
+        }
+    }
+
+    // Fires on every scroll — updates at-bottom state and shows/hides button.
+    private async Task HandleScroll()
+    {
+        var atBottom = await JS.InvokeAsync<bool>("avaIsAtBottom", _scrollContainer, ScrollThreshold);
+        if (atBottom == _isAtBottom) return;
+
+        _isAtBottom = atBottom;
+        if (atBottom) _unreadCount = 0;
+        StateHasChanged();
+    }
+
+    // Down arrow button click — smooth scroll, clear badge.
+    private async Task ScrollToBottomAsync()
+    {
+        _isAtBottom  = true;
+        _unreadCount = 0;
+        await ScrollSmoothAsync();
+        StateHasChanged();
+    }
+
+    private Task ScrollInstantAsync()
+        => JS.InvokeVoidAsync("avaScrollSentinelIntoView", _bottomSentinel, false).AsTask();
+
+    private Task ScrollSmoothAsync()
+        => JS.InvokeVoidAsync("avaScrollSentinelIntoView", _bottomSentinel, true).AsTask();
+
+    public void Dispose()
+    {
+        VM.OnChange -= _vmHandler;
+    }
+}

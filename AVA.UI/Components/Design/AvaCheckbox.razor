@@ -1,0 +1,97 @@
+<label class="@CssClass">
+    <input class="ava-hidden-input"
+           type="checkbox"
+           checked="@Checked"
+           disabled="@IsDisabled"
+           @onchange="HandleChange"
+           @attributes="AdditionalAttributes" />
+    <span class="ava-checkbox__box">
+        @if (Checked)
+        {
+            <span class="ava-checkbox__mark">&#10003;</span>
+        }
+    </span>
+    @if (ChildContent is not null)
+    {
+        <span class="ava-checkbox__label @LabelSizeClass">@ChildContent</span>
+    }
+</label>
+
+@code {
+    /// <summary>
+    /// Gets or sets the visual intent for the checkbox.
+    /// </summary>
+    [Parameter]
+    public string Intent { get; set; } = "primary";
+
+    /// <summary>
+    /// Gets or sets the size variant for the checkbox.
+    /// </summary>
+    [Parameter]
+    public string Size { get; set; } = "md";
+
+    /// <summary>
+    /// Gets or sets an optional state class for the checkbox.
+    /// </summary>
+    [Parameter]
+    public string State { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets whether the checkbox is checked.
+    /// </summary>
+    [Parameter]
+    public bool Checked { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when the checked state changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<bool> CheckedChanged { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the checkbox is disabled.
+    /// </summary>
+    [Parameter]
+    public bool IsDisabled { get; set; }
+
+    /// <summary>
+    /// Gets or sets optional label content.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Gets or sets additional HTML attributes for the checkbox.
+    /// </summary>
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string CssClass =>
+        string.Join(" ",
+            "ava-checkbox",
+            "ava-choice",
+            Normalize("ava-checkbox", Intent, "primary"),
+            Normalize("ava-checkbox", Size, "md"),
+            Checked ? "is-checked" : string.Empty,
+            IsDisabled ? "is-disabled" : string.Empty,
+            string.IsNullOrWhiteSpace(State) ? string.Empty : State);
+
+    private string LabelSizeClass => $"ava-size-{NormalizeValue(Size, "md")}";
+
+    private async Task HandleChange(ChangeEventArgs args)
+    {
+        Checked = args.Value as bool? ?? false;
+        await CheckedChanged.InvokeAsync(Checked);
+    }
+
+    private static string Normalize(string prefix, string value, string fallback)
+    {
+        var resolved = NormalizeValue(value, fallback);
+        return resolved.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            ? resolved
+            : $"{prefix}-{resolved}";
+    }
+
+    private static string NormalizeValue(string value, string fallback)
+        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim().Replace("ava-checkbox-", string.Empty, StringComparison.OrdinalIgnoreCase);
+}

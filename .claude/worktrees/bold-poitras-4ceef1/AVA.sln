@@ -1,0 +1,54 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AVA.UI", "AVA.UI\AVA.UI.csproj", "{A1000002-0000-0000-0000-000000000002}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AVA.App.Web", "AVA.App.Web\AVA.App.Web.csproj", "{A1000004-0000-0000-0000-000000000004}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AVA.Desktop", "AVA.Desktop\AVA.Desktop.csproj", "{A5E53099-9F3E-4AF4-80BF-FD4063419690}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AVA.UI.CORE", "AVA.UI.CORE\AVA.UI.CORE.csproj", "{BAB7866A-AB3B-4962-B39D-65DB7C030FC3}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AVA.Nomi.Bridge", "AVA.Nomi.Bridge\AVA.Nomi.Bridge.csproj", "{0EDB390F-D0A5-431D-A09C-B32C86170566}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AVA.UPS.Adapter", "AVA.UPS.Adapter\AVA.UPS.Adapter.csproj", "{B96F8E4C-DCD0-4AA2-8445-8FB63B5AC1EE}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A1000002-0000-0000-0000-000000000002}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1000002-0000-0000-0000-000000000002}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1000002-0000-0000-0000-000000000002}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1000002-0000-0000-0000-000000000002}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1000004-0000-0000-0000-000000000004}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1000004-0000-0000-0000-000000000004}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1000004-0000-0000-0000-000000000004}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1000004-0000-0000-0000-000000000004}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A5E53099-9F3E-4AF4-80BF-FD4063419690}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A5E53099-9F3E-4AF4-80BF-FD4063419690}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A5E53099-9F3E-4AF4-80BF-FD4063419690}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A5E53099-9F3E-4AF4-80BF-FD4063419690}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BAB7866A-AB3B-4962-B39D-65DB7C030FC3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BAB7866A-AB3B-4962-B39D-65DB7C030FC3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BAB7866A-AB3B-4962-B39D-65DB7C030FC3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BAB7866A-AB3B-4962-B39D-65DB7C030FC3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0EDB390F-D0A5-431D-A09C-B32C86170566}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0EDB390F-D0A5-431D-A09C-B32C86170566}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0EDB390F-D0A5-431D-A09C-B32C86170566}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0EDB390F-D0A5-431D-A09C-B32C86170566}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B96F8E4C-DCD0-4AA2-8445-8FB63B5AC1EE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B96F8E4C-DCD0-4AA2-8445-8FB63B5AC1EE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B96F8E4C-DCD0-4AA2-8445-8FB63B5AC1EE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B96F8E4C-DCD0-4AA2-8445-8FB63B5AC1EE}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {45CFB490-2A90-4E38-8268-D3EFFC071A3A}
+	EndGlobalSection
+EndGlobal

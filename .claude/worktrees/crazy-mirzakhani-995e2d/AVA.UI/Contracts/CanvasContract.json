@@ -1,0 +1,362 @@
+{
+  "target": {
+    "assembly": "AVA.UI",
+    "namespace": "AVA.UI.Features.Canvas.Actions",
+    "class": "CanvasActions"
+  },
+  "version": "1.0.0",
+  "methods": [
+    {
+      "name": "CreateDocument",
+      "version": "1.0.0",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string" }
+        },
+        "required": []
+      },
+      "returns": { "type": "object", "description": "Creates a Canvas document and returns documentId." },
+      "feedback": { "onSuccess": "auto", "onFailure": "requiresApproval", "includeContractHints": true, "includeResultPayload": true }
+    },
+    {
+      "name": "OpenDocument",
+      "version": "1.0.0",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string" }
+        },
+        "required": [ "path" ]
+      },
+      "returns": { "type": "object", "description": "Opens a Canvas document from a file path and returns documentId." },
+      "feedback": { "onSuccess": "requiresApproval", "onFailure": "requiresApproval", "includeContractHints": true, "includeResultPayload": true }
+    },
+    {
+      "name": "FocusDocument",
+      "version": "1.0.0",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "documentId": { "type": "string" }
+        },
+        "required": [ "documentId" ]
+      },
+      "returns": { "type": "object", "description": "Focuses an open Canvas document." },
+      "feedback": { "onSuccess": "requiresApproval", "onFailure": "requiresApproval", "includeContractHints": true, "includeResultPayload": true }
+    },
+    {
+      "name": "ListDocuments",
+      "version": "1.0.0",
+      "parameters": { "type": "object", "properties": {}, "required": [] },
+      "returns": { "type": "object", "description": "Lists open Canvas documents and their documentId handles." },
+      "feedback": { "onSuccess": "auto", "onFailure": "auto", "includeContractHints": true, "includeResultPayload": true }
+    },
+    {
+      "name": "CloseDocument",
+      "version": "1.0.0",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "documentId": { "type": "string" }
+        },
+        "required": [ "documentId" ]
+      },
+      "returns": { "type": "object", "description": "Closes an open Canvas document." },
+      "feedback": { "onSuccess": "requiresApproval", "onFailure": "requiresApproval", "includeContractHints": true, "includeResultPayload": true }
+    },
+    {
+      "name": "SaveDocument",
+      "version": "1.0.0",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "documentId": { "type": "string" }
+        },
+        "required": [ "documentId" ]
+      },
+      "returns": { "type": "object", "description": "Saves a Canvas document." },
+      "feedback": { "onSuccess": "requiresApproval", "onFailure": "requiresApproval", "includeContractHints": true, "includeResultPayload": true }
+    },
+    {
+      "name": "SaveDocumentAs",
+      "version": "1.0.0",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "documentId": { "type": "string" },
+          "path": { "type": "string" }
+        },
+        "required": [ "documentId", "path" ]
+      },
+      "returns": { "type": "object", "description": "Saves a Canvas document to a specific file path." },
+      "feedback": { "onSuccess": "requiresApproval", "onFailure": "requiresApproval", "includeContractHints": true, "includeResultPayload": true }
+    },
+    {
+      "name": "RenameDocument",
+      "version": "1.0.0",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "documentId": { "type": "string" },
+          "title": { "type": "string" }
+        },
+        "required": [ "documentId", "title" ]
+      },
+      "returns": { "type": "object", "description": "Renames a Canvas document." },
+      "feedback": { "onSuccess": "requiresApproval", "onFailure": "requiresApproval", "includeContractHints": true, "includeResultPayload": true }
+    },
+    {
+      "name": "GetDocumentState",
+      "version": "1.0.0",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "documentId": { "type": "string" }
+        },
+        "required": [ "documentId" ]
+      },
+      "returns": { "type": "object", "description": "Gets Canvas document state." },
+      "feedback": { "onSuccess": "requiresApproval", "onFailure": "requiresApproval", "includeContractHints": true, "includeResultPayload": true }
+    },
+    {
+      "name": "GetContent",
+      "version": "1.0.0",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "documentId": { "type": "string" }
+        },
+        "required": [ "documentId" ]
+      },
+      "returns": { "type": "object", "description": "Gets Canvas document content." },
+      "feedback": { "onSuccess": "requiresApproval", "onFailure": "requiresApproval", "includeContractHints": true, "includeResultPayload": true }
+    },
+    {
+      "name": "SetContent",
+      "version": "1.0.0",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "documentId": { "type": "string" },
+          "content": { "type": "string" }
+        },
+        "required": [ "documentId", "content" ]
+      },
+      "returns": { "type": "object", "description": "Sets Canvas document content." },
+      "feedback": { "onSuccess": "requiresApproval", "onFailure": "requiresApproval", "includeContractHints": true, "includeResultPayload": true }
+    },
+    {
+      "name": "AppendContent",
+      "version": "1.0.0",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "documentId": { "type": "string" },
+          "content": { "type": "string" }
+        },
+        "required": [ "documentId", "content" ]
+      },
+      "returns": { "type": "object", "description": "Appends Canvas document content." },
+      "feedback": { "onSuccess": "requiresApproval", "onFailure": "requiresApproval", "includeContractHints": true, "includeResultPayload": true }
+    },
+    {
+      "name": "InsertContent",
+      "version": "1.0.0",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "documentId": { "type": "string" },
+          "index": { "type": "int" },
+          "content": { "type": "string" }
+        },
+        "required": [ "documentId", "index", "content" ]
+      },
+      "returns": { "type": "object", "description": "Inserts Canvas document content at an index." },
+      "feedback": { "onSuccess": "requiresApproval", "onFailure": "requiresApproval", "includeContractHints": true, "includeResultPayload": true }
+    },
+    {
+      "name": "ClearContent",
+      "version": "1.0.0",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "documentId": { "type": "string" }
+        },
+        "required": [ "documentId" ]
+      },
+      "returns": { "type": "object", "description": "Clears Canvas document content." },
+      "feedback": { "onSuccess": "requiresApproval", "onFailure": "requiresApproval", "includeContractHints": true, "includeResultPayload": true }
+    },
+    {
+      "name": "GetSelection",
+      "version": "1.0.0",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "documentId": { "type": "string" }
+        },
+        "required": [ "documentId" ]
+      },
+      "returns": { "type": "object", "description": "Gets the current Canvas document selection." },
+      "feedback": { "onSuccess": "requiresApproval", "onFailure": "requiresApproval", "includeContractHints": true, "includeResultPayload": true }
+    },
+    {
+      "name": "SetSelection",
+      "version": "1.0.0",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "documentId": { "type": "string" },
+          "startIndex": { "type": "int" },
+          "endIndex": { "type": "int" },
+          "activeBlockId": { "type": "string" },
+          "activeBlockType": { "type": "string" }
+        },
+        "required": [ "documentId", "startIndex", "endIndex" ]
+      },
+      "returns": { "type": "object", "description": "Sets the current Canvas document selection." },
+      "feedback": { "onSuccess": "requiresApproval", "onFailure": "requiresApproval", "includeContractHints": true, "includeResultPayload": true }
+    },
+    {
+      "name": "ClearSelection",
+      "version": "1.0.0",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "documentId": { "type": "string" }
+        },
+        "required": [ "documentId" ]
+      },
+      "returns": { "type": "object", "description": "Clears the current Canvas document selection." },
+      "feedback": { "onSuccess": "requiresApproval", "onFailure": "requiresApproval", "includeContractHints": true, "includeResultPayload": true }
+    },
+    {
+      "name": "GetSelectionContext",
+      "version": "1.0.0",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "documentId": { "type": "string" },
+          "beforeChars": { "type": "int" },
+          "afterChars": { "type": "int" }
+        },
+        "required": [ "documentId" ]
+      },
+      "returns": { "type": "object", "description": "Gets context around the current selection." },
+      "feedback": { "onSuccess": "requiresApproval", "onFailure": "requiresApproval", "includeContractHints": true, "includeResultPayload": true }
+    },
+    {
+      "name": "GetDocumentContext",
+      "version": "1.0.0",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "documentId": { "type": "string" },
+          "maxChars": { "type": "int" }
+        },
+        "required": [ "documentId" ]
+      },
+      "returns": { "type": "object", "description": "Gets context from a Canvas document." },
+      "feedback": { "onSuccess": "requiresApproval", "onFailure": "requiresApproval", "includeContractHints": true, "includeResultPayload": true }
+    },
+    {
+      "name": "GetBlockContext",
+      "version": "1.0.0",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "documentId": { "type": "string" },
+          "blockId": { "type": "string" }
+        },
+        "required": [ "documentId", "blockId" ]
+      },
+      "returns": { "type": "object", "description": "Gets context for a Canvas block." },
+      "feedback": { "onSuccess": "requiresApproval", "onFailure": "requiresApproval", "includeContractHints": true, "includeResultPayload": true }
+    },
+    {
+      "name": "ReplaceSelection",
+      "version": "1.0.0",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "documentId": { "type": "string" },
+          "replacement": { "type": "string" }
+        },
+        "required": [ "documentId", "replacement" ]
+      },
+      "returns": { "type": "object", "description": "Replaces the current selection." },
+      "feedback": { "onSuccess": "requiresApproval", "onFailure": "requiresApproval", "includeContractHints": true, "includeResultPayload": true }
+    },
+    {
+      "name": "InsertAtCursor",
+      "version": "1.0.0",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "documentId": { "type": "string" },
+          "content": { "type": "string" }
+        },
+        "required": [ "documentId", "content" ]
+      },
+      "returns": { "type": "object", "description": "Inserts content at the current cursor." },
+      "feedback": { "onSuccess": "requiresApproval", "onFailure": "requiresApproval", "includeContractHints": true, "includeResultPayload": true }
+    },
+    {
+      "name": "DeleteSelection",
+      "version": "1.0.0",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "documentId": { "type": "string" }
+        },
+        "required": [ "documentId" ]
+      },
+      "returns": { "type": "object", "description": "Deletes the current selection." },
+      "feedback": { "onSuccess": "requiresApproval", "onFailure": "requiresApproval", "includeContractHints": true, "includeResultPayload": true }
+    },
+    {
+      "name": "WrapSelection",
+      "version": "1.0.0",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "documentId": { "type": "string" },
+          "prefix": { "type": "string" },
+          "suffix": { "type": "string" }
+        },
+        "required": [ "documentId", "prefix", "suffix" ]
+      },
+      "returns": { "type": "object", "description": "Wraps the current selection." },
+      "feedback": { "onSuccess": "requiresApproval", "onFailure": "requiresApproval", "includeContractHints": true, "includeResultPayload": true }
+    },
+    {
+      "name": "ModifySelection",
+      "version": "1.0.0",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "documentId": { "type": "string" },
+          "instruction": { "type": "string" }
+        },
+        "required": [ "documentId", "instruction" ]
+      },
+      "returns": { "type": "object", "description": "Applies a deterministic modification to the current selection." },
+      "feedback": { "onSuccess": "requiresApproval", "onFailure": "requiresApproval", "includeContractHints": true, "includeResultPayload": true }
+    },
+    {
+      "name": "ModifyDocument",
+      "version": "1.0.0",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "documentId": { "type": "string" },
+          "instruction": { "type": "string" }
+        },
+        "required": [ "documentId", "instruction" ]
+      },
+      "returns": { "type": "object", "description": "Applies a deterministic modification to a Canvas document." },
+      "feedback": { "onSuccess": "requiresApproval", "onFailure": "requiresApproval", "includeContractHints": true, "includeResultPayload": true }
+    }
+  ]
+}

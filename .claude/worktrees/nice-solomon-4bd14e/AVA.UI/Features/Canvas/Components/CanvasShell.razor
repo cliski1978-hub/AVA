@@ -1,0 +1,1268 @@
+@using System.IO
+@using System.Text
+@using Microsoft.JSInterop
+@using AVA.UI.State
+@inject ICanvasDocumentService CanvasDocumentService
+@inject ICanvasWindowService CanvasWindowService
+@inject IAVAPluginRegistry PluginRegistry
+@inject IJSRuntime JSRuntime
+@inject AppState State
+@implements IDisposable
+@implements IAsyncDisposable
+
+<div class="canvas-page canvas-page--editor" @ref="_canvasRoot">
+    <div class="canvas-page__main">
+        <header class="canvas-rte-header">
+            <div class="canvas-rte-header__left">
+                <button type="button"
+                        class="canvas-title-button"
+                        @onclick="ToggleDocumentMenuAsync">
+                    <input class="canvas-title-input"
+                           value="@_documentTitle"
+                           placeholder="Untitled Canvas document"
+                           @oninput="HandleTitleInputChanged" />
+                    <span class="canvas-title-button__caret">⌄</span>
+                </button>
+
+                @if (_showDocumentMenu)
+                {
+                    <div class="canvas-popover canvas-popover--title">
+                        <div class="canvas-popover__section">
+                            @foreach (var document in OpenDocuments)
+                            {
+                                var isActive = string.Equals(document.Id, ActiveDocument?.Id, StringComparison.OrdinalIgnoreCase);
+                                <button type="button"
+                                        class="canvas-menu-item @(isActive ? "is-active" : string.Empty)"
+                                        @onclick="() => SetActiveDocumentFromMenuAsync(document.Id)">
+                                    <span class="canvas-menu-item__label">@document.Title</span>
+                                    <span class="canvas-menu-item__meta">@document.UpdatedAt.ToLocalTime().ToString("t")</span>
+                                </button>
+                            }
+                        </div>
+
+                        <div class="canvas-popover__divider"></div>
+
+                        <button type="button" class="canvas-menu-item" @onclick="CreateDocumentFromMenuAsync">
+                            <span class="canvas-menu-item__label">New document</span>
+                            <span class="canvas-menu-item__meta">+</span>
+                        </button>
+                    </div>
+                }
+            </div>
+
+            <div class="canvas-rte-header__right">
+                <button type="button"
+                        class="canvas-icon-button"
+                        title="Create copy"
+                        disabled="@(ActiveDocument is null)"
+                        @onclick="SaveCopyAsync">
+                    ⧉
+                </button>
+                <button type="button"
+                        class="canvas-icon-button"
+                        title="Pop out document"
+                        disabled="@(ActiveDocument is null)"
+                        @onclick="PopOutAsync">
+                    ↗
+                </button>
+                <button type="button"
+                        class="canvas-icon-button"
+                        title="Undo"
+                        disabled="@(ActiveDocument is null)"
+                        @onclick="UndoSelectionAsync">
+                    ↶
+                </button>
+                <button type="button"
+                        class="canvas-icon-button"
+                        title="More actions"
+                        @onclick="ToggleOverflowMenuAsync">
+                    ⋯
+                </button>
+
+                @if (_showOverflowMenu)
+                {
+                    <div class="canvas-popover canvas-popover--overflow">
+                        <button type="button" class="canvas-menu-item" @onclick="SaveDocumentFromMenuAsync">
+                            <span class="canvas-menu-item__label">Save</span>
+                        </button>
+                        <button type="button" class="canvas-menu-item" @onclick="SaveCopyFromMenuAsync">
+                            <span class="canvas-menu-item__label">Save as copy</span>
+                        </button>
+                        <div class="canvas-popover__divider"></div>
+                        <button type="button" class="canvas-menu-item" @onclick="DownloadMarkdownFromMenuAsync">
+                            <span class="canvas-menu-item__label">Download Markdown</span>
+                        </button>
+                        <button type="button" class="canvas-menu-item" @onclick="DownloadPlainTextFromMenuAsync">
+                            <span class="canvas-menu-item__label">Download Plain Text</span>
+                        </button>
+                        <button type="button" class="canvas-menu-item" @onclick="DownloadPdfFromMenuAsync">
+                            <span class="canvas-menu-item__label">Download PDF</span>
+                        </button>
+                        <div class="canvas-popover__divider"></div>
+                        <button type="button" class="canvas-menu-item" @onclick="PopOutFromMenuAsync">
+                            <span class="canvas-menu-item__label">Pop Out</span>
+                        </button>
+                        <button type="button" class="canvas-menu-item" @onclick="ToggleInspectorFromMenuAsync">
+                            <span class="canvas-menu-item__label">@(_showInspector ? "Hide details" : "Show details")</span>
+                        </button>
+                    </div>
+                }
+            </div>
+        </header>
+
+        @if (OpenDocuments.Count > 0)
+        {
+            <div class="canvas-rte-tabs">
+                @foreach (var document in OpenDocuments)
+                {
+                    var isActive = string.Equals(document.Id, ActiveDocument?.Id, StringComparison.OrdinalIgnoreCase);
+                    <button type="button"
+                            class="canvas-rte-tab @(isActive ? "is-active" : string.Empty)"
+                            @onclick="() => SetActiveDocumentByIdAsync(document.Id)">
+                        <span class="canvas-rte-tab__label">@document.Title</span>
+                        <span class="canvas-rte-tab__close"
+                              title="Close"
+                              @onclick:stopPropagation="true"
+                              @onclick="() => CloseDocumentAsync(document.Id)">
+                            ×
+                        </span>
+                    </button>
+                }
+
+                <button type="button" class="canvas-rte-tab canvas-rte-tab--new" @onclick="CreateDocumentAsync">+</button>
+            </div>
+        }
+
+        @if (ActiveDocument is not null)
+        {
+            <section class="canvas-rte-stage">
+                <div class="canvas-rte-stage__surface">
+                    <div class="canvas-rte-status">@_statusText</div>
+                    <div class="canvas-document-surface">
+                        <CanvasDocumentView Document="ActiveDocument"
+                                            SelectedBlockId="_selectedBlockId"
+                                            OnBlockSelected="HandleBlockSelectedAsync"
+                                            OnBlockRemoved="RemoveBlockAsync"
+                                            OnBlockMoveUp="MoveBlockUpAsync"
+                                            OnBlockMoveDown="MoveBlockDownAsync"
+                                            OnBlockTextChanged="HandleBlockTextChangedAsync" />
+                    </div>
+                </div>
+
+                @if (_showInspector)
+                {
+                    <aside class="canvas-rte-drawer">
+                        <AvaCard Intent="neutral" Size="md" IsElevated="true">
+                            <HeaderContent>
+                                <div class="canvas-shell__header-line">
+                                    <div class="canvas-shell__mini-title">Document Details</div>
+                                    <AvaBadge Intent="neutral" Size="sm">Drawer</AvaBadge>
+                                </div>
+                            </HeaderContent>
+                            <ChildContent>
+                                <div class="canvas-shell__stack">
+                                    <AvaCard Intent="neutral" Size="sm">
+                                        <ChildContent>
+                                            <div class="canvas-shell__meta-list">
+                                                <div class="canvas-shell__meta-row">
+                                                    <span class="canvas-shell__meta-label">Title</span>
+                                                    <span class="canvas-shell__meta-value">@ActiveDocument.Title</span>
+                                                </div>
+                                                <div class="canvas-shell__meta-row">
+                                                    <span class="canvas-shell__meta-label">Blocks</span>
+                                                    <span class="canvas-shell__meta-value">@ActiveDocument.Blocks.Count</span>
+                                                </div>
+                                                <div class="canvas-shell__meta-row">
+                                                    <span class="canvas-shell__meta-label">Updated</span>
+                                                    <span class="canvas-shell__meta-value">@GetUpdatedLabel()</span>
+                                                </div>
+                                            </div>
+                                        </ChildContent>
+                                    </AvaCard>
+
+                                    <AvaDivider Intent="neutral">Selection</AvaDivider>
+
+                                    <AvaCard Intent="neutral" Size="sm">
+                                        <ChildContent>
+                                            @if (SelectedBlock is null)
+                                            {
+                                                <div class="canvas-shell__placeholder-copy">
+                                                    Select a block to inspect it here.
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="canvas-shell__meta-list">
+                                                    <div class="canvas-shell__meta-row">
+                                                        <span class="canvas-shell__meta-label">Type</span>
+                                                        <span class="canvas-shell__meta-value">@SelectedBlock.BlockType</span>
+                                                    </div>
+                                                    <div class="canvas-shell__meta-row">
+                                                        <span class="canvas-shell__meta-label">Block</span>
+                                                        <span class="canvas-shell__meta-value">@SelectedBlock.Id</span>
+                                                    </div>
+                                                    <div class="canvas-shell__meta-row">
+                                                        <span class="canvas-shell__meta-label">Text</span>
+                                                        <span class="canvas-shell__meta-value canvas-shell__meta-value--wrap">@(_selectionText ?? "None")</span>
+                                                    </div>
+                                                </div>
+                                            }
+                                        </ChildContent>
+                                    </AvaCard>
+
+                                    <AvaDivider Intent="neutral">Validation</AvaDivider>
+
+                                    <CanvasDesignValidationPanel />
+                                </div>
+                            </ChildContent>
+                        </AvaCard>
+                    </aside>
+                }
+            </section>
+        }
+    </div>
+
+    <CanvasSelectionToolbar IsVisible="@_showSelectionToolbar"
+                            LeftPx="@_selectionX"
+                            TopPx="@_selectionY"
+                            IsFormattingDisabled="@string.IsNullOrWhiteSpace(_selectionText)"
+                            OnAskAva="OpenAskPanelAsync"
+                            OnBold="ApplyBoldAsync"
+                            OnItalic="ApplyItalicAsync"
+                            OnInlineCode="ApplyInlineCodeAsync"
+                            OnHeading="ConvertSelectionToHeadingAsync"
+                            OnCodeBlock="ConvertSelectionToCodeBlockAsync" />
+
+    <CanvasContextMenu IsVisible="@_showContextMenu"
+                       LeftPx="@_contextMenuX"
+                       TopPx="@_contextMenuY"
+                       OnEmoji="InsertEmojiAsync"
+                       OnUndo="UndoSelectionAsync"
+                       OnCut="CutSelectionAsync"
+                       OnCopy="CopySelectionAsync"
+                       OnPaste="PasteSelectionAsync"
+                       OnSelectAll="SelectAllAsync"
+                       OnAskAva="OpenAskPanelAsync"
+                       OnHeading="ConvertSelectionToHeadingAsync"
+                       OnCodeBlock="ConvertSelectionToCodeBlockAsync" />
+
+    @if (_showAskPanel)
+    {
+        <div class="canvas-ask-panel">
+            <AvaCard Intent="success" Size="md" IsElevated="true">
+                <HeaderContent>
+                    <div class="canvas-shell__header-line">
+                        <div class="canvas-shell__mini-title">Ask AVA about selection</div>
+                        <AvaButton Intent="neutral" Size="xs" OnClick="CloseAskPanelAsync">Close</AvaButton>
+                    </div>
+                </HeaderContent>
+                <ChildContent>
+                    <div class="canvas-shell__stack">
+                        <div class="canvas-ask-panel__selection">@(_selectionText ?? "Select text to ask about it.")</div>
+                        <AvaTextarea Intent="neutral"
+                                     Size="md"
+                                     Value="@_askPrompt"
+                                     ValueChanged="HandleAskPromptChangedAsync"
+                                     Rows="3"
+                                     Placeholder="What do you want AVA to do with this selection?" />
+                    </div>
+                </ChildContent>
+                <FooterContent>
+                    <div class="canvas-shell__block-actions">
+                        <AvaButton Intent="success"
+                                   Size="sm"
+                                   IsDisabled="@(_isAsking || string.IsNullOrWhiteSpace(_selectionText))"
+                                   OnClick="SubmitAskAvaAsync">
+                            @(_isAsking ? "Asking..." : "Ask")
+                        </AvaButton>
+                    </div>
+                </FooterContent>
+            </AvaCard>
+        </div>
+    }
+
+    <div class="canvas-fab">
+        <button type="button"
+                class="canvas-fab__button"
+                title="Tools"
+                @onclick="ToggleToolsMenuAsync">
+            ✎
+        </button>
+
+        @if (_showToolsMenu)
+        {
+            <div class="canvas-fab__menu">
+                <button type="button" class="canvas-menu-item" @onclick="AddTextBlockFromMenuAsync">
+                    <span class="canvas-menu-item__label">Add paragraph</span>
+                </button>
+                <button type="button" class="canvas-menu-item" @onclick="AddHeadingBlockFromMenuAsync">
+                    <span class="canvas-menu-item__label">Add heading</span>
+                </button>
+                <button type="button" class="canvas-menu-item" @onclick="AddCodeBlockFromMenuAsync">
+                    <span class="canvas-menu-item__label">Add code block</span>
+                </button>
+                <button type="button" class="canvas-menu-item" @onclick="AddChatBlockFromMenuAsync">
+                    <span class="canvas-menu-item__label">Add chat block</span>
+                </button>
+                <div class="canvas-popover__divider"></div>
+                <button type="button" class="canvas-menu-item" @onclick="OpenAskPanelFromMenuAsync">
+                    <span class="canvas-menu-item__label">Ask AVA</span>
+                </button>
+                <button type="button" class="canvas-menu-item" @onclick="ToggleInspectorFromToolsAsync">
+                    <span class="canvas-menu-item__label">@(_showInspector ? "Hide details" : "Show details")</span>
+                </button>
+                <button type="button" class="canvas-menu-item" @onclick="ResetDocumentFromMenuAsync">
+                    <span class="canvas-menu-item__label">Reset document</span>
+                </button>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// Gets or sets the encoded route payload used to open a standalone Canvas window.
+    /// </summary>
+    [Parameter]
+    public string? EncodedOpenRequest { get; set; }
+
+    /// <summary>
+    /// Gets or sets the optional render mode passed by the route.
+    /// </summary>
+    [Parameter]
+    public string? RenderMode { get; set; }
+
+    private readonly string _pluginId = "ava.canvas";
+    private string _newDocumentTitle = "AVA Canvas Document";
+    private string _emptyStateNotes = string.Empty;
+    private string _documentTitle = string.Empty;
+    private string _statusText = "In memory";
+    private string _askPrompt = string.Empty;
+    private string? _selectedBlockId;
+    private string? _selectionBlockId;
+    private string? _selectionText;
+    private bool _showInspector;
+    private bool _showSelectionToolbar;
+    private bool _showContextMenu;
+    private bool _showAskPanel;
+    private bool _showOverflowMenu;
+    private bool _showToolsMenu;
+    private bool _showDocumentMenu;
+    private bool _windowRequestHandled;
+    private bool _isAsking;
+    private double _selectionX;
+    private double _selectionY;
+    private double _contextMenuX;
+    private double _contextMenuY;
+    private ElementReference _canvasRoot;
+    private DotNetObjectReference<CanvasShell>? _dotNetReference;
+
+    private CanvasDocument? ActiveDocument => CanvasDocumentService.ActiveDocument;
+
+    private IReadOnlyList<CanvasDocument> OpenDocuments => CanvasDocumentService.OpenDocuments;
+
+    private CanvasBlock? SelectedBlock =>
+        ActiveDocument?.OrderedBlocks.FirstOrDefault(block => string.Equals(block.Id, _selectedBlockId, StringComparison.OrdinalIgnoreCase));
+
+    private string ActivePluginName =>
+        PluginRegistry.GetPluginById(_pluginId)?.Manifest.DisplayName ?? "Canvas";
+
+    protected override async Task OnInitializedAsync()
+    {
+        CanvasDocumentService.ActiveDocumentChanged += HandleActiveDocumentChanged;
+        if (CanvasDocumentService.ActiveDocument is null && CanvasDocumentService.OpenDocuments.Count == 0)
+        {
+            await EnsureBlankDocumentAsync();
+        }
+
+        SyncStateFromDocument();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_windowRequestHandled || string.IsNullOrWhiteSpace(EncodedOpenRequest))
+        {
+            return;
+        }
+
+        var request = CanvasWindowService.TryParseRequest(EncodedOpenRequest);
+        if (request is null)
+        {
+            _windowRequestHandled = true;
+            return;
+        }
+
+        await CanvasWindowService.OpenFromToolAsync(request);
+        _windowRequestHandled = true;
+        _selectedBlockId = CanvasDocumentService.ActiveDocument?.OrderedBlocks.FirstOrDefault()?.Id;
+        SyncStateFromDocument();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        _dotNetReference = DotNetObjectReference.Create(this);
+        await JSRuntime.InvokeVoidAsync("avaCanvasInit", _canvasRoot, _dotNetReference);
+    }
+
+    /// <summary>
+    /// Receives selection updates from the Canvas editor interop layer.
+    /// </summary>
+    [JSInvokable]
+    public Task OnCanvasSelectionChanged(string? blockId, string? selectedText, double x, double y)
+    {
+        _selectionBlockId = string.IsNullOrWhiteSpace(blockId) ? null : blockId;
+        _selectionText = string.IsNullOrWhiteSpace(selectedText) ? null : selectedText;
+        _selectionX = Math.Max(24, x);
+        _selectionY = Math.Max(24, y - 52);
+        _showSelectionToolbar = !string.IsNullOrWhiteSpace(_selectionText);
+        _showContextMenu = false;
+        _selectedBlockId = _selectionBlockId ?? _selectedBlockId;
+
+        return InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>
+    /// Receives context-menu requests from the Canvas editor interop layer.
+    /// </summary>
+    [JSInvokable]
+    public Task OnCanvasContextMenuRequested(string? blockId, string? selectedText, double x, double y)
+    {
+        _selectionBlockId = string.IsNullOrWhiteSpace(blockId) ? null : blockId;
+        _selectionText = string.IsNullOrWhiteSpace(selectedText) ? _selectionText : selectedText;
+        _contextMenuX = Math.Max(16, x);
+        _contextMenuY = Math.Max(16, y);
+        _showContextMenu = true;
+        _showSelectionToolbar = !string.IsNullOrWhiteSpace(_selectionText);
+        _selectedBlockId = _selectionBlockId ?? _selectedBlockId;
+
+        return InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>
+    /// Hides contextual Canvas overlays when focus leaves the active editor interaction.
+    /// </summary>
+    [JSInvokable]
+    public Task OnCanvasDismissOverlays()
+    {
+        _showContextMenu = false;
+        _showSelectionToolbar = false;
+        _showOverflowMenu = false;
+        _showToolsMenu = false;
+        _showDocumentMenu = false;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private async Task CreateDocumentAsync()
+    {
+        await CreateDocumentInternalAsync(includeBootstrapText: true);
+    }
+
+    private async Task SetActiveDocumentByIdAsync(string documentId)
+    {
+        var document = OpenDocuments.FirstOrDefault(openDocument =>
+            string.Equals(openDocument.Id, documentId, StringComparison.OrdinalIgnoreCase));
+        if (document is null)
+        {
+            return;
+        }
+
+        await CanvasDocumentService.SetActiveDocumentAsync(document);
+        _statusText = "Switched";
+        SyncStateFromDocument();
+    }
+
+    private async Task CloseDocumentAsync(string documentId)
+    {
+        await CanvasDocumentService.CloseDocumentAsync(documentId);
+        if (CanvasDocumentService.ActiveDocument is null && CanvasDocumentService.OpenDocuments.Count == 0)
+        {
+            await EnsureBlankDocumentAsync();
+        }
+
+        _statusText = "Closed";
+        SyncStateFromDocument();
+    }
+
+    private Task HandleDocumentTitleChangedAsync(string value)
+    {
+        _documentTitle = value;
+        _statusText = "Unsaved";
+        return Task.CompletedTask;
+    }
+
+    private Task HandleTitleInputChanged(ChangeEventArgs args)
+    {
+        _documentTitle = args.Value?.ToString() ?? string.Empty;
+        _statusText = "Unsaved";
+        return Task.CompletedTask;
+    }
+
+    private Task HandleNewDocumentTitleChangedAsync(string value)
+    {
+        _newDocumentTitle = value;
+        return Task.CompletedTask;
+    }
+
+    private Task HandleEmptyStateNotesChangedAsync(string value)
+    {
+        _emptyStateNotes = value;
+        return Task.CompletedTask;
+    }
+
+    private Task HandleAskPromptChangedAsync(string value)
+    {
+        _askPrompt = value;
+        return Task.CompletedTask;
+    }
+
+    private async Task ToggleInspectorAsync()
+    {
+        _showInspector = !_showInspector;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private Task ToggleOverflowMenuAsync()
+    {
+        _showOverflowMenu = !_showOverflowMenu;
+        _showToolsMenu = false;
+        _showDocumentMenu = false;
+        return Task.CompletedTask;
+    }
+
+    private Task ToggleToolsMenuAsync()
+    {
+        _showToolsMenu = !_showToolsMenu;
+        _showOverflowMenu = false;
+        _showDocumentMenu = false;
+        return Task.CompletedTask;
+    }
+
+    private Task ToggleDocumentMenuAsync()
+    {
+        _showDocumentMenu = !_showDocumentMenu;
+        _showOverflowMenu = false;
+        _showToolsMenu = false;
+        return Task.CompletedTask;
+    }
+
+    private async Task SetActiveDocumentFromMenuAsync(string documentId)
+    {
+        _showDocumentMenu = false;
+        await SetActiveDocumentByIdAsync(documentId);
+    }
+
+    private async Task CreateDocumentFromMenuAsync()
+    {
+        _showDocumentMenu = false;
+        await CreateDocumentAsync();
+    }
+
+    private Task AddTextBlockAsync()
+        => AddBlockAsync(new CanvasTextBlock
+        {
+            Content = "New paragraph"
+        });
+
+    private Task AddHeadingBlockAsync()
+        => AddBlockAsync(new CanvasHeadingBlock
+        {
+            Content = "New heading",
+            Level = 1
+        });
+
+    private Task AddCodeBlockAsync()
+        => AddBlockAsync(new CanvasCodeBlock
+        {
+            Content = "// Add code here",
+            Language = "csharp"
+        });
+
+    private Task AddChatBlockAsync()
+        => AddBlockAsync(new CanvasChatBlock
+        {
+            Content = "Chat notes",
+            Role = "AVA"
+        });
+
+    private async Task AddBlockAsync(CanvasBlock block)
+    {
+        if (ActiveDocument is null)
+        {
+            return;
+        }
+
+        await CanvasDocumentService.AddBlockAsync(block);
+        _selectedBlockId = block.Id;
+        _statusText = "Updated";
+        SyncStateFromDocument();
+    }
+
+    private async Task EnsureBlankDocumentAsync()
+    {
+        await CreateDocumentInternalAsync(includeBootstrapText: false);
+    }
+
+    private async Task CreateDocumentInternalAsync(bool includeBootstrapText)
+    {
+        var document = await CanvasDocumentService.CreateDocumentAsync(_newDocumentTitle);
+
+        if (includeBootstrapText)
+        {
+            if (!string.IsNullOrWhiteSpace(_emptyStateNotes))
+            {
+                await CanvasDocumentService.AddBlockAsync(new CanvasTextBlock
+                {
+                    Content = _emptyStateNotes.Trim()
+                });
+            }
+            else
+            {
+                await CanvasDocumentService.AddBlockAsync(new CanvasHeadingBlock
+                {
+                    Content = document.Title,
+                    Level = 1
+                });
+
+                await CanvasDocumentService.AddBlockAsync(new CanvasTextBlock
+                {
+                    Content = "Start drafting structured AVA content here."
+                });
+            }
+        }
+        else
+        {
+            await CanvasDocumentService.AddBlockAsync(new CanvasTextBlock
+            {
+                Content = string.Empty
+            });
+        }
+
+        _showInspector = false;
+        _statusText = includeBootstrapText ? "New document" : "Ready";
+        _selectedBlockId = CanvasDocumentService.ActiveDocument?.OrderedBlocks.FirstOrDefault()?.Id;
+        SyncStateFromDocument();
+    }
+
+    private async Task ResetDocumentAsync()
+    {
+        if (ActiveDocument is null)
+        {
+            return;
+        }
+
+        foreach (var block in ActiveDocument.OrderedBlocks.ToList())
+        {
+            await CanvasDocumentService.RemoveBlockAsync(block.Id);
+        }
+
+        await CanvasDocumentService.AddBlockAsync(new CanvasHeadingBlock
+        {
+            Content = ActiveDocument.Title,
+            Level = 1
+        });
+
+        await CanvasDocumentService.AddBlockAsync(new CanvasTextBlock
+        {
+            Content = "Start drafting structured AVA content here."
+        });
+
+        _selectedBlockId = ActiveDocument.OrderedBlocks.FirstOrDefault()?.Id;
+        _statusText = "Reset";
+        SyncStateFromDocument();
+    }
+
+    private async Task SaveDocumentAsync()
+    {
+        if (ActiveDocument is null)
+        {
+            return;
+        }
+
+        ActiveDocument.Title = string.IsNullOrWhiteSpace(_documentTitle)
+            ? "Untitled Canvas"
+            : _documentTitle.Trim();
+        ActiveDocument.UpdatedAt = DateTime.UtcNow;
+        await CanvasDocumentService.SetActiveDocumentAsync(ActiveDocument);
+        _statusText = "Saved";
+    }
+
+    private async Task SaveDocumentFromMenuAsync()
+    {
+        _showOverflowMenu = false;
+        await SaveDocumentAsync();
+    }
+
+    private async Task SaveCopyAsync()
+    {
+        if (ActiveDocument is null)
+        {
+            return;
+        }
+
+        await CanvasDocumentService.DuplicateDocumentAsync(ActiveDocument.Id);
+        _statusText = "Copied";
+        SyncStateFromDocument();
+    }
+
+    private async Task SaveCopyFromMenuAsync()
+    {
+        _showOverflowMenu = false;
+        await SaveCopyAsync();
+    }
+
+    private async Task DownloadMarkdownAsync()
+    {
+        if (ActiveDocument is null)
+        {
+            return;
+        }
+
+        await JSRuntime.InvokeVoidAsync(
+            "avaDownloadText",
+            $"{SanitizeFileName(ActiveDocument.Title)}.md",
+            BuildMarkdown(ActiveDocument));
+        _statusText = "Markdown exported";
+    }
+
+    private async Task DownloadMarkdownFromMenuAsync()
+    {
+        _showOverflowMenu = false;
+        await DownloadMarkdownAsync();
+    }
+
+    private async Task DownloadPlainTextAsync()
+    {
+        if (ActiveDocument is null)
+        {
+            return;
+        }
+
+        await JSRuntime.InvokeVoidAsync(
+            "avaDownloadText",
+            $"{SanitizeFileName(ActiveDocument.Title)}.txt",
+            BuildPlainText(ActiveDocument));
+        _statusText = "Text exported";
+    }
+
+    private async Task DownloadPlainTextFromMenuAsync()
+    {
+        _showOverflowMenu = false;
+        await DownloadPlainTextAsync();
+    }
+
+    private async Task DownloadPdfAsync()
+    {
+        if (ActiveDocument is null)
+        {
+            return;
+        }
+
+        await JSRuntime.InvokeVoidAsync(
+            "avaDownloadPdfFromHtml",
+            ActiveDocument.Title,
+            BuildPrintableHtml(ActiveDocument));
+        _statusText = "PDF dialog opened";
+    }
+
+    private async Task DownloadPdfFromMenuAsync()
+    {
+        _showOverflowMenu = false;
+        await DownloadPdfAsync();
+    }
+
+    private async Task PopOutAsync()
+    {
+        if (ActiveDocument is null)
+        {
+            return;
+        }
+
+        var request = CanvasWindowService.CreateRequest(ActiveDocument);
+        var descriptor = await CanvasWindowService.PrepareWindowAsync(request);
+
+        await JSRuntime.InvokeVoidAsync(
+            "open",
+            descriptor.Url,
+            "_blank",
+            "popup=yes,width=1280,height=900,noopener,noreferrer");
+    }
+
+    private async Task PopOutFromMenuAsync()
+    {
+        _showOverflowMenu = false;
+        await PopOutAsync();
+    }
+
+    private async Task RemoveBlockAsync(string blockId)
+    {
+        await CanvasDocumentService.RemoveBlockAsync(blockId);
+
+        if (string.Equals(_selectedBlockId, blockId, StringComparison.OrdinalIgnoreCase))
+        {
+            _selectedBlockId = ActiveDocument?.OrderedBlocks.FirstOrDefault()?.Id;
+        }
+
+        _statusText = "Removed";
+        SyncStateFromDocument();
+    }
+
+    private async Task HandleBlockTextChangedAsync((string BlockId, string Text) update)
+    {
+        await CanvasDocumentService.UpdateTextBlockAsync(update.BlockId, update.Text);
+        _selectedBlockId = update.BlockId;
+        _statusText = "Unsaved";
+    }
+
+    private async Task MoveBlockUpAsync(string blockId)
+    {
+        if (ActiveDocument is null)
+        {
+            return;
+        }
+
+        var orderedBlocks = ActiveDocument.OrderedBlocks.ToList();
+        var currentIndex = orderedBlocks.FindIndex(block =>
+            string.Equals(block.Id, blockId, StringComparison.OrdinalIgnoreCase));
+        if (currentIndex <= 0)
+        {
+            return;
+        }
+
+        var currentBlock = orderedBlocks[currentIndex];
+        var previousBlock = orderedBlocks[currentIndex - 1];
+
+        await CanvasDocumentService.MoveBlockAsync(previousBlock.Id, currentBlock.SortOrder);
+        await CanvasDocumentService.MoveBlockAsync(currentBlock.Id, previousBlock.SortOrder);
+        _statusText = "Reordered";
+    }
+
+    private async Task MoveBlockDownAsync(string blockId)
+    {
+        if (ActiveDocument is null)
+        {
+            return;
+        }
+
+        var orderedBlocks = ActiveDocument.OrderedBlocks.ToList();
+        var currentIndex = orderedBlocks.FindIndex(block =>
+            string.Equals(block.Id, blockId, StringComparison.OrdinalIgnoreCase));
+        if (currentIndex < 0 || currentIndex >= orderedBlocks.Count - 1)
+        {
+            return;
+        }
+
+        var currentBlock = orderedBlocks[currentIndex];
+        var nextBlock = orderedBlocks[currentIndex + 1];
+
+        await CanvasDocumentService.MoveBlockAsync(nextBlock.Id, currentBlock.SortOrder);
+        await CanvasDocumentService.MoveBlockAsync(currentBlock.Id, nextBlock.SortOrder);
+        _statusText = "Reordered";
+    }
+
+    private Task HandleBlockSelectedAsync(string blockId)
+    {
+        _selectedBlockId = blockId;
+        _showContextMenu = false;
+        return Task.CompletedTask;
+    }
+
+    private Task OpenAskPanelAsync()
+    {
+        _showAskPanel = true;
+        _showContextMenu = false;
+        _showSelectionToolbar = false;
+        _showToolsMenu = false;
+        _showOverflowMenu = false;
+        _askPrompt = string.IsNullOrWhiteSpace(_askPrompt) ? "Help me with this selection." : _askPrompt;
+        return Task.CompletedTask;
+    }
+
+    private async Task OpenAskPanelFromMenuAsync()
+    {
+        _showToolsMenu = false;
+        await OpenAskPanelAsync();
+    }
+
+    private Task CloseAskPanelAsync()
+    {
+        _showAskPanel = false;
+        _askPrompt = string.Empty;
+        return Task.CompletedTask;
+    }
+
+    private async Task SubmitAskAvaAsync()
+    {
+        if (ActiveDocument is null || string.IsNullOrWhiteSpace(_selectionText))
+        {
+            return;
+        }
+
+        _isAsking = true;
+        _statusText = "Asking AVA";
+        StateHasChanged();
+
+        try
+        {
+            var prompt = BuildAskPrompt();
+            var modelId = State.Sessions.ActiveSession?.ModelProfile?.Id
+                ?? State.Sessions.ActiveSession?.ModelEntry.Id;
+
+            string responseContent;
+            string responseRole;
+
+            if (!string.IsNullOrWhiteSpace(modelId))
+            {
+                var response = await State.Sessions.SendToModelAsync(prompt, modelId);
+                responseContent = response.Content ?? string.Empty;
+                responseRole = State.GetModelName(modelId);
+            }
+            else
+            {
+                responseContent = prompt;
+                responseRole = "AVA Request";
+            }
+
+            await CanvasDocumentService.AddBlockAsync(new CanvasChatBlock
+            {
+                Content = responseContent,
+                Role = responseRole
+            });
+
+            _statusText = "Answer added";
+            _showAskPanel = false;
+            _askPrompt = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            await CanvasDocumentService.AddBlockAsync(new CanvasChatBlock
+            {
+                Content = ex.Message,
+                Role = "AVA Error"
+            });
+            _statusText = "Ask failed";
+        }
+        finally
+        {
+            _isAsking = false;
+            SyncStateFromDocument();
+            StateHasChanged();
+        }
+    }
+
+    private async Task ApplyBoldAsync()
+    {
+        await ApplyInlineFormatAsync("bold");
+    }
+
+    private async Task ApplyItalicAsync()
+    {
+        await ApplyInlineFormatAsync("italic");
+    }
+
+    private async Task ApplyInlineCodeAsync()
+    {
+        await ApplyInlineFormatAsync("code");
+    }
+
+    private async Task ApplyInlineFormatAsync(string format)
+    {
+        await JSRuntime.InvokeVoidAsync("avaCanvasApplyInlineFormat", format);
+        _statusText = "Formatted";
+    }
+
+    private async Task ConvertSelectionToHeadingAsync()
+    {
+        await CreateBlockFromSelectionAsync(CanvasBlockType.Heading);
+    }
+
+    private async Task ConvertSelectionToCodeBlockAsync()
+    {
+        await CreateBlockFromSelectionAsync(CanvasBlockType.Code);
+    }
+
+    private async Task CreateBlockFromSelectionAsync(CanvasBlockType blockType)
+    {
+        if (ActiveDocument is null)
+        {
+            return;
+        }
+
+        var selectedText = string.IsNullOrWhiteSpace(_selectionText)
+            ? GetSelectedBlockText()
+            : _selectionText!;
+        if (string.IsNullOrWhiteSpace(selectedText))
+        {
+            return;
+        }
+
+        var selectedBlock = SelectedBlock;
+        var insertOrder = selectedBlock?.SortOrder + 1 ?? ActiveDocument.Blocks.Count;
+        CanvasBlock newBlock = blockType switch
+        {
+            CanvasBlockType.Heading => new CanvasHeadingBlock
+            {
+                Content = selectedText.Trim(),
+                Level = 1,
+                SortOrder = insertOrder
+            },
+            CanvasBlockType.Code => new CanvasCodeBlock
+            {
+                Content = selectedText,
+                Language = "text",
+                SortOrder = insertOrder
+            },
+            _ => new CanvasTextBlock
+            {
+                Content = selectedText.Trim(),
+                SortOrder = insertOrder
+            }
+        };
+
+        await CanvasDocumentService.AddBlockAsync(newBlock);
+        _selectedBlockId = newBlock.Id;
+        _showContextMenu = false;
+        _showSelectionToolbar = false;
+        _statusText = "Block created";
+        SyncStateFromDocument();
+    }
+
+    private async Task InsertEmojiAsync()
+    {
+        await JSRuntime.InvokeVoidAsync("avaCanvasInsertEmoji");
+    }
+
+    private async Task UndoSelectionAsync()
+    {
+        await JSRuntime.InvokeVoidAsync("avaCanvasUndo");
+    }
+
+    private async Task CutSelectionAsync()
+    {
+        await JSRuntime.InvokeVoidAsync("avaCanvasCutSelection");
+    }
+
+    private async Task CopySelectionAsync()
+    {
+        await JSRuntime.InvokeVoidAsync("avaCanvasCopySelection");
+    }
+
+    private async Task PasteSelectionAsync()
+    {
+        await JSRuntime.InvokeVoidAsync("avaCanvasPasteSelection");
+    }
+
+    private async Task SelectAllAsync()
+    {
+        await JSRuntime.InvokeVoidAsync("avaCanvasSelectAll");
+    }
+
+    private async Task AddTextBlockFromMenuAsync()
+    {
+        _showToolsMenu = false;
+        await AddTextBlockAsync();
+    }
+
+    private async Task AddHeadingBlockFromMenuAsync()
+    {
+        _showToolsMenu = false;
+        await AddHeadingBlockAsync();
+    }
+
+    private async Task AddCodeBlockFromMenuAsync()
+    {
+        _showToolsMenu = false;
+        await AddCodeBlockAsync();
+    }
+
+    private async Task AddChatBlockFromMenuAsync()
+    {
+        _showToolsMenu = false;
+        await AddChatBlockAsync();
+    }
+
+    private async Task ResetDocumentFromMenuAsync()
+    {
+        _showToolsMenu = false;
+        await ResetDocumentAsync();
+    }
+
+    private async Task ToggleInspectorFromMenuAsync()
+    {
+        _showOverflowMenu = false;
+        await ToggleInspectorAsync();
+    }
+
+    private async Task ToggleInspectorFromToolsAsync()
+    {
+        _showToolsMenu = false;
+        await ToggleInspectorAsync();
+    }
+
+    private void HandleActiveDocumentChanged()
+    {
+        SyncStateFromDocument();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void SyncStateFromDocument()
+    {
+        _documentTitle = ActiveDocument?.Title ?? string.Empty;
+        _selectedBlockId = ActiveDocument?.OrderedBlocks
+            .FirstOrDefault(block => string.Equals(block.Id, _selectedBlockId, StringComparison.OrdinalIgnoreCase))?.Id
+            ?? ActiveDocument?.OrderedBlocks.FirstOrDefault()?.Id;
+    }
+
+    private string GetUpdatedLabel()
+        => ActiveDocument?.UpdatedAt.ToLocalTime().ToString("g") ?? "Never";
+
+    private string GetSelectedBlockText()
+    {
+        return SelectedBlock switch
+        {
+            CanvasTextBlock textBlock => textBlock.Content,
+            CanvasHeadingBlock headingBlock => headingBlock.Content,
+            CanvasCodeBlock codeBlock => codeBlock.Content,
+            CanvasChatBlock chatBlock => chatBlock.Content,
+            _ => string.Empty
+        };
+    }
+
+    private string BuildAskPrompt()
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine(_askPrompt.Trim());
+        builder.AppendLine();
+        builder.AppendLine("Selected Canvas text:");
+        builder.AppendLine(_selectionText ?? string.Empty);
+        return builder.ToString().Trim();
+    }
+
+    private static string BuildMarkdown(CanvasDocument document)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine($"# {document.Title}");
+        builder.AppendLine();
+
+        foreach (var block in document.OrderedBlocks)
+        {
+            switch (block)
+            {
+                case CanvasHeadingBlock headingBlock:
+                    builder.AppendLine($"{new string('#', Math.Clamp(headingBlock.Level, 1, 6))} {headingBlock.Content}");
+                    builder.AppendLine();
+                    break;
+                case CanvasCodeBlock codeBlock:
+                    builder.AppendLine($"```{codeBlock.Language}");
+                    builder.AppendLine(codeBlock.Content);
+                    builder.AppendLine("```");
+                    builder.AppendLine();
+                    break;
+                case CanvasChatBlock chatBlock:
+                    builder.AppendLine($"> {chatBlock.Role}: {chatBlock.Content}");
+                    builder.AppendLine();
+                    break;
+                case CanvasTextBlock textBlock:
+                    builder.AppendLine(textBlock.Content);
+                    builder.AppendLine();
+                    break;
+            }
+        }
+
+        return builder.ToString().Trim();
+    }
+
+    private static string BuildPlainText(CanvasDocument document)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine(document.Title);
+        builder.AppendLine(new string('=', document.Title.Length));
+        builder.AppendLine();
+
+        foreach (var block in document.OrderedBlocks)
+        {
+            switch (block)
+            {
+                case CanvasHeadingBlock headingBlock:
+                    builder.AppendLine(headingBlock.Content.ToUpperInvariant());
+                    builder.AppendLine();
+                    break;
+                case CanvasCodeBlock codeBlock:
+                    builder.AppendLine(codeBlock.Content);
+                    builder.AppendLine();
+                    break;
+                case CanvasChatBlock chatBlock:
+                    builder.AppendLine($"{chatBlock.Role}: {chatBlock.Content}");
+                    builder.AppendLine();
+                    break;
+                case CanvasTextBlock textBlock:
+                    builder.AppendLine(textBlock.Content);
+                    builder.AppendLine();
+                    break;
+            }
+        }
+
+        return builder.ToString().Trim();
+    }
+
+    private static string BuildPrintableHtml(CanvasDocument document)
+    {
+        var builder = new StringBuilder();
+        builder.Append("<html><head><title>");
+        builder.Append(document.Title);
+        builder.Append("</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:40px;color:#111;}h1,h2{margin:0 0 16px;}pre{background:#f4f4f4;padding:16px;border-radius:8px;}p{line-height:1.6;}blockquote{border-left:4px solid #888;padding-left:12px;color:#333;}</style></head><body>");
+        builder.Append($"<h1>{System.Net.WebUtility.HtmlEncode(document.Title)}</h1>");
+
+        foreach (var block in document.OrderedBlocks)
+        {
+            switch (block)
+            {
+                case CanvasHeadingBlock headingBlock:
+                    builder.Append($"<h2>{System.Net.WebUtility.HtmlEncode(headingBlock.Content)}</h2>");
+                    break;
+                case CanvasCodeBlock codeBlock:
+                    builder.Append($"<pre>{System.Net.WebUtility.HtmlEncode(codeBlock.Content)}</pre>");
+                    break;
+                case CanvasChatBlock chatBlock:
+                    builder.Append($"<blockquote><strong>{System.Net.WebUtility.HtmlEncode(chatBlock.Role)}:</strong> {System.Net.WebUtility.HtmlEncode(chatBlock.Content)}</blockquote>");
+                    break;
+                case CanvasTextBlock textBlock:
+                    builder.Append($"<p>{System.Net.WebUtility.HtmlEncode(textBlock.Content)}</p>");
+                    break;
+            }
+        }
+
+        builder.Append("</body></html>");
+        return builder.ToString();
+    }
+
+    private static string SanitizeFileName(string title)
+    {
+        var invalidCharacters = Path.GetInvalidFileNameChars();
+        var sanitized = new string(title.Select(character => invalidCharacters.Contains(character) ? '_' : character).ToArray());
+        return string.IsNullOrWhiteSpace(sanitized) ? "canvas-document" : sanitized;
+    }
+
+    public void Dispose()
+    {
+        CanvasDocumentService.ActiveDocumentChanged -= HandleActiveDocumentChanged;
+        _dotNetReference?.Dispose();
+    }
+
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("avaCanvasDispose", _canvasRoot);
+        }
+        catch
+        {
+            // Best-effort disposal of client-side listeners.
+        }
+    }
+}

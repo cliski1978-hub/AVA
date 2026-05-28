@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.9.34622.214
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AVA.UPS.Adapter", "AVA.UPS.Adapter.csproj", "{12D9BDA2-740D-4572-9CC5-CFB2336D1E8F}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AVA.Nomi.Bridge", "..\AVA.Nomi.Bridge\AVA.Nomi.Bridge.csproj", "{34F18CFB-60D4-4836-BF61-0D6BB0F711EF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{12D9BDA2-740D-4572-9CC5-CFB2336D1E8F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{12D9BDA2-740D-4572-9CC5-CFB2336D1E8F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{12D9BDA2-740D-4572-9CC5-CFB2336D1E8F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{12D9BDA2-740D-4572-9CC5-CFB2336D1E8F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{34F18CFB-60D4-4836-BF61-0D6BB0F711EF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{34F18CFB-60D4-4836-BF61-0D6BB0F711EF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{34F18CFB-60D4-4836-BF61-0D6BB0F711EF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{34F18CFB-60D4-4836-BF61-0D6BB0F711EF}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A50D1F7E-0492-4A46-8FC4-B6D83B589177}
+	EndGlobalSection
+EndGlobal

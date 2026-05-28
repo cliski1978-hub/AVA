@@ -1,0 +1,236 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   DocumentBlockEditor.razor
+   Namespace: AVA.UI.Components.Canvas
+   Purpose  : Renders a single editable block inside the Canvas document editor.
+              Uses a transparent auto-resizing textarea styled per BlockType.
+              Fires events upward for Enter (new block), Backspace-on-empty (delete),
+              focus, and type-change requests.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@using AVA.UI.CORE.Models.UI
+@inject IJSRuntime JS
+
+<div class="doc-block doc-block--@CssClass" data-block-id="@Block.BlockId" @onclick="FocusTextarea">
+
+    @if (Block.Type == BlockType.BulletItem)
+    {
+        <span class="doc-block__bullet">•</span>
+    }
+    else if (Block.Type == BlockType.NumberedItem)
+    {
+        <span class="doc-block__bullet">@Number.</span>
+    }
+    else if (Block.Type == BlockType.Quote)
+    {
+        <span class="doc-block__quote-bar"></span>
+    }
+    else if (Block.Type == BlockType.Divider)
+    {
+        <hr class="doc-block__divider" />
+        return;
+    }
+
+    <textarea @ref="_ta"
+              class="doc-block__input"
+              placeholder="@Placeholder"
+              value="@Block.Content"
+              rows="1"
+              @oninput="OnInput"
+              @onkeydown="OnKeyDown"
+              @onfocus="OnFocus"
+              spellcheck="true">
+    </textarea>
+
+</div>
+
+<style>
+.doc-block {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    width: 100%;
+    position: relative;
+    padding: 1px 0;
+}
+
+.doc-block__input {
+    flex: 1;
+    resize: none;
+    overflow: hidden;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--Text);
+    font-family: var(--Font);
+    line-height: 1.6;
+    width: 100%;
+    padding: 0;
+    caret-color: var(--Accent);
+}
+
+.doc-block__input::placeholder {
+    color: var(--TextFaint, rgba(255,255,255,0.2));
+}
+
+/* ── Block type sizing ── */
+
+.doc-block--title .doc-block__input {
+    font-size: 2.4rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    color: var(--Text);
+    padding-top: 8px;
+    padding-bottom: 4px;
+}
+
+.doc-block--heading1 .doc-block__input {
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.3;
+    margin-top: 28px;
+}
+
+.doc-block--heading2 .doc-block__input {
+    font-size: 1.35rem;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    line-height: 1.4;
+    margin-top: 20px;
+}
+
+.doc-block--heading3 .doc-block__input {
+    font-size: 1.1rem;
+    font-weight: 600;
+    line-height: 1.5;
+    margin-top: 14px;
+    color: var(--TextMuted);
+}
+
+.doc-block--paragraph .doc-block__input {
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.75;
+}
+
+.doc-block--bulletitem,
+.doc-block--numbereditem {
+    padding-left: 4px;
+}
+
+.doc-block__bullet {
+    font-size: 1rem;
+    line-height: 1.75;
+    color: var(--TextMuted);
+    flex-shrink: 0;
+    width: 20px;
+    padding-top: 1px;
+}
+
+.doc-block--bulletitem .doc-block__input,
+.doc-block--numbereditem .doc-block__input {
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.75;
+}
+
+.doc-block--quote {
+    padding-left: 0;
+}
+
+.doc-block__quote-bar {
+    width: 3px;
+    align-self: stretch;
+    background: var(--Accent);
+    border-radius: 2px;
+    flex-shrink: 0;
+    margin-right: 6px;
+    opacity: 0.7;
+}
+
+.doc-block--quote .doc-block__input {
+    font-size: 1rem;
+    font-style: italic;
+    color: var(--TextMuted);
+    line-height: 1.75;
+}
+
+.doc-block__divider {
+    border: none;
+    border-top: 1px solid var(--Border);
+    width: 100%;
+    margin: 12px 0;
+}
+</style>
+
+@code {
+    [Parameter, EditorRequired] public DocumentBlock Block { get; set; } = default!;
+    [Parameter] public int Number { get; set; } = 1;
+    [Parameter] public EventCallback<string> OnEnterPressed { get; set; }
+    [Parameter] public EventCallback<string> OnBackspaceEmpty { get; set; }
+    [Parameter] public EventCallback<string> OnFocused { get; set; }
+    [Parameter] public EventCallback<(string BlockId, string Content)> OnContentChanged { get; set; }
+
+    private ElementReference _ta;
+
+    private string CssClass => Block.Type switch
+    {
+        BlockType.Title        => "title",
+        BlockType.Heading1     => "heading1",
+        BlockType.Heading2     => "heading2",
+        BlockType.Heading3     => "heading3",
+        BlockType.BulletItem   => "bulletitem",
+        BlockType.NumberedItem => "numbereditem",
+        BlockType.Quote        => "quote",
+        BlockType.Divider      => "divider",
+        _                      => "paragraph"
+    };
+
+    private string Placeholder => Block.Type switch
+    {
+        BlockType.Title        => "Untitled",
+        BlockType.Heading1     => "Heading 1",
+        BlockType.Heading2     => "Heading 2",
+        BlockType.Heading3     => "Heading 3",
+        BlockType.Quote        => "Quote",
+        _                      => "Type something…"
+    };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await JS.InvokeVoidAsync("avaDocAutoResize", _ta);
+    }
+
+    private async Task OnInput(ChangeEventArgs e)
+    {
+        var text = e.Value?.ToString() ?? string.Empty;
+        await OnContentChanged.InvokeAsync((Block.BlockId, text));
+        await JS.InvokeVoidAsync("avaDocAutoResize", _ta);
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+            await OnEnterPressed.InvokeAsync(Block.BlockId);
+
+        if (e.Key == "Backspace" && string.IsNullOrEmpty(Block.Content))
+            await OnBackspaceEmpty.InvokeAsync(Block.BlockId);
+    }
+
+    private async Task OnFocus(FocusEventArgs _)
+    {
+        await OnFocused.InvokeAsync(Block.BlockId);
+    }
+
+    public async Task FocusAsync(bool atEnd = false)
+    {
+        await JS.InvokeVoidAsync("avaDocFocusBlock", Block.BlockId, atEnd);
+    }
+
+    private async Task FocusTextarea()
+    {
+        await JS.InvokeVoidAsync("avaDocFocusBlock", Block.BlockId, true);
+    }
+}

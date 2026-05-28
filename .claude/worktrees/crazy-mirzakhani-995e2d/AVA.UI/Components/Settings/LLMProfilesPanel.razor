@@ -1,0 +1,714 @@
+@using AVA.UI.State
+@using AVA.UI.CORE.Models.Settings
+@inject AppState State
+@inject IJSRuntime JS
+
+<div class="llm-profiles-panel">
+
+    <div class="llm-profiles-panel__toolbar">
+        <button class="settings-btn" @onclick="AddProfile">+ Add Profile</button>
+    </div>
+
+    @foreach (var P in State.LLMProfiles.ToList())
+    {
+        var Profile = P;
+        var isExpanded = _ExpandedProfiles.Contains(Profile.ProfileId);
+        var totalModels = Profile.Models.Count;
+        var activeModels = Profile.Models.Count(Model => Model.IsActive);
+        var discoveredModels = Profile.Models.Count(Model => Model.IsDiscovered);
+
+        <section class="llm-profile @(Profile.IsActive ? "llm-profile--active" : string.Empty)">
+            <div class="llm-profile__header">
+                <div class="llm-profile__identity">
+                    <label class="llm-profile__toggle">
+                        <input type="checkbox"
+                               checked="@Profile.IsActive"
+                               @onchange="E => ToggleProfileActive(Profile, E)" />
+                        <span class="llm-profile__name">@Profile.Name</span>
+                    </label>
+
+                    <div class="llm-profile__meta">
+                        <span class="llm-profile__provider">@Profile.ResolvedProvider</span>
+                        <span class="llm-profile__endpoint">@FormatEndpoint(Profile.Endpoint)</span>
+                    </div>
+                </div>
+
+                <div class="llm-profile__summary">
+                    <span class="llm-profile__stat">
+                        <strong>@totalModels</strong> models
+                    </span>
+                    <span class="llm-profile__stat">
+                        <strong>@activeModels</strong> active
+                    </span>
+                    @if (discoveredModels > 0)
+                    {
+                        <span class="llm-profile__stat llm-profile__stat--accent">
+                            <strong>@discoveredModels</strong> new
+                        </span>
+                    }
+                </div>
+
+                <div class="llm-profile__actions">
+                    <button class="settings-btn settings-btn--sm"
+                            @onclick="() => ToggleExpanded(Profile.ProfileId)">
+                        @(isExpanded ? "Hide Models" : "Show Models")
+                    </button>
+                    <button class="settings-btn settings-btn--sm"
+                            @onclick="() => EditProfile(Profile)">
+                        Edit
+                    </button>
+                    <button class="settings-btn settings-btn--sm"
+                            @onclick="async () => await TestEndpoint(Profile)"
+                            disabled="@_TestingEndpoint.Contains(Profile.ProfileId)">
+                        @(_TestingEndpoint.Contains(Profile.ProfileId) ? "Testing..." : "Test Endpoint")
+                    </button>
+                    <button class="settings-btn settings-btn--primary settings-btn--sm"
+                            @onclick="async () => await ConnectProfile(Profile)"
+                            disabled="@_ConnectingProfile.Contains(Profile.ProfileId)">
+                        @(_ConnectingProfile.Contains(Profile.ProfileId) ? "Connecting..." : "Connect")
+                    </button>
+                    <button class="settings-btn settings-btn--danger settings-btn--sm"
+                            @onclick="async () => await RemoveProfile(Profile)">
+                        Remove
+                    </button>
+                </div>
+            </div>
+
+            @if (_ProfileMessages.TryGetValue(Profile.ProfileId, out var PMsg) &&
+                !string.IsNullOrWhiteSpace(PMsg.Text))
+            {
+                <div class="settings-feedback @(PMsg.Ok ? "settings-feedback--ok" : "settings-feedback--err")">
+                    @PMsg.Text
+                </div>
+            }
+
+            @if (isExpanded)
+            {
+                <div class="llm-profile__body">
+                    <div class="llm-models__toolbar">
+                        <div class="llm-models__titleblock">
+                            <span class="llm-models__title">Models</span>
+                            <span class="llm-models__subtitle">Choose what is available to chat and broadcast.</span>
+                        </div>
+
+                        <div class="llm-models__actions">
+                            <button class="settings-btn settings-btn--sm"
+                                    @onclick="() => AddModel(Profile)">
+                                + Add Model
+                            </button>
+                            <button class="settings-btn settings-btn--sm"
+                                    @onclick="async () => await LoadModelsFromApi(Profile)"
+                                    disabled="@_LoadingModels.Contains(Profile.ProfileId)">
+                                @(_LoadingModels.Contains(Profile.ProfileId) ? "Loading..." : "Load from API")
+                            </button>
+                        </div>
+                    </div>
+
+                    @if (!Profile.Models.Any())
+                    {
+                        <div class="llm-models__empty">
+                            No models defined yet.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="llm-models__table">
+                            <div class="llm-models__head">
+                                <span>On</span>
+                                <span>Model</span>
+                                <span>Status</span>
+                                <span>Actions</span>
+                            </div>
+
+                            @foreach (var M in Profile.Models.ToList())
+                            {
+                                var Model = M;
+                                <div class="llm-models__row @(Model.IsActive ? "llm-models__row--active" : string.Empty)">
+                                    <div class="llm-models__cell llm-models__cell--toggle">
+                                        <input type="checkbox"
+                                               checked="@Model.IsActive"
+                                               @onchange="E => ToggleModelActive(Model, E)" />
+                                    </div>
+
+                                    <div class="llm-models__cell llm-models__cell--model">
+                                        <div class="llm-models__labelrow">
+                                            <span class="llm-models__label">@Model.Label</span>
+                                            @if (Model.IsDiscovered)
+                                            {
+                                                <span class="llm-models__badge">New</span>
+                                            }
+                                        </div>
+                                        <div class="llm-models__id">@Model.Id</div>
+                                    </div>
+
+                                    <div class="llm-models__cell llm-models__cell--status">
+                                        <span class="llm-models__status @(Model.IsActive ? "llm-models__status--active" : string.Empty)">
+                                            @(Model.IsActive ? "Active" : "Idle")
+                                        </span>
+                                    </div>
+
+                                    <div class="llm-models__cell llm-models__cell--actions">
+                                        <button class="settings-btn settings-btn--sm"
+                                                @onclick="async () => await TestModel(Profile, Model)"
+                                                disabled="@_TestingModel.Contains(Model.Id)">
+                                            @(_TestingModel.Contains(Model.Id) ? "Testing..." : "Test")
+                                        </button>
+                                        @if (Model.IsDiscovered)
+                                        {
+                                            <button class="settings-btn settings-btn--sm"
+                                                    @onclick="() => SaveDiscoveredModel(Profile, Model)">
+                                                Save
+                                            </button>
+                                        }
+                                        <button class="settings-btn settings-btn--danger settings-btn--sm"
+                                                @onclick="async () => await RemoveModel(Profile, Model)">
+                                            Remove
+                                        </button>
+                                    </div>
+
+                                    @if (_ModelMessages.TryGetValue(Model.Id, out var MMsg) &&
+                                        !string.IsNullOrWhiteSpace(MMsg.Text))
+                                    {
+                                        <div class="llm-models__feedback @(MMsg.Ok ? "settings-feedback--ok" : "settings-feedback--err")">
+                                            @MMsg.Text
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </section>
+    }
+
+    @if (_EditingProfile != null)
+    {
+        <EditLLMProfileDialog Profile="@_EditingProfile"
+                              OnSave="SaveProfile"
+                              OnCancel="CancelEdit" />
+    }
+
+</div>
+
+<style>
+    .llm-profiles-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .llm-profiles-panel__toolbar {
+        display: flex;
+        justify-content: flex-start;
+    }
+
+    .llm-profile {
+        border: 1px solid var(--Border);
+        border-radius: 8px;
+        background: var(--BgElevated);
+        overflow: hidden;
+    }
+
+    .llm-profile--active {
+        border-color: var(--AccentLine);
+        box-shadow: 0 0 0 1px rgba(0, 200, 255, 0.06);
+    }
+
+    .llm-profile__header {
+        display: grid;
+        grid-template-columns: minmax(0, 1.6fr) auto auto;
+        gap: 12px;
+        align-items: center;
+        padding: 14px 16px;
+    }
+
+    .llm-profile__identity {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .llm-profile__toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+    }
+
+    .llm-profile__name {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--Text);
+    }
+
+    .llm-profile__meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        min-width: 0;
+        color: var(--TextMuted);
+        font-size: 11px;
+    }
+
+    .llm-profile__provider,
+    .llm-profile__endpoint {
+        display: inline-flex;
+        align-items: center;
+        min-width: 0;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: var(--BgBase);
+        border: 1px solid var(--Border);
+    }
+
+    .llm-profile__endpoint {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 320px;
+    }
+
+    .llm-profile__summary {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .llm-profile__stat {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 8px;
+        border-radius: 999px;
+        border: 1px solid var(--Border);
+        background: var(--BgBase);
+        color: var(--TextMuted);
+        font-size: 11px;
+    }
+
+    .llm-profile__stat strong {
+        color: var(--Text);
+        font-weight: 700;
+    }
+
+    .llm-profile__stat--accent {
+        border-color: var(--AccentLine);
+        color: var(--Accent);
+        background: var(--AccentGlow);
+    }
+
+    .llm-profile__actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 6px;
+    }
+
+    .llm-profile__body {
+        border-top: 1px solid var(--Border);
+        padding: 14px 16px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .llm-models__toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .llm-models__titleblock {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .llm-models__title {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--Text);
+    }
+
+    .llm-models__subtitle {
+        color: var(--TextMuted);
+        font-size: 11px;
+    }
+
+    .llm-models__actions {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .llm-models__empty {
+        padding: 18px 14px;
+        border: 1px dashed var(--Border);
+        border-radius: 6px;
+        color: var(--TextMuted);
+        font-size: 11px;
+        background: var(--BgBase);
+    }
+
+    .llm-models__table {
+        display: flex;
+        flex-direction: column;
+        border: 1px solid var(--Border);
+        border-radius: 6px;
+        overflow: hidden;
+        background: var(--BgBase);
+    }
+
+    .llm-models__head,
+    .llm-models__row {
+        display: grid;
+        grid-template-columns: 44px minmax(0, 1fr) 92px auto;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .llm-models__head {
+        padding: 9px 12px;
+        background: rgba(255, 255, 255, 0.02);
+        border-bottom: 1px solid var(--Border);
+        color: var(--TextMuted);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .llm-models__row {
+        padding: 10px 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .llm-models__row:last-child {
+        border-bottom: 0;
+    }
+
+    .llm-models__row--active {
+        background: rgba(0, 200, 255, 0.04);
+    }
+
+    .llm-models__cell {
+        min-width: 0;
+    }
+
+    .llm-models__cell--actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 6px;
+    }
+
+    .llm-models__labelrow {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+    }
+
+    .llm-models__label {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--Text);
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .llm-models__id {
+        margin-top: 3px;
+        color: var(--TextMuted);
+        font-size: 10px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .llm-models__badge {
+        flex-shrink: 0;
+        padding: 2px 6px;
+        border-radius: 999px;
+        background: var(--AccentGlow);
+        border: 1px solid var(--AccentLine);
+        color: var(--Accent);
+        font-size: 10px;
+        font-weight: 700;
+    }
+
+    .llm-models__status {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 56px;
+        padding: 4px 8px;
+        border-radius: 999px;
+        border: 1px solid var(--Border);
+        color: var(--TextMuted);
+        background: var(--BgElevated);
+        font-size: 10px;
+        font-weight: 600;
+    }
+
+    .llm-models__status--active {
+        border-color: rgba(0, 214, 143, 0.3);
+        color: var(--Success);
+        background: rgba(0, 214, 143, 0.08);
+    }
+
+    .llm-models__feedback {
+        grid-column: 2 / -1;
+    }
+
+    @@media (max-width: 1100px) {
+        .llm-profile__header {
+            grid-template-columns: 1fr;
+        }
+
+        .llm-profile__actions {
+            justify-content: flex-start;
+        }
+    }
+
+    @@media (max-width: 800px) {
+        .llm-models__head {
+            display: none;
+        }
+
+        .llm-models__row {
+            grid-template-columns: 36px minmax(0, 1fr);
+            align-items: start;
+        }
+
+        .llm-models__cell--status,
+        .llm-models__cell--actions {
+            grid-column: 2;
+        }
+
+        .llm-models__cell--status {
+            margin-top: 4px;
+        }
+
+        .llm-models__cell--actions {
+            justify-content: flex-start;
+            margin-top: 8px;
+        }
+
+        .llm-models__feedback {
+            grid-column: 1 / -1;
+        }
+    }
+</style>
+
+@code {
+    private LLMProfile? _EditingProfile;
+    private readonly HashSet<string> _ExpandedProfiles = new();
+
+    private readonly HashSet<string> _TestingEndpoint = new();
+    private readonly HashSet<string> _ConnectingProfile = new();
+    private readonly HashSet<string> _LoadingModels = new();
+    private readonly HashSet<string> _TestingModel = new();
+
+    private readonly Dictionary<string, (string Text, bool Ok)> _ProfileMessages = new();
+    private readonly Dictionary<string, (string Text, bool Ok)> _ModelMessages = new();
+
+    private void AddProfile()
+    {
+        _EditingProfile = new LLMProfile
+        {
+            ProfileId = Guid.NewGuid().ToString(),
+            Name = "New Profile"
+        };
+    }
+
+    private void EditProfile(LLMProfile Profile)
+    {
+        _EditingProfile = Profile;
+    }
+
+    private void SaveProfile(LLMProfile Updated)
+    {
+        var Existing = State.LLMProfiles
+            .FirstOrDefault(P => P.ProfileId == Updated.ProfileId);
+
+        if (Existing != null)
+        {
+            var Idx = State.LLMProfiles.IndexOf(Existing);
+            Updated.Models = Existing.Models;
+            State.LLMProfiles[Idx] = Updated;
+        }
+        else
+        {
+            State.LLMProfiles.Add(Updated);
+            _ExpandedProfiles.Add(Updated.ProfileId);
+        }
+
+        State.SaveSettings();
+        _EditingProfile = null;
+        StateHasChanged();
+    }
+
+    private void CancelEdit()
+    {
+        _EditingProfile = null;
+        StateHasChanged();
+    }
+
+    private async Task RemoveProfile(LLMProfile Profile)
+    {
+        var Confirmed = await JS.InvokeAsync<bool>("confirm",
+            $"Remove profile '{Profile.Name}' and all its models?");
+        if (!Confirmed) return;
+
+        State.LLMProfiles.Remove(Profile);
+        _ExpandedProfiles.Remove(Profile.ProfileId);
+        State.SaveSettings();
+        StateHasChanged();
+    }
+
+    private async Task TestEndpoint(LLMProfile Profile)
+    {
+        _TestingEndpoint.Add(Profile.ProfileId);
+        _ProfileMessages.Remove(Profile.ProfileId);
+        StateHasChanged();
+
+        var (Ok, Message) = await State.TestEndpointAsync(Profile);
+        _ProfileMessages[Profile.ProfileId] = (Message, Ok);
+
+        _TestingEndpoint.Remove(Profile.ProfileId);
+        StateHasChanged();
+    }
+
+    private async Task ConnectProfile(LLMProfile Profile)
+    {
+        _ConnectingProfile.Add(Profile.ProfileId);
+        _ProfileMessages.Remove(Profile.ProfileId);
+        StateHasChanged();
+
+        await State.ConnectProfileAsync(Profile);
+
+        var Ok = State.IsConnected;
+        var Message = Ok
+            ? $"Connected - {Profile.Models.Count} model(s) available."
+            : State.ConnectionDetails;
+
+        _ProfileMessages[Profile.ProfileId] = (Message, Ok);
+
+        _ConnectingProfile.Remove(Profile.ProfileId);
+        _ExpandedProfiles.Add(Profile.ProfileId);
+        StateHasChanged();
+    }
+
+    private async Task LoadModelsFromApi(LLMProfile Profile)
+    {
+        _LoadingModels.Add(Profile.ProfileId);
+        _ProfileMessages.Remove(Profile.ProfileId);
+        StateHasChanged();
+
+        try
+        {
+            await State.ConnectProfileAsync(Profile);
+
+            var Count = Profile.Models.Count(M => M.IsDiscovered);
+            _ProfileMessages[Profile.ProfileId] = (
+                $"Loaded - {Count} new model(s) discovered.",
+                true);
+        }
+        catch (Exception Ex)
+        {
+            _ProfileMessages[Profile.ProfileId] = (Ex.Message, false);
+        }
+        finally
+        {
+            _LoadingModels.Remove(Profile.ProfileId);
+            _ExpandedProfiles.Add(Profile.ProfileId);
+            StateHasChanged();
+        }
+    }
+
+    private void AddModel(LLMProfile Profile)
+    {
+        Profile.Models.Add(new ModelProfile
+        {
+            Id = string.Empty,
+            Label = "New Model",
+            Type = Profile.ResolvedProvider.ToLowerInvariant()
+        });
+
+        _ExpandedProfiles.Add(Profile.ProfileId);
+        State.SaveSettings();
+        StateHasChanged();
+    }
+
+    private async Task RemoveModel(LLMProfile Profile, ModelProfile Model)
+    {
+        var Confirmed = await JS.InvokeAsync<bool>("confirm",
+            $"Remove model '{Model.Label}'?");
+        if (!Confirmed) return;
+
+        Profile.Models.Remove(Model);
+        State.SaveSettings();
+        StateHasChanged();
+    }
+
+    private async Task TestModel(LLMProfile Profile, ModelProfile Model)
+    {
+        _TestingModel.Add(Model.Id);
+        _ModelMessages.Remove(Model.Id);
+        StateHasChanged();
+
+        var (Ok, Message) = await State.TestModelAsync(Profile, Model);
+        _ModelMessages[Model.Id] = (Message, Ok);
+
+        _TestingModel.Remove(Model.Id);
+        StateHasChanged();
+    }
+
+    private void SaveDiscoveredModel(LLMProfile Profile, ModelProfile Model)
+    {
+        Model.IsDiscovered = false;
+        _ExpandedProfiles.Add(Profile.ProfileId);
+        State.SaveSettings();
+        StateHasChanged();
+    }
+
+    private void ToggleExpanded(string profileId)
+    {
+        if (!_ExpandedProfiles.Add(profileId))
+        {
+            _ExpandedProfiles.Remove(profileId);
+        }
+    }
+
+    private void ToggleProfileActive(LLMProfile Profile, ChangeEventArgs E)
+    {
+        Profile.IsActive = (bool)(E.Value ?? false);
+        State.SaveSettings();
+        StateHasChanged();
+    }
+
+    private void ToggleModelActive(ModelProfile Model, ChangeEventArgs E)
+    {
+        Model.IsActive = (bool)(E.Value ?? false);
+        State.SaveSettings();
+        StateHasChanged();
+    }
+
+    private static string FormatEndpoint(string endpoint)
+    {
+        if (string.IsNullOrWhiteSpace(endpoint))
+        {
+            return "No endpoint";
+        }
+
+        return endpoint.Length <= 42
+            ? endpoint
+            : $"{endpoint[..39]}...";
+    }
+}

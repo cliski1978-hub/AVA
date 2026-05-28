@@ -1,0 +1,264 @@
+@using AVA.UI.Features.Vault.ViewModels
+@inject VaultNoteEditorVM VM
+@implements IDisposable
+
+@if (VM.HasNote)
+{
+    <div class="note-related">
+        <div class="note-related__header">
+            <span class="note-related__title">Related Notes</span>
+            <span class="note-related__count">@VM.RelatedNotes.Count</span>
+        </div>
+
+        <button class="note-related__link-btn" @onclick="ToggleLinkForm">
+            @(_showLinkForm ? "Cancel" : "+ Link note")
+        </button>
+
+        @if (_showLinkForm)
+        {
+            <div class="note-related__link-form">
+                <input class="note-related__link-input"
+                       placeholder="Target note ID…"
+                       @bind="_targetNoteId"
+                       @bind:event="oninput" />
+                <select class="note-related__link-select" @bind="_relationType">
+                    <option value="References">References</option>
+                    <option value="RelatedTo">Related To</option>
+                    <option value="DerivedFrom">Derived From</option>
+                    <option value="ParentOf">Parent Of</option>
+                    <option value="ChildOf">Child Of</option>
+                </select>
+                <button class="note-related__link-create"
+                        disabled="@string.IsNullOrWhiteSpace(_targetNoteId)"
+                        @onclick="CreateLinkAsync">
+                    Link
+                </button>
+            </div>
+        }
+
+        @if (!VM.RelatedNotes.Any())
+        {
+            <div class="note-related__empty">No related notes.</div>
+        }
+        else
+        {
+            <div class="note-related__list">
+                @foreach (var item in VM.RelatedNotes)
+                {
+                    var r = item;
+                    <div class="note-related__row">
+                        <span class="note-related__dir @(r.Direction == AVA.Vault.Core.Services.Data.LinkDirection.Outgoing ? "note-related__dir--out" : "note-related__dir--in")"
+                              title="@r.Direction">
+                            @(r.Direction == AVA.Vault.Core.Services.Data.LinkDirection.Outgoing ? "→" : "←")
+                        </span>
+                        <div class="note-related__info">
+                            <span class="note-related__note-title">@(r.Note?.Title ?? "Untitled")</span>
+                            <span class="note-related__type">@r.RelationType</span>
+                        </div>
+                        <button class="note-related__remove"
+                                title="Remove link"
+                                @onclick="() => DeleteLink(r.LinkID)"
+                                @onclick:stopPropagation="true">
+                            ×
+                        </button>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+}
+
+<style>
+    .note-related {
+        padding: 10px 16px;
+    }
+
+    .note-related__header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+
+    .note-related__title {
+        font-size: var(--FzXs);
+        font-weight: 600;
+        color: var(--TextFaint);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .note-related__count {
+        font-size: var(--FzXs);
+        color: var(--TextFaint);
+        background: var(--BgElevated);
+        border: 1px solid var(--Border);
+        border-radius: var(--RxPill);
+        padding: 0 6px;
+        line-height: 16px;
+    }
+
+    .note-related__empty {
+        font-size: var(--FzXs);
+        color: var(--TextFaint);
+        padding: 4px 0;
+    }
+
+    .note-related__list {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .note-related__row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 8px;
+        border-radius: var(--RxSm);
+        border: 1px solid var(--Border);
+        background: var(--BgElevated);
+        cursor: default;
+        transition: background var(--T);
+    }
+
+    .note-related__row:hover { background: var(--BgHover); }
+
+    .note-related__dir {
+        font-size: var(--FzSm);
+        flex-shrink: 0;
+        width: 16px;
+        text-align: center;
+    }
+
+    .note-related__dir--out { color: var(--Accent); }
+    .note-related__dir--in  { color: var(--Success); }
+
+    .note-related__info {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        min-width: 0;
+    }
+
+    .note-related__note-title {
+        font-size: var(--FzSm);
+        color: var(--Text);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .note-related__type {
+        font-size: 10px;
+        color: var(--TextFaint);
+        letter-spacing: 0.04em;
+    }
+
+    .note-related__remove {
+        margin-left: auto;
+        width: 18px;
+        height: 18px;
+        border-radius: 999px;
+        border: 0;
+        background: transparent;
+        color: var(--TextFaint);
+        font-size: 13px;
+        cursor: pointer;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: color var(--T);
+        font-family: inherit;
+    }
+
+    .note-related__remove:hover { color: var(--Danger); }
+
+    .note-related__link-btn {
+        border: 0;
+        background: transparent;
+        color: var(--TextMuted);
+        font-family: var(--Font);
+        font-size: var(--FzXs);
+        cursor: pointer;
+        padding: 0;
+        margin-bottom: 8px;
+        transition: color var(--T);
+    }
+
+    .note-related__link-btn:hover { color: var(--Accent); }
+
+    .note-related__link-form {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-bottom: 8px;
+        padding: 8px;
+        background: var(--BgElevated);
+        border-radius: var(--RxMd);
+        border: 1px solid var(--Border);
+    }
+
+    .note-related__link-input,
+    .note-related__link-select {
+        height: 26px;
+        border-radius: var(--RxSm);
+        border: 1px solid var(--BorderMid);
+        background: var(--BgBase);
+        color: var(--Text);
+        font-family: var(--Font);
+        font-size: var(--FzXs);
+        padding: 0 var(--RxSm);
+        outline: none;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .note-related__link-create {
+        height: 26px;
+        border-radius: var(--RxSm);
+        border: 1px solid var(--Border);
+        background: transparent;
+        color: var(--TextMuted);
+        font-family: var(--Font);
+        font-size: var(--FzXs);
+        cursor: pointer;
+        transition: all var(--T);
+    }
+
+    .note-related__link-create:hover:not(:disabled) { border-color: var(--Accent); color: var(--Accent); }
+    .note-related__link-create:disabled { opacity: 0.4; cursor: default; }
+</style>
+
+@code {
+    private bool _showLinkForm;
+    private string _targetNoteId = string.Empty;
+    private string _relationType = "References";
+    private Action? _vmHandler;
+
+    protected override void OnInitialized()
+    {
+        _vmHandler = () => InvokeAsync(StateHasChanged);
+        VM.OnChange += _vmHandler;
+    }
+
+    private void ToggleLinkForm()
+    {
+        _showLinkForm = !_showLinkForm;
+        _targetNoteId = string.Empty;
+        _relationType = "References";
+    }
+
+    private async Task CreateLinkAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_targetNoteId)) return;
+        await VM.CreateLinkAsync(_targetNoteId.Trim(), _relationType);
+        _showLinkForm = false;
+        _targetNoteId = string.Empty;
+    }
+
+    private async Task DeleteLink(string linkId) => await VM.DeleteLinkAsync(linkId);
+
+    public void Dispose() { VM.OnChange -= _vmHandler; }
+}

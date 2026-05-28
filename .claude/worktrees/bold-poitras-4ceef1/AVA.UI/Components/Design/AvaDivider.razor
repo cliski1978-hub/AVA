@@ -1,0 +1,25 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   AvaDivider.razor
+   Purpose: Horizontal divider line with optional label.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@if (string.IsNullOrWhiteSpace(Label))
+{
+    <div class="ava-divider"></div>
+}
+else
+{
+    <div style="display: flex; align-items: center; gap: 8px; margin: 8px 0;">
+        <div style="flex: 1; height: 1px; background: var(--Border);"></div>
+        <span style="font-size: 10px; color: var(--TextMuted); white-space: nowrap;">@Label</span>
+        <div style="flex: 1; height: 1px; background: var(--Border);"></div>
+    </div>
+}
+
+@code {
+    /// <summary>
+    /// Optional label to display in the middle of the divider.
+    /// </summary>
+    [Parameter]
+    public string? Label { get; set; }
+}

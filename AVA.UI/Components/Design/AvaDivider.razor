@@ -1,0 +1,55 @@
+<div class="@CssClass" @attributes="AdditionalAttributes">
+    <div class="ava-divider"></div>
+    @if (ChildContent is not null)
+    {
+        <div class="ava-divider__label">@ChildContent</div>
+        <div class="ava-divider"></div>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// Gets or sets the visual intent for the divider.
+    /// </summary>
+    [Parameter]
+    public string Intent { get; set; } = "neutral";
+
+    /// <summary>
+    /// Gets or sets the size variant for the divider.
+    /// </summary>
+    [Parameter]
+    public string Size { get; set; } = "md";
+
+    /// <summary>
+    /// Gets or sets an optional state class for the divider.
+    /// </summary>
+    [Parameter]
+    public string State { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets optional centered label content.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Gets or sets additional HTML attributes for the divider wrapper.
+    /// </summary>
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string CssClass =>
+        string.Join(" ",
+            "ava-divider-wrap",
+            Normalize("ava-divider", Intent, "neutral"),
+            Normalize("ava-divider", Size, "md"),
+            string.IsNullOrWhiteSpace(State) ? string.Empty : State);
+
+    private static string Normalize(string prefix, string value, string fallback)
+    {
+        var resolved = string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
+        return resolved.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            ? resolved
+            : $"{prefix}-{resolved}";
+    }
+}

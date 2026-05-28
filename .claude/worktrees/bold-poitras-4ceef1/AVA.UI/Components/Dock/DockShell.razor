@@ -1,0 +1,87 @@
+@inject AppState AppState
+@inject AvaSettingsService SettingsService
+@implements IDisposable
+
+<div class="dock-shell">
+    <aside class="dock-left @(_leftNavCollapsed ? "collapsed" : string.Empty)">
+        <LeftNav OnCollapsedChanged="HandleCollapsedChanged" />
+    </aside>
+
+    <section class="dock-main">
+        <SessionToolbar />
+        <div class="dock-content">
+            @ChildContent
+        </div>
+    </section>
+</div>
+
+<style>
+    .dock-shell {
+        display: flex;
+        height: 100vh;
+        background: var(--BgBase);
+        color: var(--Text);
+        font-family: var(--Font);
+        overflow: hidden;
+    }
+
+    .dock-left {
+        width: var(--NavWidth);
+        min-width: var(--NavWidth);
+        border-right: 1px solid var(--Border);
+        overflow: hidden;
+        transition: width var(--T), min-width var(--T);
+        flex-shrink: 0;
+    }
+
+    .dock-left.collapsed {
+        width: var(--NavWidthCollapsed);
+        min-width: var(--NavWidthCollapsed);
+    }
+
+    .dock-main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        min-width: 0;
+    }
+
+    .dock-content {
+        flex: 1;
+        overflow: auto;
+        min-height: 0;
+        min-width: 0;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private bool _leftNavCollapsed;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AppState.OnChange += HandleAppStateChanged;
+        await SettingsService.LoadAsync();
+        await AppState.LoadWorkspaceStateAsync();
+        AppState.NotifyStateChanged();
+    }
+
+    private void HandleCollapsedChanged(bool isCollapsed)
+    {
+        _leftNavCollapsed = isCollapsed;
+        StateHasChanged();
+    }
+
+    private void HandleAppStateChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        AppState.OnChange -= HandleAppStateChanged;
+    }
+}

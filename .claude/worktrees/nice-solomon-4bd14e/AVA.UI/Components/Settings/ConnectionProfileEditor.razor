@@ -1,0 +1,48 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   ConnectionProfileEditor.razor
+   Namespace: AVA.UI.Components.Settings
+   Purpose  : Editor fields for a LocalConnectionProfile.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@using AVA.UI.CORE.Models.Settings
+
+<div class="profile-editor">
+    <div class="settings-field">
+        <label>Display Name</label>
+        <input @bind="Profile.DisplayName" />
+    </div>
+    <div class="settings-field">
+        <label>Hostname</label>
+        <input @bind="Profile.Hostname" placeholder="localhost" />
+    </div>
+    <div class="settings-field">
+        <label>Port</label>
+        <input type="number" @bind="Profile.Port" placeholder="8080" />
+    </div>
+    <div class="settings-field">
+        <label>Core Path</label>
+        <input @bind="Profile.CorePath" placeholder="/path/to/core" />
+    </div>
+    <div class="settings-field">
+        <label class="settings-row">
+            <input type="checkbox" @bind="Profile.LaunchOnConnect" />
+            Launch on Connect
+        </label>
+    </div>
+    <div class="settings-field">
+        <label>Launch Arguments</label>
+        <input @bind="Profile.LaunchArgs" />
+    </div>
+    <div class="settings-field">
+        <label>Working Directory</label>
+        <input @bind="Profile.WorkingDirectory" />
+    </div>
+    <div class="settings-field">
+        <label>Launch Delay (ms)</label>
+        <input type="number" @bind="Profile.LaunchDelayMs" />
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public LocalConnectionProfile Profile { get; set; } = default!;
+}

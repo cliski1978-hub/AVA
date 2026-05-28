@@ -1,0 +1,26 @@
+@page "/interactive-test"
+@rendermode InteractiveServer
+@implements IDisposable
+@inject ILogger<InteractiveTest> Log
+
+<PageTitle>Interactive Test</PageTitle>
+
+<h3>Counter: @_count</h3>
+<button @onclick="Increment">Click me</button>
+
+<br/>
+<input @bind="_text" />
+<p>Bound text: @_text</p>
+
+@code {
+    private int _count;
+    private string _text = "hello";
+
+    private void Increment()
+    {
+        _count++;
+        Log.LogInformation("InteractiveTest: count={Count}, text={Text}", _count, _text);
+    }
+
+    void IDisposable.Dispose() { }
+}

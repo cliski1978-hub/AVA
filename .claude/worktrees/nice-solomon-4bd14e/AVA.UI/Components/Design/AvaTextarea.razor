@@ -1,0 +1,102 @@
+<div class="@ShellClass">
+    <textarea class="@TextareaClass"
+              placeholder="@Placeholder"
+              rows="@Rows"
+              disabled="@IsDisabled"
+              @oninput="HandleInput"
+              @attributes="AdditionalAttributes">@Value</textarea>
+</div>
+
+@if (ChildContent is not null)
+{
+    <div class="ava-field__support">@ChildContent</div>
+}
+
+@code {
+    /// <summary>
+    /// Gets or sets the visual intent for the textarea shell.
+    /// </summary>
+    [Parameter]
+    public string Intent { get; set; } = "primary";
+
+    /// <summary>
+    /// Gets or sets the size variant for the textarea.
+    /// </summary>
+    [Parameter]
+    public string Size { get; set; } = "md";
+
+    /// <summary>
+    /// Gets or sets an optional state class for the textarea shell.
+    /// </summary>
+    [Parameter]
+    public string State { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the textarea value.
+    /// </summary>
+    [Parameter]
+    public string? Value { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when the value changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> ValueChanged { get; set; }
+
+    /// <summary>
+    /// Gets or sets the placeholder text.
+    /// </summary>
+    [Parameter]
+    public string? Placeholder { get; set; }
+
+    /// <summary>
+    /// Gets or sets the number of visible rows.
+    /// </summary>
+    [Parameter]
+    public int Rows { get; set; } = 4;
+
+    /// <summary>
+    /// Gets or sets whether the textarea is disabled.
+    /// </summary>
+    [Parameter]
+    public bool IsDisabled { get; set; }
+
+    /// <summary>
+    /// Gets or sets optional supporting content rendered below the textarea.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Gets or sets additional HTML attributes for the textarea.
+    /// </summary>
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string ShellClass =>
+        string.Join(" ",
+            "ava-textarea-shell",
+            "ava-field",
+            Normalize("ava-textarea", Intent, "primary"),
+            IsDisabled ? "is-disabled" : string.Empty,
+            string.IsNullOrWhiteSpace(State) ? string.Empty : State);
+
+    private string TextareaClass =>
+        string.Join(" ",
+            "ava-textarea",
+            Normalize("ava-textarea", Size, "md"));
+
+    private async Task HandleInput(ChangeEventArgs args)
+    {
+        Value = args.Value?.ToString();
+        await ValueChanged.InvokeAsync(Value ?? string.Empty);
+    }
+
+    private static string Normalize(string prefix, string value, string fallback)
+    {
+        var resolved = string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
+        return resolved.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            ? resolved
+            : $"{prefix}-{resolved}";
+    }
+}

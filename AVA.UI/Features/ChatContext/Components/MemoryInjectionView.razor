@@ -1,0 +1,69 @@
+@using AVA.UI.CORE.ChatContext.Models
+
+<div class="ctx-memory">
+    <div class="ctx-memory__header">
+        <span>Memory Injection</span>
+        <span class="ctx-memory__state">@(Enabled ? "Enabled" : "Disabled")</span>
+    </div>
+
+    @if (!Enabled)
+    {
+        <div class="ctx-memory__empty">Memory injection is disabled.</div>
+    }
+    else if (Retrieval == null || Retrieval.Items.Count == 0)
+    {
+        <div class="ctx-memory__empty">No memory provider results are available.</div>
+    }
+    else
+    {
+        <div class="ctx-memory__meta">
+            <span>@Retrieval.Items.Count items</span>
+            <span>Applied @Retrieval.RetrievalApplied</span>
+        </div>
+
+        <div class="ctx-memory__items">
+            @foreach (var item in Retrieval.Items)
+            {
+                <div class="ctx-memory__item">
+                    <div class="ctx-memory__item-head">
+                        <strong>@item.Title</strong>
+                        <span>@item.EstimatedTokens tokens</span>
+                    </div>
+                    <div class="ctx-memory__item-meta">
+                        <span>@item.Source</span>
+                        <span>score @item.RelevanceScore.ToString("0.###")</span>
+                    </div>
+                    <div class="ctx-memory__preview">@Preview(item.Content)</div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<style>
+.ctx-memory { padding: 8px; background: var(--BgElevated); border: 1px solid var(--Border); border-radius: var(--RxSm); display: flex; flex-direction: column; gap: 6px; }
+.ctx-memory__header { display: flex; justify-content: space-between; align-items: center; color: var(--Text); font-size: var(--FzXs); font-weight: 600; }
+.ctx-memory__state { color: var(--TextMuted); font-weight: 500; }
+.ctx-memory__empty { color: var(--TextMuted); font-size: var(--FzXs); }
+.ctx-memory__meta { display: flex; gap: 8px; color: var(--TextMuted); font-size: var(--FzXs); font-family: var(--FontMono); }
+.ctx-memory__items { display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow: auto; }
+.ctx-memory__item { padding: 6px; background: var(--BgSurface); border: 1px solid var(--Border); border-radius: var(--RxSm); }
+.ctx-memory__item-head { display: flex; justify-content: space-between; gap: 8px; color: var(--Text); font-size: var(--FzXs); }
+.ctx-memory__item-head strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ctx-memory__item-meta { display: flex; gap: 8px; color: var(--TextMuted); font-size: var(--FzXs); font-family: var(--FontMono); }
+.ctx-memory__preview { margin-top: 4px; color: var(--TextMuted); font-size: var(--FzXs); line-height: 1.35; }
+</style>
+
+@code {
+    [Parameter] public bool Enabled { get; set; }
+    [Parameter] public MemoryRetrievalResult? Retrieval { get; set; }
+
+    private static string Preview(string? content)
+    {
+        if (string.IsNullOrWhiteSpace(content))
+            return string.Empty;
+
+        var normalized = string.Join(" ", content.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        return normalized.Length <= 180 ? normalized : normalized[..180] + "...";
+    }
+}

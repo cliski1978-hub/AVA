@@ -1,0 +1,140 @@
+@using AVA.UI.CORE.ChatContext.Models
+@using AVA.UI.CORE.ChatContext.Utilities
+
+@if (Item != null)
+{
+    <div class="ctx-item @(Item.IsIncluded ? "ctx-item--included" : "ctx-item--excluded") @(Item.IsPinned ? "ctx-item--pinned" : "") @(Item.IsUserOverride ? "ctx-item--override" : "")">
+        <label class="ctx-item__check" title="Select for offload">
+            <input type="checkbox"
+                   checked="@IsSelected"
+                   disabled="@(!CanSelect)"
+                   @onchange="OnSelectionChanged" />
+        </label>
+
+        <label class="ctx-item__check" title="@IncludeTitle">
+            <input type="checkbox"
+                   checked="@Item.IsIncluded"
+                   disabled="@IsRequired"
+                   @onchange="OnCheckChanged" />
+        </label>
+
+        <span class="ctx-item__type">@PromptFormatter.FormatItemType(Item.ItemType)</span>
+
+        <span class="ctx-item__status ctx-item__status--@StatusClass">@StatusLabel</span>
+
+        <span class="ctx-item__tokens" title="Estimated tokens">@Item.EstimatedTokens t</span>
+
+        <span class="ctx-item__source" title="@Item.SourceId">@Item.SourceLabel</span>
+
+        <span class="ctx-item__preview" title="@Item.Content">
+            @PromptFormatter.BuildPreviewText(Item, 80)
+            @if (Item.IsUserOverride)
+            {
+                <span class="ctx-item__indicator">User Override</span>
+            }
+            @if (Item.IsPinned)
+            {
+                <span class="ctx-item__indicator">Pinned</span>
+            }
+        </span>
+
+        <span class="ctx-item__actions">
+            <button class="ctx-item__action @(Item.IsPinned ? "ctx-item__action--active" : "")"
+                    title="@(Item.IsPinned ? "Unpin" : "Pin")"
+                    @onclick="OnPinToggle">
+                Pin
+            </button>
+            <button class="ctx-item__action"
+                    title="Clear override"
+                    disabled="@(!Item.IsUserOverride)"
+                    @onclick="OnClearOverride">
+                Clear
+            </button>
+        </span>
+    </div>
+}
+
+<style>
+.ctx-item { display: grid; grid-template-columns: 24px 24px 90px 112px 48px 80px minmax(120px, 1fr) 132px; align-items: center; gap: 6px; padding: 4px 8px; border-radius: var(--RxSm); font-size: var(--FzSm); border-bottom: 1px solid var(--Border); }
+.ctx-item--included { background: transparent; }
+.ctx-item--excluded { background: rgba(0,0,0,0.08); opacity: 0.72; }
+.ctx-item--pinned { border-left: 2px solid #4caf50; }
+.ctx-item--override { outline: 1px solid rgba(200,150,0,0.25); outline-offset: -1px; }
+.ctx-item__check { display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.ctx-item__type { color: var(--TextMuted); font-size: var(--FzXs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ctx-item__status { font-size: var(--FzXs); font-family: var(--FontMono); padding: 1px 5px; border-radius: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ctx-item__status--included { background: rgba(0,200,100,0.12); color: #4caf50; }
+.ctx-item__status--excluded { background: rgba(200,80,80,0.12); color: var(--Err); }
+.ctx-item__status--required { background: rgba(0,160,220,0.12); color: var(--Accent); }
+.ctx-item__status--pinned { background: rgba(76,175,80,0.15); color: #4caf50; }
+.ctx-item__status--user { background: rgba(200,150,0,0.12); color: var(--Warn); }
+.ctx-item__tokens { font-family: var(--FontMono); font-size: var(--FzXs); color: var(--TextMuted); text-align: right; }
+.ctx-item__source { color: var(--TextMuted); font-size: var(--FzXs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ctx-item__preview { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--Text); min-width: 0; }
+.ctx-item__indicator { margin-left: 6px; color: var(--Warn); font-size: var(--FzXs); font-family: var(--FontMono); }
+.ctx-item__actions { display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
+.ctx-item__action { height: 22px; padding: 0 6px; border: 1px solid var(--Border); border-radius: var(--RxSm); background: transparent; color: var(--TextMuted); font-size: var(--FzXs); cursor: pointer; }
+.ctx-item__action:hover:not(:disabled) { border-color: var(--Accent); color: var(--Accent); }
+.ctx-item__action--active { border-color: #4caf50; color: #4caf50; }
+.ctx-item__action:disabled { opacity: 0.4; cursor: default; }
+</style>
+
+@code {
+    [Parameter] public PromptContextItem? Item { get; set; }
+    [Parameter] public bool IsSelected { get; set; }
+    [Parameter] public EventCallback OnForceInclude { get; set; }
+    [Parameter] public EventCallback OnForceExclude { get; set; }
+    [Parameter] public EventCallback OnPinToggle { get; set; }
+    [Parameter] public EventCallback OnClearOverride { get; set; }
+    [Parameter] public EventCallback OnSelectionToggle { get; set; }
+
+    private bool IsRequired => Item?.SelectionStatus == PromptContextSelectionStatus.Required;
+    private bool CanSelect => !string.Equals(Item?.ItemId, "current-prompt", StringComparison.OrdinalIgnoreCase);
+
+    private string IncludeTitle => IsRequired
+        ? "Required item"
+        : Item?.IsIncluded == true ? "Force exclude" : "Force include";
+
+    private string StatusLabel => Item?.SelectionStatus switch
+    {
+        PromptContextSelectionStatus.Required => "Required",
+        PromptContextSelectionStatus.Included => "Included",
+        PromptContextSelectionStatus.Pinned => "Pinned",
+        PromptContextSelectionStatus.ForcedByUser => "Forced",
+        PromptContextSelectionStatus.ExcludedByBudget => "Budget",
+        PromptContextSelectionStatus.ExcludedByPolicy => "Policy",
+        PromptContextSelectionStatus.ExcludedByUser => "User Excl.",
+        PromptContextSelectionStatus.Recommended => "Recommended",
+        PromptContextSelectionStatus.NotEvaluated => "-",
+        _ => Item?.SelectionStatus.ToString() ?? "-"
+    };
+
+    private string StatusClass => Item?.SelectionStatus switch
+    {
+        PromptContextSelectionStatus.Required => "required",
+        PromptContextSelectionStatus.Included => "included",
+        PromptContextSelectionStatus.Pinned => "pinned",
+        PromptContextSelectionStatus.ForcedByUser => "user",
+        PromptContextSelectionStatus.ExcludedByBudget => "excluded",
+        PromptContextSelectionStatus.ExcludedByPolicy => "excluded",
+        PromptContextSelectionStatus.ExcludedByUser => "excluded",
+        _ => "excluded"
+    };
+
+    private async Task OnCheckChanged(ChangeEventArgs e)
+    {
+        if (e.Value is bool include)
+        {
+            if (include)
+                await OnForceInclude.InvokeAsync();
+            else
+                await OnForceExclude.InvokeAsync();
+        }
+    }
+
+    private async Task OnSelectionChanged(ChangeEventArgs e)
+    {
+        if (e.Value is bool)
+            await OnSelectionToggle.InvokeAsync();
+    }
+}

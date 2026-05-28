@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir C:\\\\Apps\\\\AVA /s /b)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Apps\\\\AVA\" -Recurse -File | Where-Object { $_.Extension -in @\\('.cs','.csproj','.sln','.json','.html','.razor','.css'\\) } | ForEach-Object { $_.FullName })",
+      "Bash(dotnet build *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Apps\\\\AVA\\\\AVA.UI.CORE\" -Directory)",
+      "Bash(Select-Object -ExpandProperty Name)",
+      "Bash(Sort-Object)",
+      "Bash(xargs grep -l \"stream\\\\|Stream\\\\|SSE\")",
+      "Bash(powershell -Command \"Get-ChildItem -Path 'C:\\\\Apps\\\\AVA' -Filter '*.cs' -Recurse | Select-String -Pattern 'stream|Stream|SSE|ResponseHeadersRead' -List | Select Path | Get-Unique\")"
+    ]
+  }
+}

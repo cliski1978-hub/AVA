@@ -1,0 +1,46 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   AgentProfileEditor.razor
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@using AVA.UI.CORE.Models.Settings
+
+<div class="profile-editor">
+    <div class="settings-field">
+        <label>Display Name</label>
+        <input @bind="Profile.DisplayName" />
+    </div>
+    <div class="settings-field">
+        <label>Agent ID</label>
+        <input @bind="Profile.AgentId" />
+    </div>
+    <div class="settings-field">
+        <label>Endpoint URL</label>
+        <input @bind="Profile.EndpointUrl" placeholder="http://localhost:8080/api" />
+    </div>
+    <div class="settings-field">
+        <label>Protocol</label>
+        <select @bind="Profile.Protocol">
+            <option value="Http">Http</option>
+            <option value="WebSocket">WebSocket</option>
+            <option value="Grpc">gRPC</option>
+        </select>
+    </div>
+    <div class="settings-field">
+        <label>Relay Info</label>
+        <input @bind="Profile.RelayInfo" />
+    </div>
+    <div class="settings-field">
+        <label class="settings-row">
+            <input type="checkbox" @bind="Profile.UseMock" />
+            Use Mock Endpoint
+        </label>
+    </div>
+    <div class="settings-field">
+        <label>Headers <span class="settings-hint">(key=value, one per line)</span></label>
+        <textarea rows="4" @bind="Profile.HeadersAsText"></textarea>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public AgentConnectionProfile Profile { get; set; } = default!;
+}

@@ -1,0 +1,96 @@
+<button type="button"
+        class="@CssClass"
+        role="switch"
+        aria-checked="@Checked"
+        disabled="@IsDisabled"
+        @onclick="ToggleAsync"
+        @attributes="AdditionalAttributes">
+    <span class="ava-toggle__track">
+        <span class="ava-toggle__thumb"></span>
+    </span>
+    @if (ChildContent is not null)
+    {
+        <span class="ava-toggle__label @LabelSizeClass">@ChildContent</span>
+    }
+</button>
+
+@code {
+    /// <summary>
+    /// Gets or sets the visual intent for the toggle.
+    /// </summary>
+    [Parameter]
+    public string Intent { get; set; } = "primary";
+
+    /// <summary>
+    /// Gets or sets the size variant for the toggle.
+    /// </summary>
+    [Parameter]
+    public string Size { get; set; } = "md";
+
+    /// <summary>
+    /// Gets or sets an optional state class for the toggle.
+    /// </summary>
+    [Parameter]
+    public string State { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets whether the toggle is checked.
+    /// </summary>
+    [Parameter]
+    public bool Checked { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when the checked state changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<bool> CheckedChanged { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the toggle is disabled.
+    /// </summary>
+    [Parameter]
+    public bool IsDisabled { get; set; }
+
+    /// <summary>
+    /// Gets or sets optional label content.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Gets or sets additional HTML attributes for the toggle.
+    /// </summary>
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string CssClass =>
+        string.Join(" ",
+            "ava-toggle",
+            Normalize("ava-toggle", Intent, "primary"),
+            Normalize("ava-toggle", Size, "md"),
+            Checked ? "is-checked" : string.Empty,
+            IsDisabled ? "is-disabled" : string.Empty,
+            string.IsNullOrWhiteSpace(State) ? string.Empty : State);
+
+    private string LabelSizeClass => $"ava-size-{NormalizeValue(Size, "md")}";
+
+    private async Task ToggleAsync()
+    {
+        if (!IsDisabled)
+        {
+            Checked = !Checked;
+            await CheckedChanged.InvokeAsync(Checked);
+        }
+    }
+
+    private static string Normalize(string prefix, string value, string fallback)
+    {
+        var resolved = NormalizeValue(value, fallback);
+        return resolved.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            ? resolved
+            : $"{prefix}-{resolved}";
+    }
+
+    private static string NormalizeValue(string value, string fallback)
+        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim().Replace("ava-toggle-", string.Empty, StringComparison.OrdinalIgnoreCase);
+}

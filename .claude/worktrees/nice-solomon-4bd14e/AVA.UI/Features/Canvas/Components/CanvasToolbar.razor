@@ -1,0 +1,143 @@
+<div class="canvas-toolbar">
+    <div class="canvas-toolbar__title">
+        <AvaInput Intent="neutral"
+                  Size="lg"
+                  Value="@DocumentTitle"
+                  ValueChanged="HandleTitleChangedAsync"
+                  Placeholder="Untitled Canvas document" />
+    </div>
+
+    <div class="canvas-toolbar__actions">
+        <div class="canvas-toolbar__meta">
+            <AvaBadge Intent="primary" Size="sm">Canvas</AvaBadge>
+            <AvaChip Intent="neutral" Size="sm">@(Document?.Blocks.Count ?? 0) blocks</AvaChip>
+            @if (!string.IsNullOrWhiteSpace(StatusText))
+            {
+                <AvaChip Intent="success" Size="sm">@StatusText</AvaChip>
+            }
+        </div>
+
+        <div class="canvas-toolbar__buttons">
+            <AvaButton Intent="success" Size="sm" IsDisabled="@IsDocumentActionDisabled" OnClick="OnSaveDocument">Save</AvaButton>
+            <AvaButton Intent="neutral" Size="sm" IsDisabled="@IsDocumentActionDisabled" OnClick="OnSaveCopy">Save Copy</AvaButton>
+            <AvaButton Intent="neutral" Size="sm" IsDisabled="@IsDocumentActionDisabled" OnClick="OnDownloadMarkdown">Markdown</AvaButton>
+            <AvaButton Intent="neutral" Size="sm" IsDisabled="@IsDocumentActionDisabled" OnClick="OnDownloadText">Text</AvaButton>
+            <AvaButton Intent="warn" Size="sm" IsDisabled="@IsDocumentActionDisabled" OnClick="OnDownloadPdf">PDF</AvaButton>
+            <AvaButton Intent="neutral" Size="sm" IsDisabled="@IsDocumentActionDisabled" OnClick="OnPopOut">Pop Out</AvaButton>
+        </div>
+    </div>
+
+    <div class="canvas-toolbar__actions canvas-toolbar__actions--secondary">
+        <div class="canvas-toolbar__buttons">
+            <AvaButton Intent="primary" Size="sm" OnClick="OnNewDocument">New</AvaButton>
+            <AvaButton Intent="neutral" Size="sm" IsDisabled="@IsDocumentActionDisabled" OnClick="OnAddTextBlock">+ Text</AvaButton>
+            <AvaButton Intent="primary" Size="sm" IsDisabled="@IsDocumentActionDisabled" OnClick="OnAddHeadingBlock">+ Heading</AvaButton>
+            <AvaButton Intent="warn" Size="sm" IsDisabled="@IsDocumentActionDisabled" OnClick="OnAddCodeBlock">+ Code</AvaButton>
+            <AvaButton Intent="neutral" Size="sm" IsDisabled="@IsDocumentActionDisabled" OnClick="OnAddChatBlock">+ Chat</AvaButton>
+            <AvaButton Intent="danger" Size="sm" IsDisabled="@IsDocumentActionDisabled" OnClick="OnResetDocument">Reset</AvaButton>
+        </div>
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// Gets or sets the active Canvas document.
+    /// </summary>
+    [Parameter]
+    public CanvasDocument? Document { get; set; }
+
+    /// <summary>
+    /// Gets or sets the editable document title text.
+    /// </summary>
+    [Parameter]
+    public string DocumentTitle { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the save-status label shown in the toolbar.
+    /// </summary>
+    [Parameter]
+    public string StatusText { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the callback raised when the editable title changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> OnDocumentTitleChanged { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when a new document is requested.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnNewDocument { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when a text block should be added.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnAddTextBlock { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when a heading block should be added.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnAddHeadingBlock { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when a code block should be added.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnAddCodeBlock { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when a chat block should be added.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnAddChatBlock { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when the document should be reset.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnResetDocument { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when the document should be saved.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnSaveDocument { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when the document should be duplicated.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnSaveCopy { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when Markdown export is requested.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnDownloadMarkdown { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when plain-text export is requested.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnDownloadText { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when PDF export is requested.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnDownloadPdf { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when the document should be popped out.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnPopOut { get; set; }
+
+    private bool IsDocumentActionDisabled => Document is null;
+
+    private Task HandleTitleChangedAsync(string value)
+        => OnDocumentTitleChanged.InvokeAsync(value);
+}

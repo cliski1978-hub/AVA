@@ -1,0 +1,147 @@
+@* Broadcasts a prompt to all participating cards on the canvas. *@
+
+@using AVA.UI.CORE.Models.UI
+@using AVA.UI.Features.Canvas.ViewModels
+@inject AppState State
+@inject IAvaIdService Ids
+@implements IDisposable
+
+<div class="global-bar">
+    <div class="global-bar__info">
+        <div class="global-bar__label">Broadcast</div>
+        <div class="global-bar__target">@_vm.GetTargetInfo()</div>
+    </div>
+    <textarea class="global-bar__input"
+              placeholder="Send to all cards..."
+              @bind="_vm.Text"
+              @bind:event="oninput"
+              @onkeydown="HandleKeydown"
+              rows="1"></textarea>
+    @if (_vm.HasCharacterLimit)
+    {
+        <div class="global-bar__char-counter @(_vm.IsOverCharacterLimit ? "global-bar__char-counter--over" : string.Empty)">
+            @_vm.CharacterCount / @_vm.CharacterLimit
+        </div>
+    }
+    <button class="global-bar__send" @onclick="Send" disabled="@(_vm.IsSending || _vm.IsOverCharacterLimit)">
+        @(_vm.IsSending ? "..." : "Send")
+    </button>
+</div>
+
+<style>
+.global-bar {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--CardBg);
+    border: 1px solid var(--BorderMid);
+    border-radius: 28px;
+    padding: 8px 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    z-index: 100;
+}
+
+.global-bar__info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 78px;
+}
+
+.global-bar__label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--TextMuted);
+    white-space: nowrap;
+    padding-left: 4px;
+    text-transform: uppercase;
+}
+
+.global-bar__target {
+    color: var(--TextMuted);
+    font-size: 10px;
+    padding-left: 4px;
+    white-space: nowrap;
+}
+
+.global-bar__input {
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--Text);
+    font-size: 15px;
+    resize: none;
+    line-height: 1.55;
+    max-height: 80px;
+    overflow-y: auto;
+}
+
+.global-bar__input::placeholder {
+    color: var(--TextMuted);
+}
+
+.global-bar__char-counter {
+    color: var(--TextMuted);
+    font-size: 10px;
+    font-family: var(--FontMono);
+    white-space: nowrap;
+}
+
+.global-bar__char-counter--over {
+    color: var(--Err);
+}
+
+.global-bar__send {
+    min-width: 48px;
+    height: 28px;
+    border-radius: 999px;
+    border: none;
+    background: var(--Success);
+    color: #000;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: opacity 0.15s;
+}
+
+.global-bar__send:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+</style>
+
+@code {
+    private GlobalPromptBarVM _vm = default!;
+    private Action? _vmHandler;
+
+    protected override void OnInitialized()
+    {
+        _vm = new GlobalPromptBarVM(State, Ids);
+        _vmHandler = () => InvokeAsync(StateHasChanged);
+        _vm.OnChange += _vmHandler;
+    }
+
+    private async Task Send() => await _vm.SendAsync();
+
+    private async Task HandleKeydown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+            await Send();
+    }
+
+    public void Dispose()
+    {
+        _vm.OnChange -= _vmHandler;
+        _vm.Dispose();
+    }
+}

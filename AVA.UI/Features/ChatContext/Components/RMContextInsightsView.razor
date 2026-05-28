@@ -1,0 +1,79 @@
+@using AVA.UI.CORE.ChatContext.Models
+
+<div class="ctx-rm">
+    <div class="ctx-rm__header">
+        <span>RM Context Insights</span>
+        <span class="ctx-rm__state">@(Enabled ? "Enabled" : "Disabled")</span>
+    </div>
+
+    @if (!Enabled || Analysis == null)
+    {
+        <div class="ctx-rm__empty">RM-aware selection is not active.</div>
+    }
+    else if (Analysis.Scores.Count == 0)
+    {
+        <div class="ctx-rm__empty">No context items were available for RM scoring.</div>
+    }
+    else
+    {
+        <div class="ctx-rm__meta">
+            @foreach (var pair in Analysis.Metadata)
+            {
+                <span>@pair.Key: @pair.Value</span>
+            }
+        </div>
+
+        <div class="ctx-rm__list">
+            @foreach (var entry in Analysis.Scores.Take(MaxItems).Select((score, index) => new { Score = score, Rank = index + 1 }))
+            {
+                <details class="ctx-rm__item">
+                    <summary>
+                        <span>#@entry.Rank</span>
+                        <strong>@entry.Score.ItemId</strong>
+                        <span>@entry.Score.FinalWeightedScore.ToString("0.###")</span>
+                    </summary>
+                    <div class="ctx-rm__scores">
+                        <span>Continuity @entry.Score.ContinuityScore.ToString("0.###")</span>
+                        <span>Intent @entry.Score.IntentAlignmentScore.ToString("0.###")</span>
+                        <span>Relevance @entry.Score.RelevanceScore.ToString("0.###")</span>
+                        <span>Tool @entry.Score.ToolActivityScore.ToString("0.###")</span>
+                    </div>
+                    @if (entry.Score.Reasons.Count > 0)
+                    {
+                        <div class="ctx-rm__reasons">
+                            @foreach (var reason in entry.Score.Reasons)
+                            {
+                                <div>
+                                    <strong>@reason.Code</strong>
+                                    <span>@reason.Description (@reason.Weight.ToString("0.###"))</span>
+                                </div>
+                            }
+                        </div>
+                    }
+                </details>
+            }
+        </div>
+    }
+</div>
+
+<style>
+.ctx-rm { padding: 8px; background: var(--BgElevated); border: 1px solid var(--Border); border-radius: var(--RxSm); display: flex; flex-direction: column; gap: 6px; }
+.ctx-rm__header { display: flex; justify-content: space-between; align-items: center; color: var(--Text); font-size: var(--FzXs); font-weight: 600; }
+.ctx-rm__state { color: var(--TextMuted); font-weight: 500; }
+.ctx-rm__empty { color: var(--TextMuted); font-size: var(--FzXs); }
+.ctx-rm__meta { display: flex; flex-wrap: wrap; gap: 8px; color: var(--TextMuted); font-size: var(--FzXs); font-family: var(--FontMono); }
+.ctx-rm__list { display: flex; flex-direction: column; gap: 4px; max-height: 220px; overflow: auto; }
+.ctx-rm__item { padding: 6px; background: var(--BgSurface); border: 1px solid var(--Border); border-radius: var(--RxSm); font-size: var(--FzXs); color: var(--TextMuted); }
+.ctx-rm__item summary { display: grid; grid-template-columns: 32px minmax(120px, 1fr) auto; gap: 8px; align-items: center; cursor: pointer; }
+.ctx-rm__item strong { color: var(--Text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ctx-rm__scores { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; padding-top: 6px; font-family: var(--FontMono); }
+.ctx-rm__reasons { display: flex; flex-direction: column; gap: 4px; padding-top: 6px; }
+.ctx-rm__reasons div { display: flex; gap: 6px; }
+.ctx-rm__reasons strong { min-width: 92px; color: var(--Accent); }
+</style>
+
+@code {
+    [Parameter] public bool Enabled { get; set; }
+    [Parameter] public RMContextAnalysisResult? Analysis { get; set; }
+    [Parameter] public int MaxItems { get; set; } = 8;
+}

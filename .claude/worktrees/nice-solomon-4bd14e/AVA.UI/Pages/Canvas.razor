@@ -1,0 +1,14 @@
+@page "/canvas"
+
+<CanvasShell EncodedOpenRequest="@Open"
+             RenderMode="@Mode" />
+
+@code {
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "open")]
+    public string? Open { get; set; }
+
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "mode")]
+    public string? Mode { get; set; }
+}

@@ -1,0 +1,272 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   MessageBubble.razor
+   Namespace: AVA.UI.Components.Canvas
+   Purpose  : Renders a single message within a card conversation.
+              User messages: green. Assistant messages: purple.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@using AVA.UI.CORE.Models.UI
+@using System.Text.Json
+
+<div class="msg @(Message.Role == "user" ? "msg--user" : "msg--assistant") @(Message.IsError ? "msg--error" : "")">
+    @if (Message.Role == "assistant" && !string.IsNullOrEmpty(Message.ModelLabel))
+    {
+        <div class="msg__label">@Message.ModelLabel</div>
+    }
+    <div class="msg__bubble">@Message.Content</div>
+
+    @if (Message.RequiresApproval || !string.IsNullOrWhiteSpace(Message.ApprovalStatus))
+    {
+        <div class="msg__approval">
+            <div class="msg__approval-title">@(!string.IsNullOrWhiteSpace(Message.ApprovalTitle) ? Message.ApprovalTitle : "Approval")</div>
+            @if (!string.IsNullOrWhiteSpace(Message.ApprovalDetails))
+            {
+                <div class="msg__approval-body">@Message.ApprovalDetails</div>
+            }
+            <div class="msg__approval-actions">
+                <span class="msg__approval-status">@(!string.IsNullOrWhiteSpace(Message.ApprovalStatus) ? Message.ApprovalStatus : "Pending")</span>
+                <button type="button" disabled>Approve</button>
+                <button type="button" disabled>Reject</button>
+            </div>
+        </div>
+    }
+
+    @if (HasDetails)
+    {
+        <details class="msg__details">
+            <summary>Details</summary>
+
+            @if (Message.ToolCalls.Count > 0)
+            {
+                <div class="msg__details-section">
+                    <div class="msg__details-heading">Tool calls</div>
+                    @foreach (var tool in Message.ToolCalls)
+                    {
+                        <div class="msg__tool">
+                            <div class="msg__tool-title">@tool.ToolName</div>
+                            <div class="msg__tool-meta">@(tool.Succeeded ? "Succeeded" : "Failed") · @tool.StartedUtc.ToLocalTime().ToString("HH:mm:ss")</div>
+                            @if (!string.IsNullOrWhiteSpace(tool.ArgumentsJson))
+                            {
+                                <pre>@tool.ArgumentsJson</pre>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(tool.ResultJson))
+                            {
+                                <pre>@tool.ResultJson</pre>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(tool.ErrorMessage))
+                            {
+                                <div class="msg__tool-error">@tool.ErrorMessage</div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+
+            @if (Message.ResponseMetadata.Count > 0)
+            {
+                <div class="msg__details-section">
+                    <div class="msg__details-heading">Metadata</div>
+                    @foreach (var item in Message.ResponseMetadata)
+                    {
+                        <div class="msg__metadata-row">
+                            <span>@item.Key</span>
+                            <code>@FormatMetadataValue(item.Value)</code>
+                        </div>
+                    }
+                </div>
+            }
+        </details>
+    }
+
+    <div class="msg__time">@Message.Timestamp.ToString("HH:mm")</div>
+</div>
+
+<style>
+.msg {
+    display: flex;
+    flex-direction: column;
+    margin: 4px 8px;
+    max-width: 88%;
+}
+
+.msg--user {
+    align-self: flex-end;
+    align-items: flex-end;
+}
+
+.msg--assistant {
+    align-self: flex-start;
+    align-items: flex-start;
+}
+
+.msg__label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #e07b20;
+    margin-bottom: 3px;
+    padding-left: 4px;
+}
+
+.msg__bubble {
+    padding: 10px 14px;
+    border-radius: 16px;
+    font-size: 15px;
+    line-height: 1.65;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* User — green */
+.msg--user .msg__bubble {
+    background: #1a3d2b;
+    color: #e0f5e9;
+    border: 1px solid #2e6b47;
+    border-bottom-right-radius: 4px;
+}
+
+/* Assistant — purple */
+.msg--assistant .msg__bubble {
+    background: #2a1a4a;
+    color: #ede0ff;
+    border: 1px solid #5c3d8a;
+    border-bottom-left-radius: 4px;
+}
+
+.msg--error .msg__bubble {
+    background: #2a1a1a;
+    color: #ff6b6b;
+    border: 1px solid #ff6b6b;
+}
+
+.msg__time {
+    font-size: 11px;
+    color: #e07b20;
+    margin-top: 3px;
+    padding: 0 4px;
+}
+
+.msg__details,
+.msg__approval {
+    width: 100%;
+    margin-top: 6px;
+    border: 1px solid #4b5563;
+    border-radius: 8px;
+    background: rgba(10, 16, 24, 0.72);
+    color: #d6dde8;
+    font-size: 12px;
+}
+
+.msg__details {
+    padding: 8px 10px;
+}
+
+.msg__details summary {
+    cursor: pointer;
+    font-weight: 700;
+    color: #f0a35a;
+}
+
+.msg__details-section {
+    margin-top: 8px;
+    display: grid;
+    gap: 6px;
+}
+
+.msg__details-heading,
+.msg__approval-title,
+.msg__tool-title {
+    font-weight: 700;
+    color: #f0a35a;
+}
+
+.msg__tool {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding-top: 6px;
+}
+
+.msg__tool-meta,
+.msg__approval-status {
+    color: #9aa6b2;
+    font-size: 11px;
+}
+
+.msg__tool pre {
+    max-height: 180px;
+    overflow: auto;
+    margin: 6px 0 0;
+    padding: 8px;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.28);
+    white-space: pre-wrap;
+}
+
+.msg__tool-error {
+    margin-top: 6px;
+    color: #ff8b8b;
+}
+
+.msg__metadata-row {
+    display: grid;
+    grid-template-columns: minmax(90px, 0.35fr) minmax(0, 1fr);
+    gap: 8px;
+    align-items: start;
+}
+
+.msg__metadata-row span {
+    color: #9aa6b2;
+}
+
+.msg__metadata-row code {
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: #d6dde8;
+}
+
+.msg__approval {
+    padding: 10px;
+}
+
+.msg__approval-body {
+    margin-top: 4px;
+    white-space: pre-wrap;
+}
+
+.msg__approval-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.msg__approval-actions button {
+    border: 1px solid #4b5563;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #9aa6b2;
+    padding: 4px 8px;
+}
+</style>
+
+@code {
+    [Parameter, EditorRequired]
+    public Message Message { get; set; } = default!;
+
+    private bool HasDetails =>
+        Message.ToolCalls.Count > 0 ||
+        Message.ResponseMetadata.Count > 0;
+
+    private static string FormatMetadataValue(object? value)
+    {
+        if (value == null) return string.Empty;
+        if (value is string text) return text;
+
+        try
+        {
+            return JsonSerializer.Serialize(value, new JsonSerializerOptions { WriteIndented = true });
+        }
+        catch
+        {
+            return value.ToString() ?? string.Empty;
+        }
+    }
+}

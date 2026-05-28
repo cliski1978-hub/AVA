@@ -1,0 +1,464 @@
+@using AVA.UI.State
+@using AVA.UI.CORE.Models.Settings
+@using AVA.UI.CORE.UPS.Sessions
+@inject AppState State
+@implements IDisposable
+
+<div class="profile-pickers">
+    <div class="profile-pickers__profiles">
+        @if (!ActiveProfiles.Any())
+        {
+            <div class="profile-pickers__empty">
+                No active LLM profiles.
+            </div>
+        }
+        else
+        {
+            @foreach (var profile in ActiveProfiles)
+            {
+                var currentProfile = profile;
+                var isOpen = string.Equals(_openProfileId, currentProfile.ProfileId, StringComparison.OrdinalIgnoreCase);
+                var selectedCount = currentProfile.Models.Count(model => model.IsActive);
+
+                <div class="profile-picker">
+                    <button class="profile-picker__trigger @(isOpen ? "profile-picker__trigger--open" : "")"
+                            @onclick="() => ToggleProfile(currentProfile.ProfileId)">
+                        <span class="profile-picker__label">@GetProfileLabel(currentProfile)</span>
+                        @if (selectedCount > 0)
+                        {
+                            <span class="profile-picker__count">@selectedCount</span>
+                        }
+                        <span class="profile-picker__chevron">@(isOpen ? "▲" : "▼")</span>
+                    </button>
+
+                    @if (isOpen)
+                    {
+                        <div class="profile-picker__menu">
+                            @if (!currentProfile.Models.Any())
+                            {
+                                <div class="profile-picker__empty">
+                                    No models available.
+                                </div>
+                            }
+                            else
+                            {
+                                @foreach (var model in currentProfile.Models)
+                                {
+                                    var currentModel = model;
+                                    var session = FindSession(currentModel.Id);
+                                    var isSelected = session != null;
+                                    var isActive = session != null
+                                        && string.Equals(State.Sessions.ActiveSession?.SessionId, session.SessionId, StringComparison.OrdinalIgnoreCase);
+
+                                    <div class="profile-picker__item @(isSelected ? "profile-picker__item--selected" : "") @(isActive ? "profile-picker__item--active" : "")">
+                                        <button class="profile-picker__item-main"
+                                                @onclick="() => SelectModelAsync(currentProfile, currentModel)">
+                                            <span class="profile-picker__check">@(isActive ? "●" : isSelected ? "✓" : "")</span>
+                                            <span class="profile-picker__item-label">@currentModel.Label</span>
+                                        </button>
+
+                                        @if (isSelected)
+                                        {
+                                            <button class="profile-picker__item-close"
+                                                    title="Close model"
+                                                    @onclick="() => CloseModelAsync(currentModel.Id)">
+                                                ×
+                                            </button>
+                                        }
+                                    </div>
+                                }
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        }
+    </div>
+
+    <button type="button"
+            class="broadcast-toggle @(IsBroadcastEnabled ? "broadcast-toggle--active" : "")"
+            aria-pressed="@IsBroadcastEnabled"
+            title="Toggle broadcast mode"
+            @onclick="ToggleBroadcastAsync">
+        <span class="broadcast-toggle__dot"></span>
+        <span>Broadcast</span>
+    </button>
+</div>
+
+<style>
+.profile-pickers {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    position: relative;
+    width: 100%;
+}
+
+.profile-pickers__profiles {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.profile-pickers__empty {
+    font-size: 11px;
+    color: var(--TextMuted);
+}
+
+.profile-picker {
+    position: relative;
+}
+
+.profile-picker__trigger {
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 10px;
+    border: 1px solid var(--Border);
+    background: var(--BgElevated);
+    color: var(--Text);
+    border-radius: 6px;
+    font-family: var(--Font);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.profile-picker__trigger--open {
+    border-color: var(--AccentLine);
+    box-shadow: 0 0 0 1px var(--AccentGlow);
+}
+
+.profile-picker__count {
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: var(--AccentGlow);
+    color: var(--Accent);
+    font-size: 10px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.profile-picker__chevron {
+    font-size: 9px;
+    color: var(--TextMuted);
+}
+
+.profile-picker__menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    min-width: 220px;
+    max-width: 280px;
+    max-height: 260px;
+    overflow-y: auto;
+    padding: 6px;
+    border: 1px solid var(--Border);
+    border-radius: 8px;
+    background: var(--BgElevated);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+    z-index: 20;
+}
+
+.profile-picker__empty {
+    padding: 8px 10px;
+    color: var(--TextMuted);
+    font-size: 11px;
+}
+
+.profile-picker__item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    border-radius: 6px;
+}
+
+.profile-picker__item:hover {
+    background: var(--BgHover);
+}
+
+.profile-picker__item--selected {
+    background: rgba(0, 200, 255, 0.08);
+}
+
+.profile-picker__item--active {
+    outline: 1px solid var(--AccentLine);
+}
+
+.profile-picker__item-main {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--Text);
+    text-align: left;
+    font-family: var(--Font);
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.profile-picker__item-main:hover {
+    background: transparent;
+}
+
+.profile-picker__item-close {
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 4px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--TextMuted);
+    font-family: var(--Font);
+    font-size: 12px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.profile-picker__item-close:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--Text);
+}
+
+.profile-picker__check {
+    width: 14px;
+    flex-shrink: 0;
+    color: var(--Accent);
+    font-weight: 700;
+}
+
+.profile-picker__item-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.broadcast-toggle {
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 10px;
+    border: 1px solid var(--Border);
+    border-radius: 6px;
+    background: var(--BgElevated);
+    color: var(--TextMuted);
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+    margin-left: auto;
+    cursor: pointer;
+    font-family: var(--Font);
+    transition: border-color var(--T), background var(--T), color var(--T), box-shadow var(--T);
+}
+
+.broadcast-toggle:hover {
+    border-color: var(--BorderMid);
+    color: var(--Text);
+}
+
+.broadcast-toggle--active {
+    border-color: var(--AccentLine);
+    background: var(--AccentGlow);
+    color: var(--Accent);
+    box-shadow: 0 0 0 1px rgba(0, 200, 255, 0.08);
+}
+
+.broadcast-toggle__dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1px solid var(--BorderMid);
+    background: transparent;
+    transition: border-color var(--T), background var(--T), box-shadow var(--T);
+}
+
+.broadcast-toggle--active .broadcast-toggle__dot {
+    border-color: var(--Accent);
+    background: var(--Accent);
+    box-shadow: 0 0 10px rgba(0, 200, 255, 0.35);
+}
+</style>
+
+@code {
+    private string? _openProfileId;
+
+    private IEnumerable<LLMProfile> ActiveProfiles =>
+        State.LLMProfiles.Where(profile => profile.IsActive);
+
+    private bool IsBroadcastEnabled => State.Sessions.BroadcastGroup.Any();
+
+    protected override void OnInitialized()
+    {
+        State.OnChange += HandleStateChanged;
+    }
+
+    private void HandleStateChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void ToggleProfile(string profileId)
+    {
+        _openProfileId = string.Equals(_openProfileId, profileId, StringComparison.OrdinalIgnoreCase)
+            ? null
+            : profileId;
+    }
+
+    private string GetProfileLabel(LLMProfile profile)
+    {
+        return string.IsNullOrWhiteSpace(profile.Name)
+            ? profile.ResolvedProvider
+            : profile.Name;
+    }
+
+    private async Task SelectModelAsync(LLMProfile profile, ModelProfile model)
+    {
+        State.SelectedLLMProfile = profile;
+        var session = FindSession(model.Id);
+
+        if (session != null)
+        {
+            State.Sessions.SetActiveSession(session.SessionId);
+        }
+        else
+        {
+            model.IsActive = true;
+            session = EnsureSession(profile, model);
+        }
+
+        if (session != null && IsBroadcastEnabled)
+        {
+            State.Sessions.AddToBroadcast(session.SessionId);
+        }
+
+        SyncWorkspaceSessionState();
+        State.SaveSettings();
+        await State.SaveActiveWorkspaceSessionAsync();
+        State.NotifyStateChanged();
+    }
+
+    private async Task CloseModelAsync(string modelId)
+    {
+        var model = ActiveProfiles
+            .SelectMany(profile => profile.Models)
+            .FirstOrDefault(entry => string.Equals(entry.Id, modelId, StringComparison.OrdinalIgnoreCase));
+
+        if (model != null)
+        {
+            model.IsActive = false;
+        }
+
+        CloseSessions(modelId);
+        SyncWorkspaceSessionState();
+        State.SaveSettings();
+        await State.SaveActiveWorkspaceSessionAsync();
+        State.NotifyStateChanged();
+    }
+
+    private async Task ToggleBroadcastAsync()
+    {
+        if (IsBroadcastEnabled)
+        {
+            State.Sessions.ClearBroadcast();
+        }
+        else
+        {
+            foreach (var session in State.Sessions.Sessions.Where(session => session.IsActive))
+            {
+                State.Sessions.AddToBroadcast(session.SessionId);
+            }
+        }
+
+        SyncWorkspaceSessionState();
+        await State.SaveActiveWorkspaceSessionAsync();
+        State.NotifyStateChanged();
+    }
+
+    private UPSSession EnsureSession(LLMProfile profile, ModelProfile model)
+    {
+        var existingSession = FindSession(model.Id);
+        if (existingSession != null)
+        {
+            State.Sessions.SetActiveSession(existingSession.SessionId);
+            return existingSession;
+        }
+
+        return State.Sessions.CreateSession(profile, model);
+    }
+
+    private void CloseSessions(string modelId)
+    {
+        var sessionIds = State.Sessions.Sessions
+            .Where(session => string.Equals(GetSessionModelId(session), modelId, StringComparison.OrdinalIgnoreCase))
+            .Select(session => session.SessionId)
+            .ToList();
+
+        foreach (var sessionId in sessionIds)
+        {
+            State.Sessions.CloseSession(sessionId);
+        }
+    }
+
+    private UPSSession? FindSession(string modelId)
+    {
+        return State.Sessions.Sessions.FirstOrDefault(session =>
+            string.Equals(GetSessionModelId(session), modelId, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string GetSessionModelId(UPSSession session)
+    {
+        return session.ModelProfile?.Id ?? session.ModelEntry.Id;
+    }
+
+    private void SyncWorkspaceSessionState()
+    {
+        var session = State.CurrentSession;
+        if (session == null)
+        {
+            return;
+        }
+
+        session.AttachedModelIds = State.Sessions.Sessions
+            .Where(openSession => openSession.IsActive)
+            .Select(GetSessionModelId)
+            .Where(modelId => !string.IsNullOrWhiteSpace(modelId))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        session.BroadcastGroupIds = State.Sessions.BroadcastGroup
+            .Where(openSession => openSession.IsActive)
+            .Select(GetSessionModelId)
+            .Where(modelId => !string.IsNullOrWhiteSpace(modelId))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        session.DefaultModelId = State.Sessions.ActiveSession != null
+            ? GetSessionModelId(State.Sessions.ActiveSession)
+            : session.AttachedModelIds.FirstOrDefault();
+        session.LastActiveAt = DateTime.UtcNow;
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= HandleStateChanged;
+    }
+}

@@ -1,0 +1,72 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   OutputSegmentRenderer.razor
+   Namespace: AVA.UI.Components.Chat
+   Purpose  : Renders a single OutputSegment based on its Type.
+              Supports: text, system, link, image, file, code, error, markdown
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@using AVA.UI.CORE.Models
+
+<div class="segment segment--@Segment.Type">
+    @switch (Segment.Type)
+    {
+        case "text":
+            <p class="segment__text">@Segment.Value</p>
+            break;
+
+        case "system":
+            <p class="segment__system">@Segment.Value</p>
+            break;
+
+        case "error":
+            <p class="segment__error">⚠️ @Segment.Value</p>
+            break;
+
+        case "link":
+            <a class="segment__link"
+               href="@Segment.Metadata"
+               target="_blank"
+               rel="noopener noreferrer">
+                @Segment.Value
+            </a>
+            break;
+
+        case "image":
+            <div class="segment__image-wrap">
+                <img class="segment__image"
+                     src="@Segment.Value"
+                     alt="@(Segment.DisplayHint ?? "image")" />
+            </div>
+            break;
+
+        case "file":
+            <div class="segment__file">
+                <span class="segment__file-icon">📄</span>
+                <span class="segment__file-name">@Segment.Value</span>
+                @if (!string.IsNullOrWhiteSpace(Segment.Metadata))
+                {
+                    <span class="segment__file-path">@Segment.Metadata</span>
+                }
+            </div>
+            break;
+
+        case "code":
+            <div class="segment__code-wrap">
+                <pre class="segment__code"><code>@Segment.Value</code></pre>
+            </div>
+            break;
+
+        case "markdown":
+            @* Stub — replace with Markdig when ready *@
+            <pre class="segment__markdown">@Segment.Value</pre>
+            break;
+
+        default:
+            <p class="segment__text">@Segment.Value</p>
+            break;
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public OutputSegment Segment { get; set; } = default!;
+}

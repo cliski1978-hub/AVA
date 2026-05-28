@@ -1,0 +1,207 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   SessionCanvas.razor
+   Namespace: AVA.UI.Components.Canvas
+   Purpose  : Free-form draggable surface for all card types.
+              Owns drag and resize state; persists on mouse-up.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@using AVA.UI.CORE.Models.UI
+@inject AppState State
+@implements IDisposable
+
+<div class="canvas">
+
+    @foreach (var card in State.CurrentSession.Canvas.Cards)
+    {
+        var c = card;
+        <CardContainer @key="c.CardId" Card="c" IsDragging="@(_draggingCardId == c.CardId)" OnDragStart="StartDrag" OnResizeStart="StartResize" OnActivate="Activate" />
+    }
+
+    <AddCardButton />
+    <GlobalPromptBar />
+
+    @if (_dragging != null || _resizing != null)
+    {
+        <div class="canvas-capture"
+             style="cursor:@_captureCursor"
+             @onmousemove="OnCaptureMove"
+             @onmousemove:preventDefault="true"
+             @onmouseup="OnCaptureUp">
+        </div>
+    }
+
+</div>
+
+<style>
+.canvas {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background: radial-gradient(var(--Border) 1px, transparent 1px);
+    background-size: 40px 40px;
+    background-color: var(--BgBase, #0a0a0a);
+}
+
+.canvas-capture {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+}
+</style>
+
+@code {
+    // ── Drag ─────────────────────────────────────────────────────────────────
+
+    private CardState? _dragging;
+    private double _dragOffsetX;
+    private double _dragOffsetY;
+    private string? _draggingCardId;
+
+    // ── Resize ───────────────────────────────────────────────────────────────
+
+    private CardState? _resizing;
+    private string _resizeDir = string.Empty;
+    private double _resizeStartMouseX;
+    private double _resizeStartMouseY;
+    private double _resizeStartCardX;
+    private double _resizeStartCardY;
+    private double _resizeStartWidth;
+    private double _resizeStartHeight;
+
+    private const double MinWidth  = 280;
+    private const double MinHeight = 200;
+
+    // ── Capture overlay cursor ────────────────────────────────────────────────
+
+    private string _captureCursor => _resizeDir switch
+    {
+        "n"  or "s"  => "ns-resize",
+        "e"  or "w"  => "ew-resize",
+        "ne" or "sw" => "nesw-resize",
+        "nw" or "se" => "nwse-resize",
+        _            => "grabbing"
+    };
+
+    // ── Lifecycle ─────────────────────────────────────────────────────────────
+
+    protected override void OnInitialized()
+    {
+        State.OnChange += StateHasChanged;
+    }
+
+    // ── Activate (bring to front) ─────────────────────────────────────────────
+
+    private void Activate(CardState card)
+    {
+        if (!State.CurrentSession.Canvas.Cards.Any()) return;
+        var maxZ = State.CurrentSession.Canvas.Cards.Max(c => c.ZIndex);
+        card.ZIndex = maxZ + 1;
+        StateHasChanged();
+    }
+
+    // ── Drag handlers ─────────────────────────────────────────────────────────
+
+    private void StartDrag((CardState Card, double OffsetX, double OffsetY) args)
+    {
+        _dragging       = args.Card;
+        _draggingCardId = args.Card.CardId;
+        _dragOffsetX    = args.OffsetX;
+        _dragOffsetY    = args.OffsetY;
+        _resizing       = null;
+    }
+
+    // ── Resize handlers ───────────────────────────────────────────────────────
+
+    private void StartResize((CardState Card, string Direction, double MouseX, double MouseY) args)
+    {
+        _resizing          = args.Card;
+        _resizeDir         = args.Direction;
+        _resizeStartMouseX = args.MouseX;
+        _resizeStartMouseY = args.MouseY;
+        _resizeStartCardX  = args.Card.X;
+        _resizeStartCardY  = args.Card.Y;
+        _resizeStartWidth  = args.Card.Width;
+        _resizeStartHeight = args.Card.Height ?? 400;
+        _dragging          = null;
+
+        // Freeze height so resize works from a known value
+        args.Card.Height = _resizeStartHeight;
+
+        var maxZ = State.CurrentSession.Canvas.Cards.Max(c => c.ZIndex);
+        _resizing.ZIndex = maxZ + 1;
+    }
+
+    // ── Shared capture mousemove ──────────────────────────────────────────────
+
+    private void OnCaptureMove(MouseEventArgs e)
+    {
+        if (_dragging != null)
+        {
+            _dragging.X = Math.Max(0, e.ClientX - _dragOffsetX);
+            _dragging.Y = Math.Max(0, e.ClientY - _dragOffsetY);
+            StateHasChanged();
+            return;
+        }
+
+        if (_resizing != null)
+        {
+            var dx = e.ClientX - _resizeStartMouseX;
+            var dy = e.ClientY - _resizeStartMouseY;
+
+            var newX      = _resizeStartCardX;
+            var newY      = _resizeStartCardY;
+            var newWidth  = _resizeStartWidth;
+            var newHeight = _resizeStartHeight;
+
+            // East / West
+            if (_resizeDir.Contains('e'))
+                newWidth = Math.Max(MinWidth, _resizeStartWidth + dx);
+
+            if (_resizeDir.Contains('w'))
+            {
+                var w = Math.Max(MinWidth, _resizeStartWidth - dx);
+                newX = _resizeStartCardX + (_resizeStartWidth - w);
+                newWidth = w;
+            }
+
+            // South / North
+            if (_resizeDir.Contains('s'))
+                newHeight = Math.Max(MinHeight, _resizeStartHeight + dy);
+
+            if (_resizeDir.Contains('n'))
+            {
+                var h = Math.Max(MinHeight, _resizeStartHeight - dy);
+                newY = _resizeStartCardY + (_resizeStartHeight - h);
+                newHeight = h;
+            }
+
+            _resizing.X      = Math.Max(0, newX);
+            _resizing.Y      = Math.Max(0, newY);
+            _resizing.Width  = newWidth;
+            _resizing.Height = newHeight;
+
+            StateHasChanged();
+        }
+    }
+
+    // ── Shared capture mouseup ────────────────────────────────────────────────
+
+    private void OnCaptureUp(MouseEventArgs e)
+    {
+        if (_dragging != null || _resizing != null)
+        {
+            _dragging       = null;
+            _draggingCardId = null;
+            _resizing       = null;
+            _resizeDir      = string.Empty;
+            State.SaveCanvasState();
+            StateHasChanged();
+        }
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= StateHasChanged;
+    }
+}

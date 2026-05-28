@@ -1,0 +1,72 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   AvaChip.razor
+   Purpose: Tag/chip component with optional remove button and click handler.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+<div class="ava-chip @(Clickable ? "clickable" : "")"
+     @onclick="OnClick"
+     style="cursor: @(Clickable ? "pointer" : "default");">
+    @if (!string.IsNullOrWhiteSpace(Icon))
+    {
+        <span style="font-size: 10px;">@Icon</span>
+    }
+    <span>@Label</span>
+    @if (Removable)
+    {
+        <button type="button"
+                class="ava-chip__remove"
+                @onclick="OnRemove"
+                @onclick:stopPropagation>
+            ✕
+        </button>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// Chip label text.
+    /// </summary>
+    [Parameter]
+    public string? Label { get; set; }
+
+    /// <summary>
+    /// Optional icon/emoji to display before the label.
+    /// </summary>
+    [Parameter]
+    public string? Icon { get; set; }
+
+    /// <summary>
+    /// Intent for styling (prepared for future variants).
+    /// </summary>
+    [Parameter]
+    public string Intent { get; set; } = "default";
+
+    /// <summary>
+    /// Whether the chip can be removed.
+    /// </summary>
+    [Parameter]
+    public bool Removable { get; set; }
+
+    /// <summary>
+    /// Callback when the remove button is clicked.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnRemove { get; set; }
+
+    /// <summary>
+    /// Whether the chip is clickable.
+    /// </summary>
+    [Parameter]
+    public bool Clickable { get; set; }
+
+    /// <summary>
+    /// Callback when the chip is clicked (only if Clickable).
+    /// </summary>
+    [Parameter]
+    public EventCallback OnClick { get; set; }
+
+    private async Task OnRemoveClick(MouseEventArgs e)
+    {
+        await OnRemove.InvokeAsync();
+    }
+}

@@ -1,0 +1,342 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   SettingsPane.razor
+   Namespace: AVA.UI.Components.Settings
+   Purpose  : Full settings UI. Connect button routes through AppState.ConnectAsync()
+              which wires directly into the embedded UPS layer.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@using AVA.UI.State
+@using AVA.UI.CORE.Models.Settings
+@using AVA.UI.CORE.Models.Enums
+@inject AppState State
+@inject IJSRuntime JS
+
+<div class="settings-pane">
+
+    <!-- ── Connection Mode ─────────────────────────────────────────────── -->
+    <section class="settings-section">
+        <h3 class="settings-section__title">Connection</h3>
+
+        <label class="settings-row">
+            <input type="checkbox" @bind="State.UseDirectEndpoints" />
+            Use Direct Endpoints
+            <span class="settings-hint">Bypass legacy core, talk directly to LLM endpoints</span>
+        </label>
+
+        <div class="settings-row">
+            <label class="settings-label">Core Connection Mode</label>
+            <select class="settings-select"
+                    value="@_ActiveMode"
+                    @onchange="OnModeChanged">
+                @foreach (var Mode in Enum.GetValues<CoreConnectionMode>())
+                {
+                    <option value="@Mode">@Mode</option>
+                }
+            </select>
+        </div>
+    </section>
+
+    <!-- ── Connection Profiles ─────────────────────────────────────────── -->
+    <section class="settings-section">
+        <h3 class="settings-section__title">Connection Profiles</h3>
+
+        <div class="settings-toolbar">
+            <button class="settings-btn" @onclick="AddProfile">+ Add Profile</button>
+        </div>
+
+        @if (_ActiveMode == CoreConnectionMode.Local)
+        {
+            @foreach (var P in State.AppSettings.LocalProfiles.ToList())
+            {
+                var Profile = P;
+                <div class="profile-card @(_SelectedProfile == Profile ? "profile-card--selected" : "")"
+                     @onclick="() => _SelectedProfile = Profile">
+                    <div class="profile-card__header">
+                        <span class="profile-card__name">@Profile.DisplayName</span>
+                        <button class="settings-btn settings-btn--danger settings-btn--sm"
+                                @onclick:stopPropagation="true"
+                                @onclick="async () => await RemoveLocalProfile(Profile)">
+                            Remove
+                        </button>
+                    </div>
+                    <ConnectionProfileEditor Profile="@Profile" />
+                </div>
+            }
+        }
+        else if (_ActiveMode == CoreConnectionMode.Remote)
+        {
+            @foreach (var P in State.AppSettings.RemoteProfiles.ToList())
+            {
+                var Profile = P;
+                <div class="profile-card @(_SelectedProfile == Profile ? "profile-card--selected" : "")"
+                     @onclick="() => _SelectedProfile = Profile">
+                    <div class="profile-card__header">
+                        <span class="profile-card__name">@Profile.DisplayName</span>
+                        <button class="settings-btn settings-btn--danger settings-btn--sm"
+                                @onclick:stopPropagation="true"
+                                @onclick="async () => await RemoveRemoteProfile(Profile)">
+                            Remove
+                        </button>
+                    </div>
+                    <RemoteProfileEditor Profile="@Profile" />
+                </div>
+            }
+        }
+        else if (_ActiveMode == CoreConnectionMode.Agent)
+        {
+            @foreach (var P in State.AppSettings.AgentProfiles.ToList())
+            {
+                var Profile = P;
+                <div class="profile-card @(_SelectedProfile == Profile ? "profile-card--selected" : "")"
+                     @onclick="() => _SelectedProfile = Profile">
+                    <div class="profile-card__header">
+                        <span class="profile-card__name">@Profile.DisplayName</span>
+                        <button class="settings-btn settings-btn--danger settings-btn--sm"
+                                @onclick:stopPropagation="true"
+                                @onclick="async () => await RemoveAgentProfile(Profile)">
+                            Remove
+                        </button>
+                    </div>
+                    <AgentProfileEditor Profile="@Profile" />
+                </div>
+            }
+        }
+
+    </section>
+
+    <!-- ── LLM Profiles ────────────────────────────────────────────────── -->
+    <section class="settings-section">
+        <h3 class="settings-section__title">LLM Profiles</h3>
+        <LLMProfilesPanel />
+    </section>
+
+    <!-- ── Log Settings ────────────────────────────────────────────────── -->
+    <section class="settings-section">
+        <h3 class="settings-section__title">Log Settings</h3>
+
+        <div class="settings-toolbar">
+            <button class="settings-btn" @onclick="AddLog">+ Add Log</button>
+        </div>
+
+        @foreach (var L in State.AppSettings.LogSettings.ToList())
+        {
+            var Log = L;
+            <div class="profile-card @(_SelectedLog == Log ? "profile-card--selected" : "")"
+                 @onclick="() => _SelectedLog = Log">
+                <div class="profile-card__header">
+                    <span class="profile-card__name">@Log.LogTitle</span>
+                    <button class="settings-btn settings-btn--danger settings-btn--sm"
+                            @onclick:stopPropagation="true"
+                            @onclick="async () => await RemoveLog(Log)">
+                        Remove
+                    </button>
+                </div>
+                <div class="settings-field">
+                    <label>Title</label>
+                    <input @bind="Log.LogTitle" />
+                </div>
+                <div class="settings-field">
+                    <label>Description</label>
+                    <input @bind="Log.LogDescription" />
+                </div>
+                <div class="settings-field">
+                    <label>File Path</label>
+                    <input @bind="Log.LogFilePath" />
+                </div>
+            </div>
+        }
+
+    </section>
+
+    <!-- ── Action Buttons ──────────────────────────────────────────────── -->
+    <div class="settings-actions">
+        <button class="settings-btn settings-btn--primary"
+                @onclick="TestEndpoint"
+                disabled="@(State.SelectedLLMProfile == null || _IsTesting)">
+            @(_IsTesting ? "Testing…" : "Test Endpoint")
+        </button>
+        <button class="settings-btn settings-btn--primary"
+                @onclick="Connect"
+                disabled="@_IsConnecting">
+            @(_IsConnecting ? "Connecting…" : "Connect")
+        </button>
+        <button class="settings-btn" @onclick="State.SaveSettings">
+            Save Settings
+        </button>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_ActionMessage))
+    {
+        <div class="settings-feedback @(_ActionOk ? "settings-feedback--ok" : "settings-feedback--err")">
+            @_ActionMessage
+        </div>
+    }
+
+</div>
+
+@code {
+    private CoreConnectionMode _ActiveMode = CoreConnectionMode.Remote;
+    private object? _SelectedProfile;
+    private LogSettings? _SelectedLog;
+    private bool _IsConnecting = false;
+    private bool _IsTesting = false;
+    private string _ActionMessage = string.Empty;
+    private bool _ActionOk = true;
+
+    // ── Mode ──────────────────────────────────────────────────────────────
+
+    private void OnModeChanged(ChangeEventArgs E)
+    {
+        if (Enum.TryParse<CoreConnectionMode>(E.Value?.ToString(), out var Mode))
+            _ActiveMode = Mode;
+    }
+
+    // ── Connection Profiles ───────────────────────────────────────────────
+
+    private void AddProfile()
+    {
+        switch (_ActiveMode)
+        {
+            case CoreConnectionMode.Local:
+                var Local = new LocalConnectionProfile { DisplayName = "New Local" };
+                State.AppSettings.LocalProfiles.Add(Local);
+                _SelectedProfile = Local;
+                break;
+            case CoreConnectionMode.Remote:
+                var Remote = new RemoteConnectionProfile { DisplayName = "New Remote" };
+                State.AppSettings.RemoteProfiles.Add(Remote);
+                _SelectedProfile = Remote;
+                break;
+            case CoreConnectionMode.Agent:
+                var Agent = new AgentConnectionProfile { DisplayName = "New Agent" };
+                State.AppSettings.AgentProfiles.Add(Agent);
+                _SelectedProfile = Agent;
+                break;
+        }
+        StateHasChanged();
+    }
+
+    private async Task RemoveLocalProfile(LocalConnectionProfile Profile)
+    {
+        var Confirmed = await JS.InvokeAsync<bool>("confirm",
+            $"Remove profile '{Profile.DisplayName}'?");
+        if (!Confirmed) return;
+        State.AppSettings.LocalProfiles.Remove(Profile);
+        if (_SelectedProfile == Profile) _SelectedProfile = null;
+        StateHasChanged();
+    }
+
+    private async Task RemoveRemoteProfile(RemoteConnectionProfile Profile)
+    {
+        var Confirmed = await JS.InvokeAsync<bool>("confirm",
+            $"Remove profile '{Profile.DisplayName}'?");
+        if (!Confirmed) return;
+        State.AppSettings.RemoteProfiles.Remove(Profile);
+        if (_SelectedProfile == Profile) _SelectedProfile = null;
+        StateHasChanged();
+    }
+
+    private async Task RemoveAgentProfile(AgentConnectionProfile Profile)
+    {
+        var Confirmed = await JS.InvokeAsync<bool>("confirm",
+            $"Remove profile '{Profile.DisplayName}'?");
+        if (!Confirmed) return;
+        State.AppSettings.AgentProfiles.Remove(Profile);
+        if (_SelectedProfile == Profile) _SelectedProfile = null;
+        StateHasChanged();
+    }
+
+    // ── Log Settings ──────────────────────────────────────────────────────
+
+    private void AddLog()
+    {
+        var Log = new LogSettings { LogTitle = "New Log", LogFilePath = "log.txt" };
+        State.AppSettings.LogSettings.Add(Log);
+        _SelectedLog = Log;
+        StateHasChanged();
+    }
+
+    private async Task RemoveLog(LogSettings Log)
+    {
+        var Confirmed = await JS.InvokeAsync<bool>("confirm",
+            $"Remove log '{Log.LogTitle}'?");
+        if (!Confirmed) return;
+        State.AppSettings.LogSettings.Remove(Log);
+        if (_SelectedLog == Log) _SelectedLog = null;
+        StateHasChanged();
+    }
+
+    // ── Connect ───────────────────────────────────────────────────────────
+
+    private async Task Connect()
+    {
+        _IsConnecting = true;
+        _ActionMessage = string.Empty;
+        StateHasChanged();
+
+        try
+        {
+            await State.ConnectAsync();
+
+            if (State.IsConnected)
+            {
+                _ActionMessage = $"✅ Connected — " +
+                    $"{State.Sessions.AvailableModels.Count()} models available.";
+                _ActionOk = true;
+            }
+            else
+            {
+                _ActionMessage = $"❌ {State.ConnectionDetails}";
+                _ActionOk = false;
+            }
+        }
+        catch (Exception Ex)
+        {
+            _ActionMessage = $"❌ {Ex.Message}";
+            _ActionOk = false;
+        }
+        finally
+        {
+            _IsConnecting = false;
+            StateHasChanged();
+        }
+    }
+
+    // ── Test Endpoint ─────────────────────────────────────────────────────
+
+    private async Task TestEndpoint()
+    {
+        if (State.SelectedLLMProfile == null) return;
+
+        _IsTesting = true;
+        _ActionMessage = string.Empty;
+        StateHasChanged();
+
+        try
+        {
+            // Test by attempting a connect and checking status
+            await State.ConnectAsync();
+
+            if (State.IsConnected)
+            {
+                _ActionMessage = $"✅ Endpoint reachable — {State.ConnectionDetails}";
+                _ActionOk = true;
+            }
+            else
+            {
+                _ActionMessage = $"❌ {State.ConnectionDetails}";
+                _ActionOk = false;
+            }
+        }
+        catch (Exception Ex)
+        {
+            _ActionMessage = $"❌ Exception: {Ex.Message}";
+            _ActionOk = false;
+        }
+        finally
+        {
+            _IsTesting = false;
+            StateHasChanged();
+        }
+    }
+}

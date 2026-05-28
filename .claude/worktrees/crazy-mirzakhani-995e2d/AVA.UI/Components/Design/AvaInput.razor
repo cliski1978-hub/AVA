@@ -1,0 +1,125 @@
+<div class="@ShellClass">
+    @if (LeadingContent is not null)
+    {
+        <span class="ava-field__leading">@LeadingContent</span>
+    }
+
+    <input type="@Type"
+           class="@InputClass"
+           value="@Value"
+           placeholder="@Placeholder"
+           disabled="@IsDisabled"
+           @oninput="HandleInput"
+           @attributes="AdditionalAttributes" />
+
+    @if (TrailingContent is not null)
+    {
+        <span class="ava-field__trailing">@TrailingContent</span>
+    }
+</div>
+
+@if (ChildContent is not null)
+{
+    <div class="ava-field__support">@ChildContent</div>
+}
+
+@code {
+    /// <summary>
+    /// Gets or sets the visual intent for the input shell.
+    /// </summary>
+    [Parameter]
+    public string Intent { get; set; } = "primary";
+
+    /// <summary>
+    /// Gets or sets the size variant for the input.
+    /// </summary>
+    [Parameter]
+    public string Size { get; set; } = "md";
+
+    /// <summary>
+    /// Gets or sets an optional state class for the input shell.
+    /// </summary>
+    [Parameter]
+    public string State { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the current input value.
+    /// </summary>
+    [Parameter]
+    public string? Value { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when the value changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> ValueChanged { get; set; }
+
+    /// <summary>
+    /// Gets or sets the placeholder text.
+    /// </summary>
+    [Parameter]
+    public string? Placeholder { get; set; }
+
+    /// <summary>
+    /// Gets or sets the input type.
+    /// </summary>
+    [Parameter]
+    public string Type { get; set; } = "text";
+
+    /// <summary>
+    /// Gets or sets whether the input is disabled.
+    /// </summary>
+    [Parameter]
+    public bool IsDisabled { get; set; }
+
+    /// <summary>
+    /// Gets or sets optional leading content.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? LeadingContent { get; set; }
+
+    /// <summary>
+    /// Gets or sets optional trailing content.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? TrailingContent { get; set; }
+
+    /// <summary>
+    /// Gets or sets optional supporting content rendered below the input.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Gets or sets additional HTML attributes for the input.
+    /// </summary>
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string ShellClass =>
+        string.Join(" ",
+            "ava-input-shell",
+            "ava-field",
+            Normalize("ava-input", Intent, "primary"),
+            IsDisabled ? "is-disabled" : string.Empty,
+            string.IsNullOrWhiteSpace(State) ? string.Empty : State);
+
+    private string InputClass =>
+        string.Join(" ",
+            "ava-input",
+            Normalize("ava-input", Size, "md"));
+
+    private async Task HandleInput(ChangeEventArgs args)
+    {
+        Value = args.Value?.ToString();
+        await ValueChanged.InvokeAsync(Value ?? string.Empty);
+    }
+
+    private static string Normalize(string prefix, string value, string fallback)
+    {
+        var resolved = string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
+        return resolved.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            ? resolved
+            : $"{prefix}-{resolved}";
+    }
+}

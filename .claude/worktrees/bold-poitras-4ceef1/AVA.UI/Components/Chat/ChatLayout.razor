@@ -1,0 +1,56 @@
+@using AVA.UI.State
+@inject AppState State
+@implements IDisposable
+
+<div class="chat-layout">
+
+    <div class="chat-layout__left">
+        @if (State.IsConnected)
+        {
+            <div class="session-bar">
+                <ModelPickerPane />
+            </div>
+        }
+        else
+        {
+            <div class="session-bar session-bar--disconnected">
+                <span class="session-bar__hint">
+                    Not connected - go to Settings to connect.
+                </span>
+            </div>
+        }
+
+        <div class="chat-layout__output">
+            <OutputPane />
+        </div>
+
+        <div class="chat-layout__input">
+            <InputPane />
+        </div>
+    </div>
+
+    @if (State.ShowPromptPreview)
+    {
+        <div class="chat-layout__preview">
+            <PromptPreviewPane />
+        </div>
+    }
+
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        State.OnChange += HandleStateChanged;
+    }
+
+    private void HandleStateChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= HandleStateChanged;
+    }
+}

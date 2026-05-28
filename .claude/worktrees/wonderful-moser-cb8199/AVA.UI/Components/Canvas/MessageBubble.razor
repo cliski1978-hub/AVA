@@ -1,0 +1,82 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   MessageBubble.razor
+   Namespace: AVA.UI.Components.Canvas
+   Purpose  : Renders a single message within a card conversation.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@using AVA.UI.CORE.Models.UI
+
+<div class="msg @(Message.Role == "user" ? "msg--user" : "msg--assistant") @(Message.IsError ? "msg--error" : "")">
+    @if (Message.Role == "assistant" && !string.IsNullOrEmpty(Message.ModelLabel))
+    {
+        <div class="msg__label">@Message.ModelLabel</div>
+    }
+    <div class="msg__bubble">@Message.Content</div>
+    <div class="msg__time">@Message.Timestamp.ToString("HH:mm")</div>
+</div>
+
+<style>
+.msg {
+    display: flex;
+    flex-direction: column;
+    margin: 4px 8px;
+    max-width: 90%;
+}
+
+.msg--user {
+    align-self: flex-end;
+    align-items: flex-end;
+}
+
+.msg--assistant {
+    align-self: flex-start;
+    align-items: flex-start;
+}
+
+.msg__label {
+    font-size: 10px;
+    color: var(--TextMuted);
+    margin-bottom: 2px;
+    padding-left: 4px;
+}
+
+.msg__bubble {
+    padding: 8px 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.msg--user .msg__bubble {
+    background: var(--AccentMid, #1a3a2a);
+    color: var(--Text);
+    border-bottom-right-radius: 4px;
+}
+
+.msg--assistant .msg__bubble {
+    background: var(--BgSurface, #1a1a1a);
+    color: var(--Text);
+    border-bottom-left-radius: 4px;
+    border: 1px solid var(--Border);
+}
+
+.msg--error .msg__bubble {
+    background: var(--ErrorBg, #2a1a1a);
+    color: var(--Error, #ff6b6b);
+    border-color: var(--Error, #ff6b6b);
+}
+
+.msg__time {
+    font-size: 10px;
+    color: var(--TextMuted);
+    margin-top: 2px;
+    padding: 0 4px;
+}
+</style>
+
+@code {
+    [Parameter, EditorRequired]
+    public Message Message { get; set; } = default!;
+}

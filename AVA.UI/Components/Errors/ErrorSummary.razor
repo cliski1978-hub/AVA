@@ -1,0 +1,149 @@
+@using AVA.UI.Errors
+@inject ErrorState ErrorState
+@implements IDisposable
+
+@if (ErrorState.HasErrors)
+{
+    <div class="err-strip">
+        @foreach (var error in ErrorState.Errors)
+        {
+            var e = error;
+            <div class="err-pill err-pill--@e.Severity.ToString().ToLowerInvariant()">
+                @if (!string.IsNullOrWhiteSpace(e.Source))
+                {
+                    <span class="err-pill__source">@e.Source</span>
+                }
+                <span class="err-pill__msg">@e.Message</span>
+                <button class="err-pill__dismiss" type="button" @onclick="() => Dismiss(e.Id)" title="Dismiss">×</button>
+            </div>
+        }
+        <button class="err-strip__clear" type="button" @onclick="ClearAll" title="Clear all errors">Clear all</button>
+    </div>
+}
+
+<style>
+    .err-strip {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        background: rgba(30, 8, 8, 0.72);
+        border-bottom: 1px solid rgba(180, 60, 20, 0.4);
+    }
+
+    .err-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 26px;
+        padding: 0 6px 0 10px;
+        border-radius: var(--RxPill, 999px);
+        border: 1px solid rgba(200, 80, 20, 0.7);
+        background: rgba(60, 14, 6, 0.6);
+        box-shadow: inset 0 1px 0 rgba(255,120,60,0.06), 0 0 8px rgba(180,50,10,0.15);
+        font-family: var(--Font);
+        font-size: var(--FzXs, 11px);
+        color: #ff6b3d;
+        white-space: nowrap;
+        transition: filter var(--T), border-color var(--T);
+    }
+
+    .err-pill:hover {
+        filter: brightness(1.1);
+        border-color: rgba(220, 100, 40, 0.9);
+    }
+
+    .err-pill--warning {
+        border-color: rgba(200, 140, 20, 0.7);
+        background: rgba(50, 35, 6, 0.6);
+        color: #f5c542;
+    }
+
+    .err-pill--info {
+        border-color: rgba(0, 140, 200, 0.5);
+        background: rgba(6, 30, 50, 0.6);
+        color: #60c8ff;
+    }
+
+    .err-pill--critical {
+        border-color: rgba(220, 20, 20, 0.9);
+        background: rgba(60, 4, 4, 0.8);
+        color: #ff3333;
+        box-shadow: 0 0 10px rgba(220, 20, 20, 0.2);
+    }
+
+    .err-pill__source {
+        font-weight: 700;
+        opacity: 0.85;
+        letter-spacing: 0.02em;
+    }
+
+    .err-pill__msg {
+        opacity: 0.95;
+    }
+
+    .err-pill__dismiss {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+        border-radius: 999px;
+        border: 0;
+        background: rgba(255, 255, 255, 0.08);
+        color: inherit;
+        font-size: 13px;
+        line-height: 1;
+        cursor: pointer;
+        flex-shrink: 0;
+        transition: background var(--T);
+        font-family: inherit;
+    }
+
+    .err-pill__dismiss:hover {
+        background: rgba(255, 255, 255, 0.18);
+    }
+
+    .err-strip__clear {
+        margin-left: auto;
+        border: 0;
+        background: transparent;
+        color: rgba(200, 80, 20, 0.7);
+        font-family: var(--Font);
+        font-size: var(--FzXs, 11px);
+        cursor: pointer;
+        padding: 0 4px;
+        transition: color var(--T);
+        white-space: nowrap;
+    }
+
+    .err-strip__clear:hover {
+        color: #ff6b3d;
+    }
+</style>
+
+@code {
+    private Action? _handler;
+
+    protected override void OnInitialized()
+    {
+        _handler = () => InvokeAsync(StateHasChanged);
+        ErrorState.OnChange += _handler;
+    }
+
+    private void Dismiss(Guid id)
+    {
+        ErrorState.Dismiss(id);
+    }
+
+    private void ClearAll()
+    {
+        ErrorState.Clear();
+    }
+
+    public void Dispose()
+    {
+        ErrorState.OnChange -= _handler;
+    }
+}

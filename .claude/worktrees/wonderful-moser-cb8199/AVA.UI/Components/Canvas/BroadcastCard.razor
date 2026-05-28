@@ -1,0 +1,330 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   BroadcastCard.razor
+   Namespace: AVA.UI.Components.Canvas
+   Purpose  : Fans a prompt to multiple models; supports 4 response layouts.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@using AVA.UI.CORE.Models.UI
+@inject AppState State
+
+<div class="card-header" @onmousedown:stopPropagation="true">
+    <div class="card-model-dot bc-dot"></div>
+    <div class="card-header-info">
+        <div class="card-title">Broadcast</div>
+        <div class="card-subtitle">@Card.ModelProfileIds.Count model@(Card.ModelProfileIds.Count == 1 ? "" : "s")</div>
+    </div>
+    <div class="bc-layout-picker">
+        @foreach (var layout in _layouts)
+        {
+            <button class="@LayoutBtnClass(layout.Key)"
+                    title="@(layout.Key)"
+                    @onclick="() => SetLayout(layout.Key)">@(layout.Icon)</button>
+        }
+    </div>
+    <div class="card-header-actions">
+        <button class="card-hdr-btn" title="Minimise" @onclick="() => Card.IsMinimised = !Card.IsMinimised">−</button>
+        <button class="card-hdr-btn card-hdr-btn--close" title="Close" @onclick="Close">✕</button>
+    </div>
+</div>
+
+@if (!Card.IsMinimised)
+{
+    <div class="card-body">
+        @if (Card.ResponseLayout == "Stacked")
+        {
+            @foreach (var msg in _responses)
+            {
+                <MessageBubble Message="msg" />
+            }
+        }
+        else if (Card.ResponseLayout == "Split")
+        {
+            <div class="bc-split">
+                @foreach (var group in _responses.GroupBy(r => r.ModelId))
+                {
+                    <div class="bc-split-col">
+                        <div class="bc-split-label">@(group.First().ModelLabel ?? group.Key ?? "Model")</div>
+                        @foreach (var msg in group)
+                        {
+                            <MessageBubble Message="msg" />
+                        }
+                    </div>
+                }
+            </div>
+        }
+        else if (Card.ResponseLayout == "Tabbed")
+        {
+            var models = _responses.Select(r => r.ModelId).Distinct().ToList();
+            <div class="bc-tabs">
+                @foreach (var modelId in models)
+                {
+                    var id = modelId;
+                    var label = _responses.First(r => r.ModelId == id).ModelLabel ?? id ?? "Model";
+                    <button class="bc-tab @(_activeTab == id ? "bc-tab--active" : "")"
+                            @onclick="() => _activeTab = id">@label</button>
+                }
+            </div>
+            <div class="bc-tab-content">
+                @foreach (var msg in _responses.Where(r => r.ModelId == _activeTab))
+                {
+                    <MessageBubble Message="msg" />
+                }
+            </div>
+        }
+        else if (Card.ResponseLayout == "Collapsed")
+        {
+            @foreach (var group in _responses.GroupBy(r => r.ModelId))
+            {
+                var id = group.Key;
+                var label = group.First().ModelLabel ?? id ?? "Model";
+                var expanded = _expandedIds.Contains(id ?? string.Empty);
+                <div class="bc-collapsed-row">
+                    <button class="bc-collapsed-hdr" @onclick="() => ToggleExpand(id ?? string.Empty)">
+                        <span>@label</span>
+                        <span>@(expanded ? "▲" : "▼")</span>
+                    </button>
+                    @if (expanded)
+                    {
+                        @foreach (var msg in group)
+                        {
+                            <MessageBubble Message="msg" />
+                        }
+                    }
+                </div>
+            }
+        }
+
+        @if (_sending)
+        {
+            <div class="bc-sending">Broadcasting to @Card.ModelProfileIds.Count model@(Card.ModelProfileIds.Count == 1 ? "" : "s")…</div>
+        }
+    </div>
+
+    <div class="card-input-area" @onmousedown:stopPropagation="true">
+        <textarea class="card-textarea"
+                  placeholder="Broadcast to all..."
+                  @bind="_input"
+                  @bind:event="oninput"
+                  @onkeydown="HandleKeydown"></textarea>
+        <button class="card-send-btn" @onclick="SendBroadcast" disabled="@_sending">↑</button>
+    </div>
+}
+
+<style>
+.bc-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--Success), var(--Purple, #a855f7));
+    flex-shrink: 0;
+}
+
+.bc-layout-picker {
+    display: flex;
+    gap: 2px;
+    margin-right: 4px;
+}
+
+.bc-layout-btn {
+    width: 22px;
+    height: 22px;
+    border: none;
+    background: transparent;
+    color: var(--TextMuted);
+    font-size: 12px;
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.1s, color 0.1s;
+}
+
+.bc-layout-btn:hover {
+    background: var(--BgSurface);
+    color: var(--Text);
+}
+
+.bc-layout-btn--active {
+    background: var(--BgSurface);
+    color: var(--Text);
+}
+
+.bc-split {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 4px;
+}
+
+.bc-split-col {
+    flex: 1;
+    min-width: 140px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.bc-split-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--TextMuted);
+    padding: 0 4px;
+    margin-bottom: 4px;
+    text-align: center;
+}
+
+.bc-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--Border);
+    overflow-x: auto;
+}
+
+.bc-tab {
+    padding: 6px 12px;
+    border: none;
+    background: transparent;
+    color: var(--TextMuted);
+    font-size: 12px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: color 0.1s;
+}
+
+.bc-tab--active {
+    color: var(--Text);
+    border-bottom-color: var(--Success);
+}
+
+.bc-tab-content {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 0;
+}
+
+.bc-collapsed-row {
+    border-bottom: 1px solid var(--Border);
+}
+
+.bc-collapsed-hdr {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: transparent;
+    border: none;
+    color: var(--Text);
+    font-size: 13px;
+    cursor: pointer;
+    text-align: left;
+}
+
+.bc-collapsed-hdr:hover {
+    background: var(--BgSurface);
+}
+
+.bc-sending {
+    font-size: 12px;
+    color: var(--TextMuted);
+    text-align: center;
+    padding: 8px;
+    font-style: italic;
+}
+</style>
+
+@code {
+    [Parameter, EditorRequired]
+    public CardState Card { get; set; } = default!;
+
+    private List<Message> _responses = new();
+    private string _input = string.Empty;
+    private bool _sending;
+    private string? _activeTab;
+    private HashSet<string> _expandedIds = new();
+
+    private string LayoutBtnClass(string key) =>
+        Card.ResponseLayout == key ? "bc-layout-btn bc-layout-btn--active" : "bc-layout-btn";
+
+    private static readonly (string Key, string Icon)[] _layouts = new[]
+    {
+        ("Stacked",   "☰"),
+        ("Split",     "⊞"),
+        ("Tabbed",    "◫"),
+        ("Collapsed", "⊟")
+    };
+
+    private async Task SendBroadcast()
+    {
+        if (string.IsNullOrWhiteSpace(_input) || _sending) return;
+        if (Card.ModelProfileIds.Count == 0) return;
+
+        var prompt = _input.Trim();
+        _input = string.Empty;
+        _sending = true;
+        StateHasChanged();
+
+        try
+        {
+            var results = await State.Sessions.BroadcastAsync(prompt, Card.ModelProfileIds);
+
+            for (var i = 0; i < results.Count; i++)
+            {
+                var modelId = i < Card.ModelProfileIds.Count ? Card.ModelProfileIds[i] : null;
+                var content = AppState.ExtractContent(results[i]);
+
+                _responses.Add(new Message
+                {
+                    Role = "assistant",
+                    Content = string.IsNullOrEmpty(content) ? "(empty response)" : content,
+                    ModelId = modelId,
+                    ModelLabel = modelId != null ? State.GetModelName(modelId) : null,
+                    IsError = !results[i].Success
+                });
+            }
+
+            if (_activeTab == null && _responses.Any())
+                _activeTab = _responses.First().ModelId;
+
+            State.SaveCanvasState();
+        }
+        catch (Exception ex)
+        {
+            _responses.Add(new Message
+            {
+                Role = "assistant",
+                Content = ex.Message,
+                IsError = true
+            });
+        }
+        finally
+        {
+            _sending = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleKeydown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+            await SendBroadcast();
+    }
+
+    private void SetLayout(string layout)
+    {
+        Card.ResponseLayout = layout;
+        State.SaveCanvasState();
+    }
+
+    private void ToggleExpand(string id)
+    {
+        if (!_expandedIds.Remove(id))
+            _expandedIds.Add(id);
+    }
+
+    private void Close() => State.RemoveCard(Card.CardId);
+}

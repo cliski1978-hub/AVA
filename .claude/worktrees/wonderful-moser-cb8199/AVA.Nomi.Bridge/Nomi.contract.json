@@ -1,0 +1,20 @@
+{
+  "module": "Nomi",
+  "version": "1.0.0",
+  "methods": [
+    {
+      "name": "chat",
+      "version": "1.0.0",
+      "parameters": [
+        {
+          "key": "userMessage",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "returns": {
+        "type": "string"
+      }
+    }
+  ]
+}

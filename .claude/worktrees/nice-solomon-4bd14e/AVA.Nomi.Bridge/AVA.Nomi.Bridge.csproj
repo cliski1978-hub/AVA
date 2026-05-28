@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net8.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<RootNamespace>AVA.Nomi.Bridge</RootNamespace>
+		<AssemblyName>AVA.Nomi.Bridge</AssemblyName>
+	</PropertyGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\AVA.UPS.Adapter\AVA.UPS.Adapter.csproj" />
+	</ItemGroup>
+
+</Project>

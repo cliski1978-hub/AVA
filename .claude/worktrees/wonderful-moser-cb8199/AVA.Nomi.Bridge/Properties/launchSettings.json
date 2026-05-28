@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "AVA.Nomi.Bridge": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "NOMI_API_KEY": "2d25758f-953c-406e-b024-35cb8efe5b4a",
+        "BRIDGE_PORT": "8080"
+      }
+    }
+  }
+}

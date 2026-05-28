@@ -1,0 +1,366 @@
+@using AVA.UI.State
+@using AVA.UI.CORE.Models.Settings
+@inject AppState State
+@implements IDisposable
+
+<div class="profile-pickers">
+    <div class="profile-pickers__profiles">
+        @if (!AvailableProviders.Any())
+        {
+            <div class="profile-pickers__empty">
+                No model definitions.
+            </div>
+        }
+        else
+        {
+            @foreach (var profile in AvailableProviders)
+            {
+                var currentProfile = profile;
+                var isOpen = string.Equals(_openProfileId, currentProfile.ProviderProfileId, StringComparison.OrdinalIgnoreCase);
+                var providerModels = ModelsForProvider(currentProfile).ToList();
+                var selectedCount = providerModels.Count(model => State.IsModelAttachedToActiveSession(model.ModelId));
+
+                <div class="profile-picker">
+                    <button class="profile-picker__trigger @(isOpen ? "profile-picker__trigger--open" : "")"
+                            @onclick="() => ToggleProfile(currentProfile.ProviderProfileId)">
+                        <span class="profile-picker__label">@GetProfileLabel(currentProfile)</span>
+                        @if (selectedCount > 0)
+                        {
+                            <span class="profile-picker__count">@selectedCount</span>
+                        }
+                        <span class="profile-picker__chevron">@(isOpen ? "^" : "v")</span>
+                    </button>
+
+                    @if (isOpen)
+                    {
+                        <div class="profile-picker__menu">
+                            @if (!providerModels.Any())
+                            {
+                                <div class="profile-picker__empty">
+                                    No models available.
+                                </div>
+                            }
+                            else
+                            {
+                                @foreach (var model in providerModels)
+                                {
+                                    var currentModel = model;
+                                    var isSelected = State.IsModelAttachedToActiveSession(currentModel.ModelId);
+                                    var isDefault = State.IsDefaultModelForActiveSession(currentModel.ModelId);
+
+                                    <div class="profile-picker__item @(isSelected ? "profile-picker__item--selected" : "") @(isDefault ? "profile-picker__item--active" : "")">
+                                        <button class="profile-picker__item-main"
+                                                @onclick="() => SelectModelAsync(currentModel)">
+                                            <span class="profile-picker__check">@(isDefault ? "*" : isSelected ? "+" : "")</span>
+                                            <span class="profile-picker__item-label">@DisplayModelName(currentModel)</span>
+                                        </button>
+
+                                        @if (isSelected)
+                                        {
+                                            <button class="profile-picker__item-close"
+                                                    title="Close model"
+                                                    @onclick="() => CloseModelAsync(currentModel.ModelId)">
+                                                x
+                                            </button>
+                                        }
+                                    </div>
+                                }
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        }
+    </div>
+
+    <button type="button"
+            class="broadcast-toggle @(IsBroadcastEnabled ? "broadcast-toggle--active" : "")"
+            aria-pressed="@IsBroadcastEnabled"
+            title="Toggle broadcast mode"
+            @onclick="ToggleBroadcastAsync">
+        <span class="broadcast-toggle__dot"></span>
+        <span>Broadcast</span>
+    </button>
+</div>
+
+<style>
+.profile-pickers {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    position: relative;
+    width: 100%;
+}
+
+.profile-pickers__profiles {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.profile-pickers__empty {
+    font-size: 11px;
+    color: var(--TextMuted);
+}
+
+.profile-picker {
+    position: relative;
+}
+
+.profile-picker__trigger {
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 10px;
+    border: 1px solid var(--Border);
+    background: var(--BgElevated);
+    color: var(--Text);
+    border-radius: 6px;
+    font-family: var(--Font);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.profile-picker__trigger--open {
+    border-color: var(--AccentLine);
+    box-shadow: 0 0 0 1px var(--AccentGlow);
+}
+
+.profile-picker__count {
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: var(--AccentGlow);
+    color: var(--Accent);
+    font-size: 10px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.profile-picker__chevron {
+    font-size: 9px;
+    color: var(--TextMuted);
+}
+
+.profile-picker__menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    min-width: 220px;
+    max-width: 280px;
+    max-height: 260px;
+    overflow-y: auto;
+    padding: 6px;
+    border: 1px solid var(--Border);
+    border-radius: 8px;
+    background: var(--BgElevated);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+    z-index: 20;
+}
+
+.profile-picker__empty {
+    padding: 8px 10px;
+    color: var(--TextMuted);
+    font-size: 11px;
+}
+
+.profile-picker__item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    border-radius: 6px;
+}
+
+.profile-picker__item:hover {
+    background: var(--BgHover);
+}
+
+.profile-picker__item--selected {
+    background: rgba(0, 200, 255, 0.08);
+}
+
+.profile-picker__item--active {
+    outline: 1px solid var(--AccentLine);
+}
+
+.profile-picker__item-main {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--Text);
+    text-align: left;
+    font-family: var(--Font);
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.profile-picker__item-main:hover {
+    background: transparent;
+}
+
+.profile-picker__item-close {
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 4px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--TextMuted);
+    font-family: var(--Font);
+    font-size: 12px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.profile-picker__item-close:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--Text);
+}
+
+.profile-picker__check {
+    width: 14px;
+    flex-shrink: 0;
+    color: var(--Accent);
+    font-weight: 700;
+}
+
+.profile-picker__item-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.broadcast-toggle {
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 10px;
+    border: 1px solid var(--Border);
+    border-radius: 6px;
+    background: var(--BgElevated);
+    color: var(--TextMuted);
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+    margin-left: auto;
+    cursor: pointer;
+    font-family: var(--Font);
+    transition: border-color var(--T), background var(--T), color var(--T), box-shadow var(--T);
+}
+
+.broadcast-toggle:hover {
+    border-color: var(--BorderMid);
+    color: var(--Text);
+}
+
+.broadcast-toggle--active {
+    border-color: var(--AccentLine);
+    background: var(--AccentGlow);
+    color: var(--Accent);
+    box-shadow: 0 0 0 1px rgba(0, 200, 255, 0.08);
+}
+
+.broadcast-toggle__dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1px solid var(--BorderMid);
+    background: transparent;
+    transition: border-color var(--T), background var(--T), box-shadow var(--T);
+}
+
+.broadcast-toggle--active .broadcast-toggle__dot {
+    border-color: var(--Accent);
+    background: var(--Accent);
+    box-shadow: 0 0 10px rgba(0, 200, 255, 0.35);
+}
+</style>
+
+@code {
+    private string? _openProfileId;
+
+    private IEnumerable<ProviderProfile> AvailableProviders =>
+        State.AppSettings.ProviderProfiles.Where(profile =>
+            State.AppSettings.ModelDefinitions.Any(model =>
+                string.Equals(model.ProviderProfileId, profile.ProviderProfileId, StringComparison.OrdinalIgnoreCase)));
+
+    private bool IsBroadcastEnabled => State.CurrentSession?.BroadcastGroupIds?.Any() == true;
+
+    protected override void OnInitialized()
+    {
+        State.OnChange += HandleStateChanged;
+    }
+
+    private void HandleStateChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void ToggleProfile(string profileId)
+    {
+        _openProfileId = string.Equals(_openProfileId, profileId, StringComparison.OrdinalIgnoreCase)
+            ? null
+            : profileId;
+    }
+
+    private string GetProfileLabel(ProviderProfile profile)
+    {
+        return string.IsNullOrWhiteSpace(profile.Name)
+            ? profile.ProviderType
+            : profile.Name;
+    }
+
+    private IEnumerable<ModelDefinition> ModelsForProvider(ProviderProfile profile)
+    {
+        return State.AppSettings.ModelDefinitions
+            .Where(model => string.Equals(model.ProviderProfileId, profile.ProviderProfileId, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(model => DisplayModelName(model));
+    }
+
+    private static string DisplayModelName(ModelDefinition model)
+    {
+        return string.IsNullOrWhiteSpace(model.DisplayName)
+            ? model.ModelId
+            : model.DisplayName;
+    }
+
+    private async Task SelectModelAsync(ModelDefinition model)
+    {
+        await State.AttachModelToActiveSessionAsync(model.ModelId);
+    }
+
+    private async Task CloseModelAsync(string modelId)
+    {
+        await State.DetachModelFromActiveSessionAsync(modelId);
+    }
+
+    private async Task ToggleBroadcastAsync()
+    {
+        await State.SetBroadcastForActiveSessionAsync(!IsBroadcastEnabled);
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= HandleStateChanged;
+    }
+}

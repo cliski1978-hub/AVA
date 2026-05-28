@@ -1,0 +1,77 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   AvaCard.razor
+   Purpose: Surface container with optional header, footer, and interactive state.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+<div class="ava-card @(Elevated ? "ava-card--elevated" : "") @(Interactive ? "ava-card--interactive" : "") @(Selected ? "ava-card--selected" : "")"
+     @onclick="OnCardClickHandler"
+     style="cursor: @(Interactive ? "pointer" : "default");">
+
+    @if (HeaderContent != null)
+    {
+        <div style="padding-bottom: 8px; border-bottom: 1px solid var(--Border); margin-bottom: 8px;">
+            @HeaderContent
+        </div>
+    }
+
+    @ChildContent
+
+    @if (FooterContent != null)
+    {
+        <div style="padding-top: 8px; border-top: 1px solid var(--Border); margin-top: 8px;">
+            @FooterContent
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// Whether the card has an elevated shadow.
+    /// </summary>
+    [Parameter]
+    public bool Elevated { get; set; }
+
+    /// <summary>
+    /// Whether the card is interactive (clickable).
+    /// </summary>
+    [Parameter]
+    public bool Interactive { get; set; }
+
+    /// <summary>
+    /// Whether the card is currently selected.
+    /// </summary>
+    [Parameter]
+    public bool Selected { get; set; }
+
+    /// <summary>
+    /// Callback when the card is clicked (only if Interactive).
+    /// </summary>
+    [Parameter]
+    public EventCallback OnCardClick { get; set; }
+
+    /// <summary>
+    /// Card header content (optional).
+    /// </summary>
+    [Parameter]
+    public RenderFragment? HeaderContent { get; set; }
+
+    /// <summary>
+    /// Main card content.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Card footer content (optional).
+    /// </summary>
+    [Parameter]
+    public RenderFragment? FooterContent { get; set; }
+
+    private async Task OnCardClickHandler()
+    {
+        if (Interactive)
+        {
+            await OnCardClick.InvokeAsync();
+        }
+    }
+}

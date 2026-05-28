@@ -1,0 +1,43 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
+
+	<!-- EF Core dependencies -->
+	<ItemGroup>
+		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.9" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.9" />
+	</ItemGroup>
+
+	<!-- Local NuGet Packaging -->
+	<PropertyGroup>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<IncludeReferencedProjects>true</IncludeReferencedProjects>
+
+		<!-- Identification -->
+		<PackageId>AVA.Memory.Data</PackageId>
+		<Version>1.0.0-local</Version>
+		<Authors>AVA Systems</Authors>
+		<Company>AVA</Company>
+		<Description>
+			Data models and Entity Framework Core support for the AVA Memory subsystem.
+			Provides shared entity definitions and database context logic for persistence.
+		</Description>
+
+		<!-- Output -->
+		<PackageOutputPath>C:\NuGetLocal\</PackageOutputPath>
+		<NoWarn>NU5105</NoWarn>
+		<PublishRepositoryUrl>false</PublishRepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+
+		<!-- Cosmetic metadata -->
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<RepositoryUrl>https://github.com/AVA-Systems/AVA.Memory</RepositoryUrl>
+		<PackageProjectUrl>https://github.com/AVA-Systems/AVA.Memory</PackageProjectUrl>
+		<PackageTags>AVA Memory Data EFCore Models Persistence</PackageTags>
+	</PropertyGroup>
+
+</Project>

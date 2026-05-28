@@ -1,0 +1,58 @@
+@using AVA.UI.CORE.ChatContext.Models
+@using AVA.UI.CORE.ChatContext.Utilities
+
+@if (Section != null)
+{
+    <details class="prompt-section" open="@(!Section.IsCollapsed)">
+        <summary class="prompt-section__summary">
+            <span class="prompt-section__title">@Section.Title</span>
+            <span class="prompt-section__meta">@Section.EstimatedTokens tokens / @Section.Items.Count items</span>
+        </summary>
+
+        <div class="prompt-section__items">
+            @foreach (var item in Section.Items)
+            {
+                <div class="prompt-section__item">
+                    <div class="prompt-section__item-meta">
+                        <span>@PromptFormatter.FormatItemType(item.ItemType)</span>
+                        <span>@item.EstimatedTokens tokens</span>
+                        <span>@item.SelectionStatus</span>
+                        @if (item.Metadata.TryGetValue("RMFinalWeightedScore", out var score))
+                        {
+                            <span>RM @score</span>
+                        }
+                        @if (item.Metadata.TryGetValue("RMRank", out var rank))
+                        {
+                            <span>Rank @rank</span>
+                        }
+                        @if (item.Metadata.TryGetValue("MemoryRelevanceScore", out var memoryScore))
+                        {
+                            <span>Memory @memoryScore</span>
+                        }
+                    </div>
+                    @if (item.Metadata.TryGetValue("RMReasons", out var reasons) && !string.IsNullOrWhiteSpace(reasons))
+                    {
+                        <div class="prompt-section__rm-reasons">@reasons</div>
+                    }
+                    <pre class="prompt-section__content">@item.Content</pre>
+                </div>
+            }
+        </div>
+    </details>
+}
+
+<style>
+.prompt-section { border: 1px solid var(--Border); border-radius: var(--RxSm); background: var(--BgElevated); }
+.prompt-section__summary { display: flex; justify-content: space-between; gap: 10px; padding: 7px 9px; cursor: pointer; color: var(--Text); font-size: var(--FzXs); }
+.prompt-section__title { font-weight: 600; }
+.prompt-section__meta { color: var(--TextMuted); font-family: var(--FontMono); }
+.prompt-section__items { display: flex; flex-direction: column; gap: 6px; padding: 0 8px 8px; }
+.prompt-section__item { border-top: 1px solid var(--Border); padding-top: 6px; }
+.prompt-section__item-meta { display: flex; flex-wrap: wrap; gap: 8px; color: var(--TextMuted); font-size: var(--FzXs); font-family: var(--FontMono); }
+.prompt-section__rm-reasons { margin-top: 4px; color: var(--Accent); font-size: var(--FzXs); font-family: var(--FontMono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.prompt-section__content { margin: 4px 0 0; max-height: 120px; overflow: auto; white-space: pre-wrap; color: var(--Text); font-size: var(--FzXs); font-family: var(--FontMono); background: var(--BgSurface); border-radius: var(--RxSm); padding: 6px; }
+</style>
+
+@code {
+    [Parameter] public PromptDebugSection? Section { get; set; }
+}

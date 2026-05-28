@@ -1,0 +1,386 @@
+@using AVA.UI.CORE.ChatContext.Models
+@using AVA.UI.Features.ChatContext.ViewModels
+@inject PromptContextPaneVM VM
+@implements IDisposable
+
+@if (VM.IsVisible)
+{
+    <div class="ctx-pane">
+        <div class="ctx-pane__header">
+            <span class="ctx-pane__title">Prompt Context</span>
+            <span class="ctx-pane__header-actions">
+                <button class="ctx-pane__btn" @onclick="VM.OpenPromptInspectorAsync" disabled="@VM.IsLoading">
+                    Inspect Prompt
+                </button>
+                <button class="ctx-pane__close" @onclick="VM.Close" title="Close">x</button>
+            </span>
+        </div>
+
+        @if (VM.PolicySettings != null)
+        {
+            <div class="ctx-pane__policy">
+                <div class="ctx-pane__policy-row">
+                    <span class="ctx-pane__policy-key">Model</span>
+                    <span class="ctx-pane__policy-val">@VM.ModelId</span>
+                </div>
+                <div class="ctx-pane__policy-row">
+                    <span class="ctx-pane__policy-key">History Policy</span>
+                    <span class="ctx-pane__policy-val">@VM.PolicySettings.HistoryPolicy</span>
+                </div>
+                <div class="ctx-pane__policy-row">
+                    <span class="ctx-pane__policy-key">Context Window</span>
+                    <span class="ctx-pane__policy-val">@VM.PolicySettings.ContextWindow</span>
+                </div>
+                <div class="ctx-pane__policy-row">
+                    <span class="ctx-pane__policy-key">Output Reserve</span>
+                    <span class="ctx-pane__policy-val">@VM.PolicySettings.DefaultOutputReserve</span>
+                </div>
+            </div>
+        }
+
+        <SessionContextProfileSelector
+            Profiles="VM.AvailableProfiles"
+            SelectedProfileType="VM.SelectedProfileType"
+            SelectedProfile="VM.SelectedProfile"
+            OnProfileSelected="VM.ApplyProfileAsync"
+            OnReset="VM.ResetToDefaultProfileAsync" />
+
+        <div class="ctx-pane__section-label">
+            Payload Controls
+            @if (VM.HasPayloadOverrides)
+            {
+                <span class="ctx-pane__badge">User choices active</span>
+            }
+        </div>
+
+        <div class="ctx-pane__toggles">
+            <label class="ctx-pane__toggle">
+                <span>History Policy</span>
+                <select class="ctx-pane__select" value="@VM.PolicySettings?.HistoryPolicy" @onchange="OnHistoryPolicyChanged">
+                    @foreach (var policy in Enum.GetValues<HistoryPolicyType>())
+                    {
+                        <option value="@policy">@policy</option>
+                    }
+                </select>
+            </label>
+            <label class="ctx-pane__toggle">
+                <span>Max History</span>
+                <input class="ctx-pane__number" type="number" min="0" value="@FormatNullableInt(VM.PolicySettings?.MaxHistoryMessages)" @onchange="OnMaxHistoryMessagesChanged" />
+            </label>
+            <label class="ctx-pane__toggle">
+                <input type="checkbox" checked="@(VM.PolicySettings?.AllowManualHistorySelection ?? true)" @onchange="OnAllowManualHistorySelectionChanged" />
+                <span>Manual Selection</span>
+            </label>
+            <label class="ctx-pane__toggle">
+                <input type="checkbox" checked="@VM.UseFullHistoryPayload" @onchange="OnUseFullHistoryPayloadChanged" />
+                <span>Full History Payload</span>
+            </label>
+            <label class="ctx-pane__toggle">
+                <input type="checkbox" checked="@VM.IncludeConversationHistory" @onchange="OnIncludeConversationHistoryChanged" />
+                <span>Conversation History</span>
+            </label>
+            <label class="ctx-pane__toggle">
+                <input type="checkbox" checked="@VM.IncludeToolCalls" @onchange="OnIncludeToolCallsChanged" />
+                <span>Tool Calls</span>
+            </label>
+            <label class="ctx-pane__toggle">
+                <input type="checkbox" checked="@VM.IncludeToolMetadata" @onchange="OnIncludeToolMetadataChanged" />
+                <span>Tool Metadata</span>
+            </label>
+            <label class="ctx-pane__toggle">
+                <input type="checkbox" checked="@VM.IncludeMetadata" @onchange="OnIncludeMetadataChanged" />
+                <span>Metadata</span>
+            </label>
+            <button class="ctx-pane__btn" @onclick="VM.ResetPayloadTogglesAsync" disabled="@(!VM.HasPayloadOverrides || VM.IsLoading)">
+                Reset To Model Defaults
+            </button>
+        </div>
+
+        @if (VM.BudgetState != null)
+        {
+            <div class="ctx-pane__section-label">Context Budget</div>
+            <PromptBudgetSummary Budget="VM.BudgetState" />
+            @if (VM.BudgetState.IsOverBudget)
+            {
+                <div class="ctx-pane__warning">Context is over budget after manual overrides.</div>
+            }
+        }
+
+        @if (VM.UsageMetrics != null)
+        {
+            <ContextUsageBar Metrics="VM.UsageMetrics" />
+            <ContextUsageDetails Metrics="VM.UsageMetrics" />
+        }
+
+        <div class="ctx-pane__section-label">Memory Injection</div>
+        <div class="ctx-pane__memory-actions">
+            <label class="ctx-pane__toggle">
+                <input type="checkbox" checked="@VM.EnableMemoryInjection" @onchange="OnMemoryInjectionChanged" />
+                <span>Enable Memory Injection</span>
+            </label>
+            <button class="ctx-pane__btn" @onclick="VM.RefreshMemoryInjectionAsync" disabled="@(!VM.EnableMemoryInjection || VM.IsLoading)">
+                Refresh
+            </button>
+        </div>
+        <MemoryInjectionView Enabled="@VM.EnableMemoryInjection" Retrieval="VM.CurrentMemoryRetrieval" />
+
+        <div class="ctx-pane__section-label">Automatic Compression</div>
+        <div class="ctx-pane__compression-actions">
+            <label class="ctx-pane__toggle">
+                <input type="checkbox" checked="@VM.EnableAutomaticCompression" @onchange="OnAutomaticCompressionChanged" />
+                <span>Enable Automatic Compression</span>
+            </label>
+            <button class="ctx-pane__btn" @onclick="VM.ApplyCompressionAsync" disabled="@(VM.EnableAutomaticCompression || VM.IsLoading)">
+                Enable
+            </button>
+            <button class="ctx-pane__btn" @onclick="VM.DisableCompressionAsync" disabled="@(!VM.EnableAutomaticCompression || VM.IsLoading)">
+                Disable
+            </button>
+        </div>
+        <CompressionSummaryView Enabled="@VM.EnableAutomaticCompression" Result="VM.CurrentCompressionResult" />
+
+        <div class="ctx-pane__section-label">RM Selection</div>
+        <div class="ctx-pane__rm-actions">
+            <label class="ctx-pane__toggle">
+                <input type="checkbox" checked="@VM.EnableRMSelection" @onchange="OnRMSelectionChanged" />
+                <span>Enable RM Selection</span>
+            </label>
+            <button class="ctx-pane__btn" @onclick="VM.ApplyRMAnalysisAsync" disabled="@(VM.EnableRMSelection || VM.IsLoading)">
+                Enable
+            </button>
+            <button class="ctx-pane__btn" @onclick="VM.DisableRMAnalysisAsync" disabled="@(!VM.EnableRMSelection || VM.IsLoading)">
+                Disable
+            </button>
+        </div>
+        <RMContextInsightsView Enabled="@VM.EnableRMSelection" Analysis="VM.CurrentRMAnalysis" />
+
+        <div class="ctx-pane__section-label">
+            Context Items
+            <span class="ctx-pane__count">
+                @VM.Items.Count(i => i.IsIncluded) incl. / @VM.Items.Count(i => !i.IsIncluded) excl.
+            </span>
+            <span class="ctx-pane__count">@VM.SelectedItemIds.Count selected</span>
+            @if (VM.HasItemOverrides)
+            {
+                <span class="ctx-pane__badge">Item overrides active</span>
+            }
+        </div>
+
+        <div class="ctx-pane__selection-actions">
+            <button class="ctx-pane__btn" @onclick="VM.SelectAllIncluded" disabled="@VM.IsLoading">
+                Select All Included
+            </button>
+            <button class="ctx-pane__btn" @onclick="VM.ClearSelection" disabled="@(VM.SelectedItemIds.Count == 0 || VM.IsLoading)">
+                Clear Selection
+            </button>
+            <button class="ctx-pane__btn" @onclick="VM.OffloadSelectedAsync" disabled="@(VM.SelectedItemIds.Count == 0 || VM.IsOffloading || VM.IsLoading)">
+                @(VM.IsOffloading ? "Offloading..." : "Offload Selected")
+            </button>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(VM.LastOffloadPath))
+        {
+            <div class="ctx-pane__success">Offloaded to @VM.LastOffloadPath</div>
+        }
+
+        @if (VM.IsLoading)
+        {
+            <div class="ctx-pane__loading">Building context...</div>
+        }
+        else if (!string.IsNullOrWhiteSpace(VM.ErrorMessage))
+        {
+            <div class="ctx-pane__error">Warning: @VM.ErrorMessage</div>
+        }
+        else if (!VM.Items.Any())
+        {
+            <div class="ctx-pane__empty">No context items. Send a message first.</div>
+        }
+        else
+        {
+            <div class="ctx-pane__items-header">
+                <span></span>
+                <span>Use</span>
+                <span>Type</span>
+                <span>Status</span>
+                <span>Tokens</span>
+                <span>Source</span>
+                <span>Preview</span>
+                <span>Actions</span>
+            </div>
+
+            <div class="ctx-pane__items">
+                @foreach (var item in VM.Items)
+                {
+                    var itemRef = item;
+                    <PromptContextItemRow
+                        Item="itemRef"
+                        IsSelected="@VM.SelectedItemIds.Contains(itemRef.ItemId)"
+                        OnSelectionToggle="@(() => VM.ToggleItemSelection(itemRef.ItemId))"
+                        OnForceInclude="@(() => VM.ForceIncludeAsync(itemRef.ItemId))"
+                        OnForceExclude="@(() => VM.ForceExcludeAsync(itemRef.ItemId))"
+                        OnPinToggle="@(() => VM.TogglePinAsync(itemRef.ItemId))"
+                        OnClearOverride="@(() => VM.ClearItemOverrideAsync(itemRef.ItemId))" />
+                }
+            </div>
+        }
+
+        <div class="ctx-pane__footer">
+            <button class="ctx-pane__btn" @onclick="VM.ClearItemOverridesAsync" disabled="@(!VM.HasItemOverrides || VM.IsLoading)">
+                Clear Item Overrides
+            </button>
+            <button class="ctx-pane__btn" @onclick="VM.RebuildAsync" disabled="@VM.IsLoading">
+                @(VM.IsLoading ? "Building..." : "Rebuild")
+            </button>
+            <button class="ctx-pane__btn ctx-pane__btn--close" @onclick="VM.Close">
+                Close
+            </button>
+        </div>
+    </div>
+
+    <PromptInspectorPane
+        IsVisible="@VM.IsPromptInspectorVisible"
+        Package="VM.DebugPackage"
+        UsageMetrics="VM.UsageMetrics"
+        RMAnalysis="VM.CurrentRMAnalysis"
+        OnRefresh="VM.RefreshPromptInspectorAsync"
+        OnClose="VM.ClosePromptInspector" />
+}
+
+<style>
+.ctx-pane { display: flex; flex-direction: column; gap: 8px; padding: 12px; background: var(--BgSurface); border: 1px solid var(--Border); border-radius: var(--RxMd); min-width: 560px; max-height: 80vh; overflow: hidden; }
+.ctx-pane__header { display: flex; align-items: center; justify-content: space-between; }
+.ctx-pane__header-actions { display: flex; align-items: center; gap: 8px; }
+.ctx-pane__title { font-size: var(--FzMd); font-weight: 600; color: var(--Text); }
+.ctx-pane__close { background: transparent; border: none; color: var(--TextMuted); font-size: var(--FzMd); cursor: pointer; padding: 2px 6px; }
+.ctx-pane__close:hover { color: var(--Text); }
+
+.ctx-pane__policy { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; padding: 8px; background: var(--BgElevated); border-radius: var(--RxSm); border: 1px solid var(--Border); }
+.ctx-pane__policy-row { display: flex; justify-content: space-between; gap: 8px; font-size: var(--FzXs); }
+.ctx-pane__policy-key { color: var(--TextMuted); }
+.ctx-pane__policy-val { color: var(--Text); font-family: var(--FontMono); }
+
+.ctx-pane__section-label { font-size: var(--FzXs); font-weight: 600; color: var(--TextFaint); text-transform: uppercase; letter-spacing: 0.06em; display: flex; align-items: center; gap: 6px; }
+.ctx-pane__count { font-size: var(--FzXs); color: var(--TextMuted); font-weight: 400; text-transform: none; letter-spacing: 0; }
+.ctx-pane__badge { font-size: var(--FzXs); color: var(--Warn); font-weight: 600; text-transform: none; letter-spacing: 0; }
+
+.ctx-pane__toggles { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; padding: 8px; background: var(--BgElevated); border: 1px solid var(--Border); border-radius: var(--RxSm); }
+.ctx-pane__toggle { display: flex; align-items: center; gap: 6px; color: var(--TextMuted); font-size: var(--FzXs); }
+.ctx-pane__toggle input { margin: 0; }
+.ctx-pane__select,
+.ctx-pane__number { height: var(--SzSm); border: 1px solid var(--Border); border-radius: var(--RxSm); background: var(--BgSurface); color: var(--Text); font-size: var(--FzXs); padding: 0 6px; min-width: 0; }
+.ctx-pane__number { width: 84px; }
+.ctx-pane__compression-actions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; padding: 8px; background: var(--BgElevated); border: 1px solid var(--Border); border-radius: var(--RxSm); }
+.ctx-pane__compression-actions .ctx-pane__toggle { margin-right: auto; }
+.ctx-pane__memory-actions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; padding: 8px; background: var(--BgElevated); border: 1px solid var(--Border); border-radius: var(--RxSm); }
+.ctx-pane__memory-actions .ctx-pane__toggle { margin-right: auto; }
+.ctx-pane__rm-actions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; padding: 8px; background: var(--BgElevated); border: 1px solid var(--Border); border-radius: var(--RxSm); }
+.ctx-pane__rm-actions .ctx-pane__toggle { margin-right: auto; }
+
+.ctx-pane__selection-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.ctx-pane__items-header { display: grid; grid-template-columns: 24px 24px 90px 112px 48px 80px minmax(120px, 1fr) 132px; gap: 6px; padding: 2px 8px; font-size: var(--FzXs); color: var(--TextFaint); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+.ctx-pane__items { display: flex; flex-direction: column; overflow-y: auto; max-height: 340px; border: 1px solid var(--Border); border-radius: var(--RxSm); }
+.ctx-pane__loading { padding: 12px; text-align: center; color: var(--TextMuted); font-size: var(--FzSm); }
+.ctx-pane__error { padding: 8px; color: var(--Err); font-size: var(--FzSm); background: rgba(200,80,80,0.08); border-radius: var(--RxSm); }
+.ctx-pane__warning { padding: 6px 8px; color: var(--Err); font-size: var(--FzXs); font-weight: 600; background: rgba(200,80,80,0.08); border-radius: var(--RxSm); }
+.ctx-pane__success { padding: 6px 8px; color: #4caf50; font-size: var(--FzXs); font-weight: 600; background: rgba(76,175,80,0.08); border-radius: var(--RxSm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ctx-pane__empty { padding: 12px; text-align: center; color: var(--TextMuted); font-size: var(--FzSm); font-style: italic; }
+
+.ctx-pane__footer { display: flex; justify-content: flex-end; gap: 8px; padding-top: 4px; border-top: 1px solid var(--Border); }
+.ctx-pane__btn { height: var(--SzSm); padding: 0 var(--RxMd); border-radius: var(--RxSm); border: 1px solid var(--Border); background: var(--BgElevated); color: var(--TextMuted); font-size: var(--FzXs); cursor: pointer; transition: all var(--T); }
+.ctx-pane__btn:hover:not(:disabled) { border-color: var(--Accent); color: var(--Accent); }
+.ctx-pane__btn:disabled { opacity: 0.45; cursor: default; }
+.ctx-pane__btn--close:hover { border-color: var(--BorderMid); color: var(--Text); }
+</style>
+
+@code {
+    private Action? _handler;
+
+    protected override void OnInitialized()
+    {
+        _handler = () => InvokeAsync(StateHasChanged);
+        VM.OnChange += _handler;
+    }
+
+    private async Task OnUseFullHistoryPayloadChanged(ChangeEventArgs e)
+    {
+        await VM.SetUseFullHistoryPayloadAsync(GetBoolValue(e));
+    }
+
+    private async Task OnHistoryPolicyChanged(ChangeEventArgs e)
+    {
+        if (Enum.TryParse<HistoryPolicyType>(e.Value?.ToString(), out var policy))
+            await VM.SetHistoryPolicyAsync(policy);
+    }
+
+    private async Task OnMaxHistoryMessagesChanged(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+        if (string.IsNullOrWhiteSpace(value) || value == "0")
+        {
+            await VM.SetMaxHistoryMessagesAsync(null);
+            return;
+        }
+
+        if (int.TryParse(value, out var count))
+            await VM.SetMaxHistoryMessagesAsync(Math.Max(1, count));
+    }
+
+    private async Task OnAllowManualHistorySelectionChanged(ChangeEventArgs e)
+    {
+        await VM.SetAllowManualHistorySelectionAsync(GetBoolValue(e));
+    }
+
+    private async Task OnIncludeConversationHistoryChanged(ChangeEventArgs e)
+    {
+        await VM.SetIncludeConversationHistoryAsync(GetBoolValue(e));
+    }
+
+    private async Task OnIncludeToolCallsChanged(ChangeEventArgs e)
+    {
+        await VM.SetIncludeToolCallsAsync(GetBoolValue(e));
+    }
+
+    private async Task OnIncludeToolMetadataChanged(ChangeEventArgs e)
+    {
+        await VM.SetIncludeToolMetadataAsync(GetBoolValue(e));
+    }
+
+    private async Task OnIncludeMetadataChanged(ChangeEventArgs e)
+    {
+        await VM.SetIncludeMetadataAsync(GetBoolValue(e));
+    }
+
+    private async Task OnAutomaticCompressionChanged(ChangeEventArgs e)
+    {
+        if (GetBoolValue(e))
+            await VM.ApplyCompressionAsync();
+        else
+            await VM.DisableCompressionAsync();
+    }
+
+    private async Task OnMemoryInjectionChanged(ChangeEventArgs e)
+    {
+        await VM.ToggleMemoryInjectionAsync(GetBoolValue(e));
+    }
+
+    private async Task OnRMSelectionChanged(ChangeEventArgs e)
+    {
+        if (GetBoolValue(e))
+            await VM.ApplyRMAnalysisAsync();
+        else
+            await VM.DisableRMAnalysisAsync();
+    }
+
+    private static bool GetBoolValue(ChangeEventArgs e)
+    {
+        return e.Value is bool value && value;
+    }
+
+    private static string FormatNullableInt(int? value) => value?.ToString() ?? "0";
+
+    public void Dispose()
+    {
+        if (_handler != null)
+            VM.OnChange -= _handler;
+    }
+}

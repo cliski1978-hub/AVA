@@ -1,0 +1,159 @@
+@using AVA.UI.Features.Vault.ViewModels
+@inject VaultSearchVM VM
+@inject ILogger<VaultSearchPane> Logger
+@implements IDisposable
+
+<div class="vault-search-pane">
+
+    <div class="vault-search-pane__header">
+        <span class="vault-search-pane__title">Notes</span>
+        <button class="vault-search-pane__new-btn"
+                title="New note"
+                @onclick="VM.CreateNoteAsync">
+            +
+        </button>
+    </div>
+
+    <div class="vault-search-pane__input-row">
+        <input class="vault-search-pane__input"
+               placeholder="Search notes…"
+               @bind="VM.Keyword"
+               @bind:event="oninput"
+               @onkeydown="HandleKeyDown" />
+        <button class="vault-search-pane__search-btn"
+                @onclick="VM.SearchAsync"
+                disabled="@VM.IsLoading">
+            @(VM.IsLoading ? "…" : "↵")
+        </button>
+    </div>
+
+    <VaultFilterBar />
+    <VaultNoteGrid />
+
+</div>
+
+<style>
+    .vault-search-pane {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        background: var(--BgSurface);
+    }
+
+    .vault-search-pane__header {
+        display: flex;
+        align-items: center;
+        padding: 10px 12px 8px;
+        border-bottom: 1px solid var(--Border);
+        flex-shrink: 0;
+    }
+
+    .vault-search-pane__new-btn {
+        margin-left: auto;
+        width: 24px;
+        height: 24px;
+        border-radius: var(--RxSm);
+        border: 1px solid var(--Border);
+        background: transparent;
+        color: var(--TextMuted);
+        font-size: var(--FzLg);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all var(--T);
+        flex-shrink: 0;
+    }
+
+    .vault-search-pane__new-btn:hover {
+        border-color: var(--Accent);
+        color: var(--Accent);
+    }
+
+    .vault-search-pane__title {
+        font-size: var(--FzXs);
+        font-weight: 600;
+        color: var(--TextFaint);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .vault-search-pane__input-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--Border);
+        flex-shrink: 0;
+    }
+
+    .vault-search-pane__input {
+        flex: 1;
+        height: 28px;
+        border-radius: var(--RxSm);
+        border: 1px solid var(--BorderMid);
+        background: var(--BgBase);
+        color: var(--Text);
+        font-family: var(--Font);
+        font-size: var(--FzSm);
+        padding: 0 var(--RxMd);
+        outline: none;
+        transition: border-color var(--T);
+    }
+
+    .vault-search-pane__input:focus {
+        border-color: var(--Accent);
+    }
+
+    .vault-search-pane__search-btn {
+        width: 28px;
+        height: 28px;
+        border-radius: var(--RxSm);
+        border: 1px solid var(--Border);
+        background: var(--BgBase);
+        color: var(--TextMuted);
+        font-size: var(--FzSm);
+        cursor: pointer;
+        flex-shrink: 0;
+        transition: all var(--T);
+    }
+
+    .vault-search-pane__search-btn:hover {
+        border-color: var(--Accent);
+        color: var(--Accent);
+    }
+
+    .vault-search-pane__search-btn:disabled {
+        opacity: 0.4;
+        cursor: default;
+    }
+</style>
+
+@code {
+    private Action? _vmHandler;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _vmHandler = () => InvokeAsync(StateHasChanged);
+        VM.OnChange += _vmHandler;
+
+        try
+        {
+            await VM.SearchAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "VaultSearchPane: initial search failed");
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await VM.SearchAsync();
+    }
+
+    public void Dispose()
+    {
+        VM.OnChange -= _vmHandler;
+    }
+}

@@ -1,0 +1,86 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   InputPane.razor
+   Namespace: AVA.UI.Chat
+   Purpose  : Prompt input + submit. Replaces InputPaneView.xaml +
+              InputPaneVM.cs.
+   Notes    : Send button disabled until connected (replaces late-wired
+              InputVM null check in WPF).
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@using AVA.UI.State
+@using AVA.UI.CORE.Models
+@using AVA.UI.Features.Chat.ViewModels
+@using AVA.UI.Features.Chat.State
+@inject AppState State
+@inject ChatConversationState ChatState
+@implements IDisposable
+
+<div class="input-pane">
+    <textarea class="input-pane__text"
+              @bind="_vm.PromptText"
+              @bind:event="oninput"
+              placeholder="Type a message…"
+              rows="4"
+              @onkeydown="HandleKeyDown"></textarea>
+
+    @if (_vm.HasCharacterLimit)
+    {
+        <div class="input-pane__char-counter @(_vm.IsOverCharacterLimit ? "input-pane__char-counter--over" : string.Empty)">
+            @_vm.CharacterCount / @_vm.CharacterLimit characters
+            @if (_vm.IsOverCharacterLimit)
+            {
+                <span>exceeds model limit</span>
+            }
+        </div>
+    }
+
+    <div class="input-pane__actions">
+        <button class="input-pane__btn input-pane__btn--preview"
+                @onclick="_vm.ShowPreview"
+                disabled="@(string.IsNullOrWhiteSpace(_vm.PromptText))">
+            Preview
+        </button>
+        <button class="input-pane__btn input-pane__btn--send"
+                @onclick="Submit"
+                disabled="@(!_vm.CanSend)">
+            @(_vm.IsSending ? "Sending…" : "Send")
+        </button>
+    </div>
+
+    @if (!State.IsConnected)
+    {
+        <div class="input-pane__warning">
+            ⚠️ Not connected — go to Settings to connect.
+        </div>
+    }
+</div>
+
+@code {
+    private InputPaneVM _vm = default!;
+    private Action? _stateHandler;
+    private Action? _vmHandler;
+
+    protected override void OnInitialized()
+    {
+        _vm = new InputPaneVM(State, ChatState);
+        _stateHandler = () => InvokeAsync(StateHasChanged);
+        _vmHandler    = () => InvokeAsync(StateHasChanged);
+        State.OnChange += _stateHandler;
+        _vm.OnChange   += _vmHandler;
+    }
+
+    private async Task Submit() => await _vm.SubmitAsync();
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+            await Submit();
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= _stateHandler;
+        _vm.OnChange   -= _vmHandler;
+        _vm.Dispose();
+    }
+}

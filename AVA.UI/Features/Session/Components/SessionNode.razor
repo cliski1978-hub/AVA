@@ -1,0 +1,289 @@
+@using AVA.UI.CORE.Models.UI
+@using AVA.UI.Features.Session.ViewModels
+@using Microsoft.Extensions.Logging
+@inject AppState AppState
+@inject IJSRuntime JS
+@inject IAvaRuntimeContext RuntimeContext
+@inject ILogger<SessionNodeVM> VmLogger
+@implements IDisposable
+
+<div class="session-block">
+    <div class="session-node @(_vm.IsActive ? "active" : string.Empty)">
+        @if (_vm.IsRenaming)
+        {
+            <div class="session-node__editor" @onclick:stopPropagation="true">
+                <input class="session-node__input"
+                       @bind="_vm.DraftName"
+                       @bind:event="oninput"
+                       @onclick:stopPropagation="true"
+                       @onkeydown:stopPropagation="true" />
+
+                <button type="button"
+                        class="session-node__action"
+                        @onclick:stopPropagation="true"
+                        @onclick="SaveRenameAsync">
+                    Save
+                </button>
+
+                <button type="button"
+                        class="session-node__action"
+                        @onclick:stopPropagation="true"
+                        @onclick="_vm.CancelRename">
+                    Cancel
+                </button>
+            </div>
+        }
+        else
+        {
+            <button type="button"
+                    class="session-node__select"
+                    @onclick:stopPropagation="true"
+                    @onclick="SelectSession">
+                <span class="session-node__name">@Session.Name</span>
+
+                @if (Session.IsPinned)
+                {
+                    <span class="session-node__pin">P</span>
+                }
+            </button>
+        }
+
+        <button type="button"
+                class="session-node__menu"
+                @onclick:stopPropagation="true"
+                @onclick="_vm.ToggleMenu">
+            ...
+        </button>
+    </div>
+
+    @if (_vm.ShowMenu)
+    {
+        <div class="session-node__menu-pop" @onclick:stopPropagation="true">
+            <button type="button"
+                    class="session-node__menu-item"
+                    @onclick:stopPropagation="true"
+                    @onclick="_vm.BeginRename">
+                Rename session
+            </button>
+
+            <button type="button"
+                    class="session-node__menu-item session-node__menu-item--danger"
+                    @onclick:stopPropagation="true"
+                    @onclick="ConfirmRemoveSessionAsync">
+                Remove session
+            </button>
+        </div>
+    }
+</div>
+
+<style>
+    .session-block {
+        margin-top: var(--RxXs);
+    }
+
+    .session-node {
+        display: flex;
+        align-items: center;
+        gap: var(--RxSm);
+        min-height: var(--SzSm);
+        border-radius: var(--RxSm);
+        transition: all var(--T);
+        padding: 0 var(--RxMd) 0 calc(var(--FzSm) + var(--RxMd));
+    }
+
+        .session-node:hover,
+        .session-node.active {
+            background: var(--BgHover);
+            color: var(--Text);
+        }
+
+        .session-node.active {
+            border: 1px solid var(--AccentLine);
+        }
+
+    .session-node__select {
+        flex: 1;
+        min-width: 0;
+        min-height: var(--SzSm);
+        display: flex;
+        align-items: center;
+        gap: var(--RxSm);
+        border: 0;
+        background: transparent;
+        color: inherit;
+        font-family: var(--Font);
+        text-align: left;
+        cursor: pointer;
+        padding: 0;
+    }
+
+    .session-node__editor {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: var(--RxSm);
+    }
+
+    .session-node__name {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: var(--FzSm);
+    }
+
+    .session-node__pin {
+        font-size: var(--FzXs);
+        color: var(--Accent);
+    }
+
+    .session-node__menu {
+        width: var(--Fz2Xl);
+        height: var(--Fz2Xl);
+        border-radius: var(--RxTiny);
+        border: 1px solid transparent;
+        background: transparent;
+        color: var(--TextFaint);
+        font-size: var(--FzLg);
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+
+        .session-node__menu:hover {
+            background: var(--BgHover);
+            border-color: var(--Border);
+            color: var(--Accent);
+        }
+
+    .session-node__menu-pop {
+        display: flex;
+        flex-direction: column;
+        gap: var(--RxXs);
+        margin: var(--RxXs) 0 var(--RxSm) calc(var(--SzSm) + var(--RxSm));
+        padding: var(--RxSm);
+        background: var(--BgElevated);
+        border: 1px solid var(--Border);
+        border-radius: var(--RxMd);
+        position: relative;
+        z-index: 20;
+    }
+
+    .session-node__menu-item {
+        min-height: var(--SzSm);
+        text-align: left;
+        padding: 0 var(--RxMd);
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: var(--RxSm);
+        color: var(--TextMuted);
+        font-family: var(--Font);
+        font-size: var(--FzSm);
+        cursor: pointer;
+        transition: all var(--T);
+    }
+
+        .session-node__menu-item:hover {
+            background: var(--BgHover);
+            border-color: var(--BorderMid);
+            color: var(--Text);
+        }
+
+    .session-node__menu-item--danger:hover {
+        border-color: var(--DangerLine);
+        color: var(--Danger);
+    }
+
+    .session-node__input {
+        flex: 1;
+        min-width: 120px;
+        height: var(--SzSm);
+        border-radius: var(--RxSm);
+        border: 1px solid var(--BorderMid);
+        background: var(--BgBase);
+        color: var(--Text);
+        font-family: var(--Font);
+        font-size: var(--FzSm);
+        padding: 0 var(--RxMd);
+    }
+
+    .session-node__action {
+        height: var(--SzSm);
+        border-radius: var(--RxSm);
+        border: 1px solid var(--Border);
+        background: var(--BgBase);
+        color: var(--TextMuted);
+        font-family: var(--Font);
+        font-size: var(--FzXs);
+        padding: 0 var(--RxMd);
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+
+        .session-node__action:hover {
+            color: var(--Text);
+            border-color: var(--BorderMid);
+        }
+</style>
+
+@code {
+    [Parameter]
+    public string VaultId { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? ProjectId { get; set; }
+
+    [Parameter]
+    public string VaultStorageMode { get; set; } = "Database";
+
+    [Parameter, EditorRequired]
+    public SessionState Session { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback OnSessionChanged { get; set; }
+
+    private SessionNodeVM _vm = default!;
+    private Action? _vmHandler;
+
+    protected override void OnInitialized()
+    {
+        _vm = new SessionNodeVM(AppState, Session, VaultId, ProjectId, VaultStorageMode, RuntimeContext, VmLogger);
+        _vmHandler = () => InvokeAsync(StateHasChanged);
+        _vm.OnChange += _vmHandler;
+    }
+
+    private async Task SelectSession()
+    {
+        await _vm.SelectSessionAsync();
+        await OnSessionChanged.InvokeAsync();
+    }
+
+    private async Task SaveRenameAsync()
+    {
+        await _vm.SaveRenameAsync();
+        await OnSessionChanged.InvokeAsync();
+    }
+
+    private async Task ConfirmRemoveSessionAsync()
+    {
+        var confirmed = await JS.InvokeAsync<bool>(
+            "confirm",
+            $"Delete session '{Session.Name}'?");
+
+        if (!confirmed)
+        {
+            _vm.ToggleMenu();
+            return;
+        }
+
+        await _vm.RemoveSessionAsync();
+        await OnSessionChanged.InvokeAsync();
+    }
+
+    public void Dispose()
+    {
+        _vm.OnChange -= _vmHandler;
+        _vm.Dispose();
+    }
+}

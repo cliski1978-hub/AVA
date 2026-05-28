@@ -1,0 +1,398 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   SingleModelCard.razor
+   Namespace: AVA.UI.Components.Canvas
+   Purpose  : Card that routes to a single model and shows the conversation.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@using AVA.UI.CORE.Models.UI
+@using AVA.UI.Features.Canvas.ViewModels
+@inject AppState State
+@implements IDisposable
+
+<div class="card-header">
+    <div class="card-model-dot" style="background:var(--Success)"></div>
+    <div class="card-header-info" @onmousedown:stopPropagation="true">
+        <button class="card-model-picker-btn" @onclick="() => _vm.ShowModelPicker = !_vm.ShowModelPicker">
+            <span class="card-title">@_vm.CurrentModelLabel</span>
+            <span class="card-picker-chevron">@(_vm.ShowModelPicker ? "▲" : "▼")</span>
+        </button>
+        <div class="card-subtitle">temp @(Card.TemperatureOverride?.ToString("F1") ?? "0.7") · live</div>
+    </div>
+    <div class="card-header-actions" @onmousedown:stopPropagation="true">
+        <button class="card-hdr-btn" title="Minimise" @onclick="_vm.ToggleMinimise">−</button>
+        <button class="card-hdr-btn card-hdr-btn--close" title="Close" @onclick="_vm.Close">✕</button>
+    </div>
+</div>
+
+@if (_vm.ShowModelPicker)
+{
+    <div class="model-picker-dropdown" @onmousedown:stopPropagation="true">
+        @foreach (var entry in State.Sessions.AvailableModels)
+        {
+            var model = entry.Model;
+            var profile = entry.Profile;
+            var isSelected = Card.ModelProfileIds.Count > 0 && Card.ModelProfileIds[0] == model.Id;
+            <button class="model-picker-item @(isSelected ? "selected" : "")"
+                    @onclick="() => _vm.SelectModel(model.Id)">
+                <span class="model-picker-dot" style="background:var(--Success)"></span>
+                <span class="model-picker-label">@model.Label</span>
+                <span class="model-picker-profile">@profile.Name</span>
+                @if (isSelected) { <span class="model-picker-check">✓</span> }
+            </button>
+        }
+        @if (!State.Sessions.AvailableModels.Any())
+        {
+            <div class="model-picker-empty">No models connected — go to Settings</div>
+        }
+    </div>
+}
+
+@if (!Card.IsMinimised)
+{
+    <div class="card-body" id="body-@Card.CardId" @onmousedown:stopPropagation="true">
+        @foreach (var msg in _vm.DisplayMessages)
+        {
+            <MessageBubble Message="msg" />
+        }
+
+        @if (_vm.IsTyping)
+        {
+            <div class="card-typing-float" aria-live="polite" aria-label="Waiting for response">
+                <span></span><span></span><span></span>
+            </div>
+        }
+    </div>
+
+    <div class="card-input-area" @onmousedown:stopPropagation="true">
+        <textarea class="card-textarea"
+                  placeholder="Message..."
+                  @bind="_vm.Input"
+                  @bind:event="oninput"
+                  @onkeydown="HandleKeydown"></textarea>
+        @if (_vm.HasCharacterLimit)
+        {
+            <div class="card-char-counter @(_vm.IsOverCharacterLimit ? "card-char-counter--over" : string.Empty)">
+                @_vm.CharacterCount / @_vm.CharacterLimit
+            </div>
+        }
+        <button class="card-send-btn" @onclick="Send" disabled="@_vm.IsTyping">↑</button>
+    </div>
+}
+
+<style>
+.card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--Border);
+    cursor: grab;
+    user-select: none;
+    flex-shrink: 0;
+}
+
+.card-model-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.card-header-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.card-model-picker-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    max-width: 100%;
+}
+
+.card-picker-chevron {
+    font-size: 9px;
+    color: var(--TextMuted);
+    flex-shrink: 0;
+}
+
+.card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--Text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.card-subtitle {
+    font-size: 11px;
+    color: var(--TextMuted);
+}
+
+.card-header-actions {
+    display: flex;
+    gap: 2px;
+}
+
+.card-hdr-btn {
+    width: 22px;
+    height: 22px;
+    border: none;
+    background: transparent;
+    color: var(--TextMuted);
+    font-size: 12px;
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.1s, color 0.1s;
+}
+
+.card-hdr-btn:hover {
+    background: var(--BgSurface);
+    color: var(--Text);
+}
+
+.card-hdr-btn--close:hover {
+    background: var(--ErrorBg, #3a1a1a);
+    color: var(--Error, #ff6b6b);
+}
+
+.card-body {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    padding: 8px 0;
+    gap: 4px;
+    min-height: 120px;
+    background: var(--CardBg);
+    position: relative;
+}
+
+.card-input-area {
+    position: relative;
+    padding: 8px 10px;
+    border-top: 1px solid var(--Border);
+    flex-shrink: 0;
+}
+
+.card-textarea {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 44px 10px 12px;
+    background: var(--BgSurface, #111);
+    border: 1px solid var(--Border);
+    border-radius: 10px;
+    color: var(--Text);
+    font-size: 15px;
+    font-family: inherit;
+    resize: none;
+    outline: none;
+    line-height: 1.55;
+    min-height: 44px;
+    max-height: 120px;
+    overflow-y: auto;
+    transition: border-color 0.15s;
+}
+
+.card-textarea:focus {
+    border-color: var(--BorderMid);
+}
+
+.card-textarea::placeholder {
+    color: var(--TextMuted);
+}
+
+.card-char-counter {
+    position: absolute;
+    right: 50px;
+    bottom: 7px;
+    font-size: 10px;
+    color: var(--TextMuted);
+    font-family: var(--FontMono);
+    pointer-events: none;
+}
+
+.card-char-counter--over {
+    color: var(--Err);
+}
+
+.card-send-btn {
+    position: absolute;
+    right: 18px;
+    bottom: 16px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: var(--Success);
+    color: #000;
+    font-size: 14px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+
+.card-send-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.card-typing-float {
+    position: absolute;
+    right: 14px;
+    bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 8px 10px;
+    border-radius: 999px;
+    background: rgba(12, 18, 24, 0.88);
+    border: 1px solid var(--Border);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+    z-index: 2;
+    pointer-events: none;
+}
+
+.card-typing-float span {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--Success);
+    opacity: 0.35;
+    animation: single-card-pulse 1.1s infinite ease-in-out;
+}
+
+.card-typing-float span:nth-child(2) { animation-delay: 0.15s; }
+.card-typing-float span:nth-child(3) { animation-delay: 0.3s; }
+
+@@keyframes single-card-pulse {
+    0%, 80%, 100% {
+        transform: translateY(0) scale(0.9);
+        opacity: 0.35;
+    }
+
+    40% {
+        transform: translateY(-2px) scale(1);
+        opacity: 1;
+    }
+}
+
+.model-picker-dropdown {
+    background: var(--BgElevated);
+    border-bottom: 1px solid var(--Border);
+    display: flex;
+    flex-direction: column;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.model-picker-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border: none;
+    background: transparent;
+    color: var(--Text);
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.1s;
+    width: 100%;
+}
+
+.model-picker-item:hover {
+    background: var(--BgHover);
+}
+
+.model-picker-item.selected {
+    background: var(--BgActive);
+}
+
+.model-picker-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.model-picker-label {
+    flex: 1;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.model-picker-profile {
+    font-size: 11px;
+    color: var(--TextMuted);
+    white-space: nowrap;
+}
+
+.model-picker-check {
+    color: var(--Success);
+    font-size: 11px;
+    flex-shrink: 0;
+}
+
+.model-picker-empty {
+    padding: 12px;
+    font-size: 12px;
+    color: var(--TextMuted);
+    text-align: center;
+}
+</style>
+
+@code {
+    [Parameter, EditorRequired]
+    public CardState Card { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<CardState> OnActivate { get; set; }
+
+    private SingleModelCardVM _vm = default!;
+    private Action? _stateHandler;
+    private Action? _vmHandler;
+    private Func<string, Task>? _broadcastHandler;
+
+    protected override void OnInitialized()
+    {
+        _vm = new SingleModelCardVM(State, Card);
+        _stateHandler = () => InvokeAsync(StateHasChanged);
+        _vmHandler    = () => InvokeAsync(StateHasChanged);
+        State.OnChange += _stateHandler;
+        _vm.OnChange   += _vmHandler;
+
+        if (Card.ParticipatesInGlobal)
+        {
+            _broadcastHandler = prompt => InvokeAsync(() => _vm.HandleGlobalBroadcast(prompt));
+            State.OnGlobalBroadcast += _broadcastHandler;
+        }
+    }
+
+    private async Task Send() => await _vm.SendAsync();
+
+    private async Task HandleKeydown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+            await Send();
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= _stateHandler;
+        _vm.OnChange   -= _vmHandler;
+        if (_broadcastHandler != null)
+            State.OnGlobalBroadcast -= _broadcastHandler;
+        _vm.Dispose();
+    }
+}

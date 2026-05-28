@@ -1,0 +1,84 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   SessionCanvas.razor
+   Namespace: AVA.UI.Components.Canvas
+   Purpose  : Free-form draggable surface for all card types.
+              Owns drag and resize state; persists on mouse-up.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@using AVA.UI.CORE.Models.UI
+@using AVA.UI.Features.Canvas.ViewModels
+@inject AppState State
+@implements IDisposable
+
+<div class="canvas">
+
+    @foreach (var card in State.CurrentSession.Canvas.Cards)
+    {
+        var c = card;
+        <CardContainer @key="c.CardId" Card="c" IsDragging="@(_vm.DraggingCardId == c.CardId)" OnDragStart="_vm.StartDrag" OnResizeStart="_vm.StartResize" OnActivate="_vm.Activate" />
+    }
+
+    <AddCardButton />
+    <GlobalPromptBar />
+
+    @if (_vm.Dragging != null || _vm.Resizing != null)
+    {
+        <div class="canvas-capture"
+             style="cursor:@_vm.CaptureCursor"
+             @onmousemove="OnCaptureMove"
+             @onmousemove:preventDefault="true"
+             @onmouseup="OnCaptureUp">
+        </div>
+    }
+
+</div>
+
+<style>
+.canvas {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background: radial-gradient(var(--Border) 1px, transparent 1px);
+    background-size: 40px 40px;
+    background-color: var(--BgBase, #0a0a0a);
+}
+
+.canvas-capture {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+}
+</style>
+
+@code {
+    private SessionCanvasVM _vm = default!;
+    private Action? _stateHandler;
+    private Action? _vmHandler;
+
+    protected override void OnInitialized()
+    {
+        _vm = new SessionCanvasVM(State);
+        _stateHandler = () => InvokeAsync(StateHasChanged);
+        _vmHandler    = () => InvokeAsync(StateHasChanged);
+        State.OnChange += _stateHandler;
+        _vm.OnChange   += _vmHandler;
+    }
+
+    private void OnCaptureMove(MouseEventArgs e)
+    {
+        _vm.OnCaptureMove(e.ClientX, e.ClientY);
+    }
+
+    private void OnCaptureUp(MouseEventArgs e)
+    {
+        _vm.OnCaptureUp();
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= _stateHandler;
+        _vm.OnChange   -= _vmHandler;
+        _vm.Dispose();
+    }
+}

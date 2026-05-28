@@ -1,0 +1,67 @@
+@inject IJSRuntime JSRuntime
+
+<div class="canvas-editable @CssClass"
+     contenteditable="true"
+     data-placeholder="@Placeholder"
+     spellcheck="true"
+     @ref="_editor"
+     @onfocus="HandleFocus"
+     @onblur="HandleBlurAsync"></div>
+
+@code {
+    private ElementReference _editor;
+    private string? _lastAppliedValue;
+    private bool _isFocused;
+
+    /// <summary>
+    /// Gets or sets the current text value shown in the editable surface.
+    /// </summary>
+    [Parameter]
+    public string Value { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the callback raised when the editable text changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> ValueChanged { get; set; }
+
+    /// <summary>
+    /// Gets or sets the optional placeholder shown when the editable surface is empty.
+    /// </summary>
+    [Parameter]
+    public string Placeholder { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the CSS class applied to the editable surface.
+    /// </summary>
+    [Parameter]
+    public string CssClass { get; set; } = string.Empty;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_isFocused)
+        {
+            return;
+        }
+
+        if (firstRender || !string.Equals(_lastAppliedValue, Value, StringComparison.Ordinal))
+        {
+            await JSRuntime.InvokeVoidAsync("avaCanvasSetEditableText", _editor, Value ?? string.Empty);
+            _lastAppliedValue = Value;
+        }
+    }
+
+    private Task HandleFocus(FocusEventArgs _)
+    {
+        _isFocused = true;
+        return Task.CompletedTask;
+    }
+
+    private async Task HandleBlurAsync(FocusEventArgs _)
+    {
+        _isFocused = false;
+        var currentValue = await JSRuntime.InvokeAsync<string>("avaCanvasGetEditableText", _editor);
+        _lastAppliedValue = currentValue;
+        await ValueChanged.InvokeAsync(currentValue);
+    }
+}

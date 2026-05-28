@@ -1,0 +1,46 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+
+		<!-- NuGet Packaging -->
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<PackageId>AVA.UPS</PackageId>
+		<Version>1.0.0</Version>
+		<Authors>Neo; AVA</Authors>
+		<Company>AVA Project</Company>
+		<Product>Unified Parameter System (UPS)</Product>
+		<Description>Universal transport parameter system for AVA modules, Identity layer, Vault, Memory, Agent, and UPS gateway integrations.</Description>
+		<PackageTags>AVA;UPS;Transport;Parameters;Envelope;Agent;Memory;Vault</PackageTags>
+
+		<!-- Where NuGet package outputs -->
+		<PackageOutputPath>..\..\NuGetFeed</PackageOutputPath>
+
+		<!-- Optional but recommended -->
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<PublishRepositoryUrl>true</PublishRepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<DocumentationFile>AVA.UPS.xml</DocumentationFile>
+	</PropertyGroup>
+
+	<ItemGroup>
+	  <PackageReference Include="AVA.Identity.Abstractions" Version="1.0.1" />
+	  <PackageReference Include="AWSSDK.S3" Version="4.0.11.3" />
+	  <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.0" />
+	  <PackageReference Include="NetMQ" Version="4.0.2.2" />
+	  <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+	  <PackageReference Include="StackExchange.Redis" Version="2.9.32" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="Transport\Local\" />
+	  <Folder Include="Transport\Network\" />
+	  <Folder Include="Transport\Storage\" />
+	</ItemGroup>
+
+</Project>

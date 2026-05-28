@@ -1,0 +1,49 @@
+@using AVA.UI.CORE.ChatContext.Models
+
+<div class="ctx-profile">
+    <div class="ctx-profile__main">
+        <label class="ctx-profile__label" for="ctx-profile-select">Context Profile</label>
+        <select id="ctx-profile-select"
+                class="ctx-profile__select"
+                value="@SelectedProfileType"
+                @onchange="OnProfileChanged">
+            @foreach (var profile in Profiles)
+            {
+                <option value="@profile.ProfileType">@profile.Name</option>
+            }
+        </select>
+    </div>
+
+    <div class="ctx-profile__description" title="@SelectedProfile?.Description">
+        @SelectedProfile?.Description
+    </div>
+
+    <button class="ctx-profile__btn" @onclick="OnReset" disabled="@(SelectedProfileType == SessionContextProfileType.Default)">
+        Reset Profile
+    </button>
+</div>
+
+<style>
+.ctx-profile { display: grid; grid-template-columns: minmax(180px, 0.8fr) minmax(180px, 1fr) auto; gap: 8px; align-items: end; padding: 8px; background: var(--BgElevated); border: 1px solid var(--Border); border-radius: var(--RxSm); }
+.ctx-profile__main { display: flex; flex-direction: column; gap: 3px; }
+.ctx-profile__label { color: var(--TextFaint); font-size: var(--FzXs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+.ctx-profile__select { height: var(--SzSm); border: 1px solid var(--Border); border-radius: var(--RxSm); background: var(--BgSurface); color: var(--Text); font-size: var(--FzXs); padding: 0 6px; }
+.ctx-profile__description { color: var(--TextMuted); font-size: var(--FzXs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ctx-profile__btn { height: var(--SzSm); padding: 0 var(--RxMd); border-radius: var(--RxSm); border: 1px solid var(--Border); background: var(--BgSurface); color: var(--TextMuted); font-size: var(--FzXs); cursor: pointer; }
+.ctx-profile__btn:hover:not(:disabled) { border-color: var(--Accent); color: var(--Accent); }
+.ctx-profile__btn:disabled { opacity: 0.45; cursor: default; }
+</style>
+
+@code {
+    [Parameter] public IReadOnlyList<SessionContextProfile> Profiles { get; set; } = Array.Empty<SessionContextProfile>();
+    [Parameter] public SessionContextProfileType SelectedProfileType { get; set; }
+    [Parameter] public SessionContextProfile? SelectedProfile { get; set; }
+    [Parameter] public EventCallback<SessionContextProfileType> OnProfileSelected { get; set; }
+    [Parameter] public EventCallback OnReset { get; set; }
+
+    private async Task OnProfileChanged(ChangeEventArgs e)
+    {
+        if (Enum.TryParse<SessionContextProfileType>(e.Value?.ToString(), out var profileType))
+            await OnProfileSelected.InvokeAsync(profileType);
+    }
+}

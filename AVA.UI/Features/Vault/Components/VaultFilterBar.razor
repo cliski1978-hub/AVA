@@ -1,0 +1,161 @@
+@using AVA.UI.Features.Vault.ViewModels
+@inject VaultSearchVM VM
+@implements IDisposable
+
+<div class="vault-filter-bar">
+
+    <div class="vault-filter-bar__group">
+        <label class="vault-filter-bar__label">Sort</label>
+        <select class="vault-filter-bar__select"
+                @onchange="OnSortByChanged">
+            <option value="Updated"     selected="@(VM.SortBy == "Updated")">Last updated</option>
+            <option value="Created"     selected="@(VM.SortBy == "Created")">Created</option>
+            <option value="Alphabetical" selected="@(VM.SortBy == "Alphabetical")">A–Z</option>
+        </select>
+        <button class="vault-filter-bar__dir"
+                title="@(VM.SortDescending ? "Descending" : "Ascending")"
+                @onclick="ToggleSortDirection">
+            @(VM.SortDescending ? "↓" : "↑")
+        </button>
+    </div>
+
+    <div class="vault-filter-bar__group">
+        <label class="vault-filter-bar__label">Tag</label>
+        <input class="vault-filter-bar__input"
+               placeholder="Filter by tag…"
+               @bind="VM.FilterTag"
+               @bind:event="oninput"
+               @onchange="OnFilterChanged" />
+    </div>
+
+    <div class="vault-filter-bar__group">
+        <label class="vault-filter-bar__label">Created after</label>
+        <input type="date" class="vault-filter-bar__input"
+               @bind="VM.FilterCreatedAfter"
+               @bind:after="OnFilterChanged" />
+    </div>
+
+    <div class="vault-filter-bar__group">
+        <label class="vault-filter-bar__label">Updated after</label>
+        <input type="date" class="vault-filter-bar__input"
+               @bind="VM.FilterUpdatedAfter"
+               @bind:after="OnFilterChanged" />
+    </div>
+
+    <button class="vault-filter-bar__clear" @onclick="ClearAll" title="Clear all filters">
+        Clear
+    </button>
+
+</div>
+
+<style>
+    .vault-filter-bar {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: var(--RxMd);
+        padding: 8px 12px;
+        background: var(--BgElevated);
+        border-bottom: 1px solid var(--Border);
+    }
+
+    .vault-filter-bar__group {
+        display: flex;
+        align-items: center;
+        gap: var(--RxSm);
+    }
+
+    .vault-filter-bar__label {
+        font-size: var(--FzXs);
+        color: var(--TextMuted);
+        white-space: nowrap;
+    }
+
+    .vault-filter-bar__select,
+    .vault-filter-bar__input {
+        height: 26px;
+        border-radius: var(--RxSm);
+        border: 1px solid var(--Border);
+        background: var(--BgBase);
+        color: var(--Text);
+        font-family: var(--Font);
+        font-size: var(--FzSm);
+        padding: 0 var(--RxSm);
+        outline: none;
+        transition: border-color var(--T);
+    }
+
+    .vault-filter-bar__select:focus,
+    .vault-filter-bar__input:focus {
+        border-color: var(--Accent);
+    }
+
+    .vault-filter-bar__dir {
+        width: 26px;
+        height: 26px;
+        border-radius: var(--RxSm);
+        border: 1px solid var(--Border);
+        background: var(--BgBase);
+        color: var(--TextMuted);
+        font-size: var(--FzSm);
+        cursor: pointer;
+        transition: all var(--T);
+    }
+
+    .vault-filter-bar__dir:hover {
+        border-color: var(--Accent);
+        color: var(--Accent);
+    }
+
+    .vault-filter-bar__clear {
+        margin-left: auto;
+        border: 0;
+        background: transparent;
+        color: var(--TextMuted);
+        font-family: var(--Font);
+        font-size: var(--FzXs);
+        cursor: pointer;
+        transition: color var(--T);
+    }
+
+    .vault-filter-bar__clear:hover {
+        color: var(--Danger);
+    }
+</style>
+
+@code {
+    private Action? _vmHandler;
+
+    protected override void OnInitialized()
+    {
+        _vmHandler = () => InvokeAsync(StateHasChanged);
+        VM.OnChange += _vmHandler;
+    }
+
+    private async Task OnSortByChanged(ChangeEventArgs e)
+    {
+        VM.SortBy = e.Value?.ToString() ?? "Updated";
+        await VM.SearchAsync();
+    }
+
+    private async Task ToggleSortDirection()
+    {
+        VM.SortDescending = !VM.SortDescending;
+        await VM.SearchAsync();
+    }
+
+    private async Task OnFilterChanged()
+    {
+        await VM.SearchAsync();
+    }
+
+    private async Task ClearAll()
+    {
+        await VM.ClearFiltersAsync();
+    }
+
+    public void Dispose()
+    {
+        VM.OnChange -= _vmHandler;
+    }
+}

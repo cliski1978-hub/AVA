@@ -1,0 +1,52 @@
+@using AVA.UI.CORE.ChatContext.Models
+
+@if (Metrics != null)
+{
+    <div class="ctx-usage-details">
+        <div class="ctx-usage-details__summary">
+            <span>@Metrics.IncludedItemCount included</span>
+            <span>@Metrics.ExcludedItemCount excluded</span>
+            <span>@Metrics.EstimatedResponseCapacity response tokens</span>
+        </div>
+
+        @if (Metrics.Warnings.Any())
+        {
+            <div class="ctx-usage-details__warnings">
+                @foreach (var warning in Metrics.Warnings)
+                {
+                    <div class="ctx-usage-details__warning ctx-usage-details__warning--@warning.Severity.ToLowerInvariant()">
+                        <strong>@warning.Severity</strong>
+                        <span>@warning.Message</span>
+                    </div>
+                }
+            </div>
+        }
+
+        <div class="ctx-usage-details__breakdown">
+            @foreach (var pair in Metrics.CategoryTokenBreakdown.Where(p => p.Value > 0))
+            {
+                <div class="ctx-usage-details__row">
+                    <span>@pair.Key</span>
+                    <strong>@pair.Value</strong>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+<style>
+.ctx-usage-details { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; background: var(--BgElevated); border: 1px solid var(--Border); border-radius: var(--RxSm); }
+.ctx-usage-details__summary { display: flex; flex-wrap: wrap; gap: 10px; color: var(--TextMuted); font-size: var(--FzXs); }
+.ctx-usage-details__warnings { display: flex; flex-direction: column; gap: 4px; }
+.ctx-usage-details__warning { display: flex; gap: 6px; align-items: center; padding: 4px 6px; border-radius: var(--RxSm); font-size: var(--FzXs); }
+.ctx-usage-details__warning--warning { color: var(--Warn); background: rgba(200,150,0,0.08); }
+.ctx-usage-details__warning--critical { color: var(--Err); background: rgba(200,80,80,0.08); }
+.ctx-usage-details__warning--info { color: var(--TextMuted); background: var(--BgSurface); }
+.ctx-usage-details__breakdown { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; }
+.ctx-usage-details__row { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--TextMuted); font-size: var(--FzXs); }
+.ctx-usage-details__row strong { color: var(--Text); font-family: var(--FontMono); font-weight: 500; }
+</style>
+
+@code {
+    [Parameter] public ContextUsageMetrics? Metrics { get; set; }
+}

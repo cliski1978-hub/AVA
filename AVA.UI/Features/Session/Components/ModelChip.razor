@@ -1,0 +1,133 @@
+@inject AppState AppState
+
+<div class="model-chip @(IsActive ? "model-chip--active" : string.Empty)"
+     title="@GetModelName()">
+    <button class="model-chip__main"
+            type="button"
+            @onclick="ActivateModelAsync">
+        <span class="model-chip__label">@GetModelName()</span>
+    </button>
+
+    <button class="model-chip__close"
+            type="button"
+            title="Close @GetModelName()"
+            @onclick:stopPropagation="true"
+            @onclick="CloseModelAsync">
+        x
+    </button>
+</div>
+
+<style>
+    .model-chip {
+        display: inline-flex;
+        align-items: center;
+        height: calc(var(--SzXs) + 4px);
+        padding-left: calc(var(--RxMd) + 2px);
+        padding-right: 3px;
+        border-radius: var(--RxPill);
+        background: linear-gradient(135deg, rgba(110, 72, 255, 0.22), rgba(0, 214, 143, 0.18));
+        border: 1px solid rgba(120, 92, 255, 0.42);
+        color: #e9f7ff;
+        font-size: calc(var(--FzXs) + 1px);
+        white-space: nowrap;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 0 0 1px rgba(0, 214, 143, 0.08);
+        transition: transform var(--T), box-shadow var(--T), border-color var(--T), filter var(--T);
+        font-family: var(--Font);
+    }
+
+    .model-chip:hover {
+        transform: translateY(-1px);
+        filter: brightness(1.04);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 6px 14px rgba(0, 0, 0, 0.18);
+    }
+
+    .model-chip:focus-visible {
+        outline: none;
+        box-shadow:
+            0 0 0 2px rgba(0, 214, 143, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.08),
+            0 0 0 1px rgba(0, 214, 143, 0.08);
+    }
+
+    .model-chip--active {
+        border-color: rgba(0, 214, 143, 0.75);
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.12),
+            0 0 0 1px rgba(0, 214, 143, 0.18),
+            0 0 18px rgba(0, 214, 143, 0.12);
+    }
+
+    .model-chip__main,
+    .model-chip__close {
+        border: 0;
+        background: transparent;
+        color: inherit;
+        font-family: inherit;
+        appearance: none;
+        -webkit-appearance: none;
+    }
+
+    .model-chip__main {
+        min-width: 0;
+        display: inline-flex;
+        align-items: center;
+        padding: 0;
+        cursor: pointer;
+    }
+
+    .model-chip__label {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: calc(var(--SzXl) * 3);
+        text-shadow: 0 0 12px rgba(110, 72, 255, 0.18);
+    }
+
+    .model-chip__close {
+        width: 18px;
+        height: 18px;
+        margin-left: 4px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        color: rgba(233, 247, 255, 0.8);
+        font-size: 10px;
+        line-height: 1;
+        cursor: pointer;
+        transition: background var(--T), color var(--T);
+        flex-shrink: 0;
+    }
+
+    .model-chip__close:hover {
+        background: rgba(255, 255, 255, 0.12);
+        color: #ffffff;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public string ModelId { get; set; } = string.Empty;
+
+    private bool IsActive =>
+        AppState.IsDefaultModelForActiveSession(ModelId);
+
+    private string GetModelName()
+    {
+        var definition = AppState.AppSettings.ModelDefinitions.FirstOrDefault(entry =>
+            string.Equals(entry.ModelId, ModelId, StringComparison.OrdinalIgnoreCase));
+        if (definition != null)
+            return string.IsNullOrWhiteSpace(definition.DisplayName) ? definition.ModelId : definition.DisplayName;
+
+        return ModelId;
+    }
+
+    private async Task ActivateModelAsync()
+    {
+        await AppState.SetDefaultModelForActiveSessionAsync(ModelId);
+    }
+
+    private async Task CloseModelAsync()
+    {
+        await AppState.DetachModelFromActiveSessionAsync(ModelId);
+    }
+}

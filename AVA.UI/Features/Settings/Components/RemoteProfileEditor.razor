@@ -1,0 +1,28 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   RemoteProfileEditor.razor
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@using AVA.UI.CORE.Models.Settings
+
+<div class="profile-editor">
+    <div class="settings-field">
+        <label>Display Name</label>
+        <input @bind="Profile.DisplayName" />
+    </div>
+    <div class="settings-field">
+        <label>Hostname</label>
+        <input @bind="Profile.Hostname" placeholder="remote-host.example.com" />
+    </div>
+    <div class="settings-field">
+        <label>Port</label>
+        <input type="number" @bind="Profile.Port" placeholder="5050" />
+    </div>
+    <div class="settings-field">
+        <label>Auth Token</label>
+        <input type="password" @bind="Profile.AuthToken" placeholder="Bearer token" />
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public RemoteConnectionProfile Profile { get; set; } = default!;
+}

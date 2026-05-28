@@ -1,0 +1,50 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   Pages/Index.razor — AVA.UI
+   Purpose  : Default routable page. MainLayout renders the full shell;
+              this page just satisfies the router. All real UI is in
+              MainLayout.razor and its child components.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@page "/"
+
+@inject AppState AppState
+@implements IDisposable
+
+@switch (AppState.SelectedNavigationItem)
+{
+    case "Memory":
+        <MemoryLogPane />
+        break;
+    case "Reflection":
+        <ReflectionPane />
+        break;
+    case "Settings":
+        <SettingsPane />
+        break;
+    case "Canvas":
+        <SessionCanvas />
+        break;
+    case "Document":
+        <CanvasDocumentEditor />
+        break;
+    default:
+        <ChatLayout />
+        break;
+}
+
+@code {
+    protected override void OnInitialized()
+    {
+        AppState.OnChange += HandleStateChanged;
+    }
+
+    private void HandleStateChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        AppState.OnChange -= HandleStateChanged;
+    }
+}

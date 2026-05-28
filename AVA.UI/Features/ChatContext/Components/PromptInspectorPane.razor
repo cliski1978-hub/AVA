@@ -1,0 +1,88 @@
+@using AVA.UI.CORE.ChatContext.Models
+@using AVA.UI.Features.ChatContext.ViewModels
+
+@if (IsVisible && Package != null)
+{
+    <div class="prompt-inspector">
+        <div class="prompt-inspector__header">
+            <div>
+                <div class="prompt-inspector__title">Raw Prompt Inspector</div>
+                <div class="prompt-inspector__sub">@Package.ModelId / @Package.TotalEstimatedTokens tokens</div>
+            </div>
+            <button class="prompt-inspector__close" @onclick="OnClose" title="Close">x</button>
+        </div>
+
+        <div class="prompt-inspector__meta">
+            <span>Session @Package.SessionId</span>
+            <span>Generated @Package.GeneratedAt.ToLocalTime().ToString("g")</span>
+            @if (UsageMetrics != null)
+            {
+                <span>@UsageMetrics.RemainingTokens remaining</span>
+                <span>@UsageMetrics.ContextWindow window</span>
+            }
+        </div>
+
+        @if (UsageMetrics?.Warnings.Any() == true)
+        {
+            <div class="prompt-inspector__warnings">
+                @foreach (var warning in UsageMetrics.Warnings)
+                {
+                    <div class="prompt-inspector__warning prompt-inspector__warning--@warning.Severity.ToLowerInvariant()">
+                        <strong>@warning.Severity</strong>
+                        <span>@warning.Message</span>
+                    </div>
+                }
+            </div>
+        }
+
+        @if (RMAnalysis?.AnalysisApplied == true)
+        {
+            <RMContextInsightsView Enabled="true" Analysis="RMAnalysis" MaxItems="6" />
+        }
+
+        <div class="prompt-inspector__body">
+            <div class="prompt-inspector__sections">
+                @foreach (var section in Package.Sections)
+                {
+                    <PromptSectionView Section="section" />
+                }
+            </div>
+
+            <PromptRawView Text="@Package.FullPromptText" />
+        </div>
+
+        <div class="prompt-inspector__footer">
+            <button class="prompt-inspector__btn" @onclick="OnRefresh">Refresh</button>
+            <button class="prompt-inspector__btn" @onclick="OnClose">Close</button>
+        </div>
+    </div>
+}
+
+<style>
+.prompt-inspector { display: flex; flex-direction: column; gap: 8px; padding: 12px; background: var(--BgSurface); border: 1px solid var(--Border); border-radius: var(--RxMd); min-width: 760px; max-width: 980px; max-height: 86vh; overflow: hidden; }
+.prompt-inspector__header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.prompt-inspector__title { color: var(--Text); font-size: var(--FzMd); font-weight: 600; }
+.prompt-inspector__sub { color: var(--TextMuted); font-size: var(--FzXs); font-family: var(--FontMono); }
+.prompt-inspector__close { background: transparent; border: none; color: var(--TextMuted); font-size: var(--FzMd); cursor: pointer; padding: 2px 6px; }
+.prompt-inspector__close:hover { color: var(--Text); }
+.prompt-inspector__meta { display: flex; flex-wrap: wrap; gap: 10px; color: var(--TextMuted); font-size: var(--FzXs); font-family: var(--FontMono); }
+.prompt-inspector__warnings { display: flex; flex-direction: column; gap: 4px; }
+.prompt-inspector__warning { display: flex; gap: 6px; align-items: center; padding: 4px 6px; border-radius: var(--RxSm); font-size: var(--FzXs); }
+.prompt-inspector__warning--warning { color: var(--Warn); background: rgba(200,150,0,0.08); }
+.prompt-inspector__warning--critical { color: var(--Err); background: rgba(200,80,80,0.08); }
+.prompt-inspector__warning--info { color: var(--TextMuted); background: var(--BgElevated); }
+.prompt-inspector__body { display: grid; grid-template-columns: minmax(260px, 0.85fr) minmax(360px, 1.15fr); gap: 10px; min-height: 0; overflow: hidden; }
+.prompt-inspector__sections { display: flex; flex-direction: column; gap: 6px; overflow: auto; min-height: 0; max-height: 520px; }
+.prompt-inspector__footer { display: flex; justify-content: flex-end; gap: 8px; padding-top: 4px; border-top: 1px solid var(--Border); }
+.prompt-inspector__btn { height: var(--SzSm); padding: 0 var(--RxMd); border-radius: var(--RxSm); border: 1px solid var(--Border); background: var(--BgElevated); color: var(--TextMuted); font-size: var(--FzXs); cursor: pointer; }
+.prompt-inspector__btn:hover { border-color: var(--Accent); color: var(--Accent); }
+</style>
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public PromptDebugPackage? Package { get; set; }
+    [Parameter] public ContextUsageMetrics? UsageMetrics { get; set; }
+    [Parameter] public RMContextAnalysisResult? RMAnalysis { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnRefresh { get; set; }
+}

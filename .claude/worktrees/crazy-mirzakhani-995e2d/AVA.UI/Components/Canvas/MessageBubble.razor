@@ -1,0 +1,87 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   MessageBubble.razor
+   Namespace: AVA.UI.Components.Canvas
+   Purpose  : Renders a single message within a card conversation.
+              User messages: green. Assistant messages: purple.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@using AVA.UI.CORE.Models.UI
+
+<div class="msg @(Message.Role == "user" ? "msg--user" : "msg--assistant") @(Message.IsError ? "msg--error" : "")">
+    @if (Message.Role == "assistant" && !string.IsNullOrEmpty(Message.ModelLabel))
+    {
+        <div class="msg__label">@Message.ModelLabel</div>
+    }
+    <div class="msg__bubble">@Message.Content</div>
+    <div class="msg__time">@Message.Timestamp.ToString("HH:mm")</div>
+</div>
+
+<style>
+.msg {
+    display: flex;
+    flex-direction: column;
+    margin: 4px 8px;
+    max-width: 88%;
+}
+
+.msg--user {
+    align-self: flex-end;
+    align-items: flex-end;
+}
+
+.msg--assistant {
+    align-self: flex-start;
+    align-items: flex-start;
+}
+
+.msg__label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #e07b20;
+    margin-bottom: 3px;
+    padding-left: 4px;
+}
+
+.msg__bubble {
+    padding: 10px 14px;
+    border-radius: 16px;
+    font-size: 15px;
+    line-height: 1.65;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* User — green */
+.msg--user .msg__bubble {
+    background: #1a3d2b;
+    color: #e0f5e9;
+    border: 1px solid #2e6b47;
+    border-bottom-right-radius: 4px;
+}
+
+/* Assistant — purple */
+.msg--assistant .msg__bubble {
+    background: #2a1a4a;
+    color: #ede0ff;
+    border: 1px solid #5c3d8a;
+    border-bottom-left-radius: 4px;
+}
+
+.msg--error .msg__bubble {
+    background: #2a1a1a;
+    color: #ff6b6b;
+    border: 1px solid #ff6b6b;
+}
+
+.msg__time {
+    font-size: 11px;
+    color: #e07b20;
+    margin-top: 3px;
+    padding: 0 4px;
+}
+</style>
+
+@code {
+    [Parameter, EditorRequired]
+    public Message Message { get; set; } = default!;
+}

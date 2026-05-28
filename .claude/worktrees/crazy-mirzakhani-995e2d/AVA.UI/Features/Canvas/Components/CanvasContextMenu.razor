@@ -1,0 +1,89 @@
+@if (IsVisible)
+{
+    <div class="canvas-context-menu"
+         style="@($"left:{LeftPx}px; top:{TopPx}px;")">
+        <button type="button" class="canvas-context-menu__item" @onclick="OnEmoji">Emoji</button>
+        <button type="button" class="canvas-context-menu__item" @onclick="OnUndo">Undo</button>
+        <button type="button" class="canvas-context-menu__item" @onclick="OnCut">Cut</button>
+        <button type="button" class="canvas-context-menu__item" @onclick="OnCopy">Copy</button>
+        <button type="button" class="canvas-context-menu__item" @onclick="OnPaste">Paste</button>
+        <button type="button" class="canvas-context-menu__item" @onclick="OnSelectAll">Select all</button>
+        <button type="button" class="canvas-context-menu__item" @onclick="OnAskAva">Ask AVA</button>
+        <button type="button" class="canvas-context-menu__item" @onclick="OnHeading">Turn into heading</button>
+        <button type="button" class="canvas-context-menu__item" @onclick="OnCodeBlock">Turn into code block</button>
+    </div>
+}
+
+@code {
+    /// <summary>
+    /// Gets or sets a value indicating whether the custom context menu is visible.
+    /// </summary>
+    [Parameter]
+    public bool IsVisible { get; set; }
+
+    /// <summary>
+    /// Gets or sets the horizontal pixel position of the menu.
+    /// </summary>
+    [Parameter]
+    public double LeftPx { get; set; }
+
+    /// <summary>
+    /// Gets or sets the vertical pixel position of the menu.
+    /// </summary>
+    [Parameter]
+    public double TopPx { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when the emoji command is selected.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnEmoji { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when undo is requested.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnUndo { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when cut is requested.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnCut { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when copy is requested.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnCopy { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when paste is requested.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnPaste { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when select-all is requested.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnSelectAll { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when Ask AVA is requested.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnAskAva { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when heading conversion is requested.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnHeading { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when code block conversion is requested.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnCodeBlock { get; set; }
+}

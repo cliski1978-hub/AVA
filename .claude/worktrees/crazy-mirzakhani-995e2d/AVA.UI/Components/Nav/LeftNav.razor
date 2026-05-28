@@ -1,0 +1,171 @@
+@inject AppState AppState
+@inject AvaSettingsService SettingsService
+@implements IDisposable
+
+<nav class="left-nav @( _isCollapsed ? "collapsed" : string.Empty)">
+    <UserHero IsCollapsed="_isCollapsed" />
+
+    <div class="section-header">
+        <span class="section-label">Vaults</span>
+
+        <button class="section-btn"
+                title="New Vault"
+                @onclick="CreateVaultAsync">
+            +
+        </button>
+    </div>
+
+    <div class="vault-list">
+        @foreach (var vault in AppState.Vaults)
+        {
+            <VaultNode @key="vault.VaultId"
+                       Vault="vault"
+                       IsCollapsed="_isCollapsed"
+                       OnVaultChanged="HandleVaultChanged" />
+        }
+    </div>
+
+    <ConnectionStrip IsCollapsed="_isCollapsed" />
+    <QuickActions IsCollapsed="_isCollapsed" />
+
+    <button class="collapse-btn" @onclick="ToggleCollapse">
+        @(_isCollapsed ? ">" : "<")
+    </button>
+</nav>
+
+<style>
+    .left-nav {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        background: var(--BgSurface);
+        border-right: 1px solid var(--Border);
+        overflow: hidden;
+        position: relative;
+    }
+
+        .left-nav::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--Accent), transparent);
+            opacity: 0.3;
+        }
+
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: var(--RxLg);
+        padding: var(--FzSm) var(--Fz2Xl) var(--RxSm);
+        flex-shrink: 0;
+    }
+
+    .section-label {
+        font-size: var(--FzXs);
+        font-weight: 600;
+        color: var(--TextFaint);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        flex: 1;
+        transition: opacity var(--T);
+    }
+
+    .left-nav.collapsed .section-label {
+        opacity: 0;
+    }
+
+    .section-btn {
+        min-width: var(--RxCapsule);
+        height: var(--RxCapsule);
+        border-radius: var(--RxTiny);
+        background: transparent;
+        border: 1px solid transparent;
+        color: var(--TextFaint);
+        font-size: var(--FzSm);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        padding: 0 var(--RxSm);
+        transition: all var(--T);
+    }
+
+        .section-btn:hover {
+            background: var(--BgHover);
+            border-color: var(--Border);
+            color: var(--Accent);
+        }
+
+    .vault-list {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 0 var(--FzXs) var(--FzXs);
+    }
+
+    .collapse-btn {
+        position: absolute;
+        top: 50%;
+        right: calc(var(--FzLg) * -1);
+        transform: translateY(-50%);
+        width: var(--SzXs);
+        height: var(--SzXs);
+        border-radius: var(--RxCircle);
+        background: var(--BgElevated);
+        border: 1px solid var(--BorderMid);
+        color: var(--TextMuted);
+        font-size: var(--FzSm);
+        cursor: pointer;
+        z-index: 10;
+        transition: all var(--T);
+    }
+
+        .collapse-btn:hover {
+            background: var(--BgHover);
+            border-color: var(--Accent);
+            color: var(--Accent);
+        }
+</style>
+
+@code {
+    [Parameter]
+    public EventCallback<bool> OnCollapsedChanged { get; set; }
+
+    private bool _isCollapsed;
+
+    protected override void OnInitialized()
+    {
+        AppState.OnChange += HandleAppStateChanged;
+    }
+
+    private async Task CreateVaultAsync()
+    {
+        await AppState.CreateVaultAsync($"Vault {AppState.Vaults.Count + 1}");
+    }
+
+    private async Task HandleVaultChanged()
+    {
+        await SettingsService.SaveAsync();
+        AppState.NotifyStateChanged();
+    }
+
+    private async Task ToggleCollapse()
+    {
+        _isCollapsed = !_isCollapsed;
+        await OnCollapsedChanged.InvokeAsync(_isCollapsed);
+    }
+
+    private void HandleAppStateChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        AppState.OnChange -= HandleAppStateChanged;
+    }
+}

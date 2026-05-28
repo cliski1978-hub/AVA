@@ -1,0 +1,50 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   AvaTextarea.razor
+   Purpose: Multiline text input with rows and value binding.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+<textarea class="ava-textarea"
+          value="@Value"
+          @onchange="async (e) => { Value = e.Value?.ToString(); await ValueChanged.InvokeAsync(Value ?? string.Empty); }"
+          placeholder="@Placeholder"
+          rows="@Rows"
+          maxlength="@(MaxLength > 0 ? MaxLength : null)"
+          disabled="@Disabled"></textarea>
+
+@code {
+    /// <summary>
+    /// Textarea value.
+    /// </summary>
+    [Parameter]
+    public string? Value { get; set; }
+
+    /// <summary>
+    /// Callback when value changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> ValueChanged { get; set; }
+
+    /// <summary>
+    /// Placeholder text.
+    /// </summary>
+    [Parameter]
+    public string? Placeholder { get; set; }
+
+    /// <summary>
+    /// Number of visible rows.
+    /// </summary>
+    [Parameter]
+    public int Rows { get; set; } = 4;
+
+    /// <summary>
+    /// Whether the textarea is disabled.
+    /// </summary>
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    /// <summary>
+    /// Maximum character length (0 = no limit).
+    /// </summary>
+    [Parameter]
+    public int MaxLength { get; set; } = 0;
+}

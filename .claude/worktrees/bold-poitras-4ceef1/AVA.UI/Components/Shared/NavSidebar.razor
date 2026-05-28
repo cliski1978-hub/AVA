@@ -1,0 +1,45 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   NavSidebar.razor
+   Namespace: AVA.UI.Components.Shared
+   Purpose  : Left-side navigation tabs.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+<nav class="ava-nav">
+    <div class="ava-nav__logo">AVA</div>
+
+    <button class="ava-nav__item @(ActiveTab == "Chat" ? "ava-nav__item--active" : "")"
+            @onclick='() => OnTabChanged.InvokeAsync("Chat")'>
+        <span class="ava-nav__icon">💬</span>
+        <span class="ava-nav__label">Chat</span>
+    </button>
+
+    <button class="ava-nav__item @(ActiveTab == "Memory" ? "ava-nav__item--active" : "")"
+            @onclick='() => OnTabChanged.InvokeAsync("Memory")'>
+        <span class="ava-nav__icon">🧠</span>
+        <span class="ava-nav__label">Memory</span>
+    </button>
+
+    <button class="ava-nav__item @(ActiveTab == "Reflection" ? "ava-nav__item--active" : "")"
+            @onclick='() => OnTabChanged.InvokeAsync("Reflection")'>
+        <span class="ava-nav__icon">🪞</span>
+        <span class="ava-nav__label">Reflection</span>
+    </button>
+
+    <button class="ava-nav__item @(ActiveTab == "Canvas" ? "ava-nav__item--active" : "")"
+            @onclick='() => OnTabChanged.InvokeAsync("Canvas")'>
+        <span class="ava-nav__icon">⬛</span>
+        <span class="ava-nav__label">Canvas</span>
+    </button>
+
+    <button class="ava-nav__item @(ActiveTab == "Settings" ? "ava-nav__item--active" : "")"
+            @onclick='() => OnTabChanged.InvokeAsync("Settings")'>
+        <span class="ava-nav__icon">⚙️</span>
+        <span class="ava-nav__label">Settings</span>
+    </button>
+
+</nav>
+
+@code {
+    [Parameter] public string ActiveTab { get; set; } = "Chat";
+    [Parameter] public EventCallback<string> OnTabChanged { get; set; }
+}

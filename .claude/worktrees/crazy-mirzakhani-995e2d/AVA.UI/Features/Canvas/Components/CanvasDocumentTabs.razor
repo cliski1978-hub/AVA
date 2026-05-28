@@ -1,0 +1,58 @@
+<div class="canvas-tabs" role="tablist" aria-label="Canvas documents">
+    @foreach (var document in Documents)
+    {
+        var isActive = string.Equals(document.Id, ActiveDocumentId, StringComparison.OrdinalIgnoreCase);
+
+        <button type="button"
+                class="canvas-tab @(isActive ? "is-active" : string.Empty)"
+                role="tab"
+                aria-selected="@isActive"
+                @onclick="() => OnDocumentSelected.InvokeAsync(document.Id)">
+            <span class="canvas-tab__label">@document.Title</span>
+            <span class="canvas-tab__close"
+                  title="Close document"
+                  @onclick:stopPropagation="true"
+                  @onclick="() => OnDocumentClosed.InvokeAsync(document.Id)">
+                x
+            </span>
+        </button>
+    }
+
+    <button type="button"
+            class="canvas-tab canvas-tab--new"
+            @onclick="() => OnNewDocument.InvokeAsync()">
+        +
+    </button>
+</div>
+
+@code {
+    /// <summary>
+    /// Gets or sets the open documents displayed in the tab strip.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<CanvasDocument> Documents { get; set; } = Array.Empty<CanvasDocument>();
+
+    /// <summary>
+    /// Gets or sets the active document identifier.
+    /// </summary>
+    [Parameter]
+    public string? ActiveDocumentId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when a document tab is selected.
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> OnDocumentSelected { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when a document tab is closed.
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> OnDocumentClosed { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback raised when a new document is requested from the tab strip.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnNewDocument { get; set; }
+}

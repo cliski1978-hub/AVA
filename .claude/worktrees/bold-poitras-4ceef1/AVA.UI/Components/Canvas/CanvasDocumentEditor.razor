@@ -1,0 +1,482 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   CanvasDocumentEditor.razor
+   Namespace: AVA.UI.Components.Canvas
+   Purpose  : Full-height block-based document editor.
+              Fills the dock-content container (height:100%, no flex).
+              Always-visible header toolbar with icon-style block-type buttons.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@using AVA.UI.CORE.Models.UI
+@inject AppState State
+@inject IJSRuntime JS
+@implements IDisposable
+
+<div class="doc-wrap">
+
+    @if (_doc == null)
+    {
+        <div class="doc-empty">
+            <div class="doc-empty__icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+            </div>
+            <p>No document in this session</p>
+            <button class="doc-empty__btn" @onclick="CreateDocument">New Document</button>
+        </div>
+    }
+    else
+    {
+        <!-- ── Fixed toolbar ── -->
+        <div class="doc-toolbar">
+
+            <div class="doc-toolbar__left">
+
+                <!-- Block type buttons -->
+                <div class="doc-toolbar__group">
+                    @foreach (var entry in _typeMenu)
+                    {
+                        var t = entry.Type;
+                        <button class="dtb @(_focusedType == t && _focusedBlockId != null ? "dtb--active" : "")"
+                                title="@entry.Label"
+                                @onclick="() => SetFocusedBlockType(t)">
+                            @((MarkupString)entry.Svg)
+                        </button>
+                    }
+                </div>
+
+                <!-- Current block type label -->
+                @if (_focusedBlockId != null)
+                {
+                    <span class="doc-toolbar__type-label">@_typeMenu.FirstOrDefault(x => x.Type == _focusedType).Label</span>
+                }
+
+            </div>
+
+            <div class="doc-toolbar__right">
+
+                <!-- Word count -->
+                <span class="doc-toolbar__wc">@_wordCount w</span>
+
+                <!-- Save -->
+                <button class="doc-toolbar__save @(_dirty ? "doc-toolbar__save--dirty" : "") @(_saving ? "doc-toolbar__save--saved" : "")"
+                        title="Save  Ctrl+S"
+                        @onclick="Save">
+                    @if (_saving)
+                    {
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3,8 7,12 13,4"/>
+                        </svg>
+                        <span>Saved</span>
+                    }
+                    else
+                    {
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+                            <rect x="2" y="2" width="12" height="12" rx="1.5"/>
+                            <rect x="5" y="2" width="6" height="4" rx="0.5"/>
+                            <rect x="4" y="9" width="8" height="4" rx="0.5"/>
+                        </svg>
+                        <span>@(_dirty ? "Save*" : "Save")</span>
+                    }
+                </button>
+
+            </div>
+
+        </div>
+
+        <!-- ── Scrollable page ── -->
+        <div class="doc-scroll">
+            <div class="doc-page">
+
+                <div class="doc-blocks">
+                    @{
+                        int num = 0;
+                        foreach (var block in _doc.Blocks)
+                        {
+                            if (block.Type == BlockType.NumberedItem) num++;
+                            else num = 0;
+
+                            var b = block;
+                            <DocumentBlockEditor @key="b.BlockId"
+                                                 Block="b"
+                                                 Number="num"
+                                                 OnEnterPressed="HandleEnter"
+                                                 OnBackspaceEmpty="HandleBackspaceEmpty"
+                                                 OnFocused="HandleFocused"
+                                                 OnContentChanged="HandleContentChanged" />
+                        }
+                    }
+                </div>
+
+                <div style="height:120px"></div>
+
+            </div>
+        </div>
+    }
+
+</div>
+
+<style>
+/* ── Root: fill dock-content which is height:100% block container ── */
+.doc-wrap {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--BgBase, #090c10);
+}
+
+/* ── Toolbar ── */
+.doc-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0 16px;
+    background: var(--BgSurface, #0d1117);
+    border-bottom: 1px solid var(--Border, #1e2a38);
+    flex-shrink: 0;
+    position: relative;
+    z-index: 10;
+}
+
+.doc-toolbar__left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.doc-toolbar__right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+/* ── Type button group ── */
+.doc-toolbar__group {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 3px;
+    background: var(--BgElevated, #131920);
+    border: 1px solid var(--Border, #1e2a38);
+    border-radius: 8px;
+}
+
+/* Individual type button (dtb) */
+.dtb {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    color: var(--TextMuted, #5a7a9a);
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.1s, color 0.1s;
+    flex-shrink: 0;
+}
+
+.dtb svg {
+    width: 15px;
+    height: 15px;
+    pointer-events: none;
+}
+
+.dtb:hover {
+    background: var(--BgHover, #1a2230);
+    color: var(--Text, #e2e8f0);
+}
+
+.dtb--active {
+    background: var(--AccentGlow, rgba(0,200,255,0.12)) !important;
+    color: var(--Accent, #00c8ff) !important;
+}
+
+/* Current type label */
+.doc-toolbar__type-label {
+    font-size: 11px;
+    color: var(--TextMuted, #5a7a9a);
+    font-family: var(--Font);
+    padding-left: 4px;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+}
+
+/* Word count */
+.doc-toolbar__wc {
+    font-size: 10px;
+    color: var(--TextFaint, #2e4560);
+    font-family: var(--Font);
+    letter-spacing: 0.04em;
+}
+
+/* Save button */
+.doc-toolbar__save {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    height: 28px;
+    padding: 0 10px;
+    background: var(--BgElevated, #131920);
+    border: 1px solid var(--Border, #1e2a38);
+    border-radius: 6px;
+    color: var(--TextMuted, #5a7a9a);
+    font-family: var(--Font);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+
+.doc-toolbar__save svg {
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
+}
+
+.doc-toolbar__save:hover {
+    background: var(--BgHover, #1a2230);
+    border-color: var(--BorderMid, #243040);
+    color: var(--Text, #e2e8f0);
+}
+
+.doc-toolbar__save--dirty {
+    color: var(--Accent, #00c8ff);
+    border-color: var(--AccentLine, rgba(0,200,255,0.25));
+    background: var(--AccentGlow, rgba(0,200,255,0.08));
+}
+
+.doc-toolbar__save--saved {
+    color: var(--Success, #00e5a0);
+    border-color: var(--SuccessLine, rgba(0,229,160,0.25));
+    background: var(--SuccessDim, rgba(0,229,160,0.08));
+}
+
+/* ── Scrollable content ── */
+.doc-scroll {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
+}
+
+/* ── Page ── */
+.doc-page {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 56px 32px 0;
+}
+
+/* ── Blocks ── */
+.doc-blocks {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* ── Empty state ── */
+.doc-empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    color: var(--TextMuted, #5a7a9a);
+    font-family: var(--Font);
+    font-size: 13px;
+}
+
+.doc-empty__icon {
+    width: 48px;
+    height: 48px;
+    color: var(--TextFaint, #2e4560);
+}
+
+.doc-empty__icon svg {
+    width: 100%;
+    height: 100%;
+}
+
+.doc-empty__btn {
+    padding: 9px 22px;
+    background: var(--AccentGlow, rgba(0,200,255,0.12));
+    border: 1px solid var(--AccentLine, rgba(0,200,255,0.25));
+    color: var(--Accent, #00c8ff);
+    border-radius: 8px;
+    font-family: var(--Font);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+    letter-spacing: 0.04em;
+}
+
+.doc-empty__btn:hover {
+    background: var(--AccentLine, rgba(0,200,255,0.25));
+    color: var(--Text, #e2e8f0);
+}
+</style>
+
+@code {
+    private CanvasDocument? _doc;
+    private string? _focusedBlockId;
+    private BlockType _focusedType = BlockType.Paragraph;
+    private bool _dirty;
+    private bool _saving;
+    private int _wordCount;
+
+    private string? _pendingFocusId;
+    private bool _pendingFocusAtEnd;
+
+    // ── Type menu with inline SVG icons ──────────────────────────────────────
+
+    private static readonly (BlockType Type, string Label, string Svg)[] _typeMenu =
+    {
+        (BlockType.Title, "Title",
+            "<svg viewBox='0 0 16 16' fill='none' stroke='currentColor' stroke-width='1.8'><text x='8' y='13' text-anchor='middle' font-size='13' font-weight='700' stroke='none' fill='currentColor' font-family='inherit'>T</text></svg>"),
+
+        (BlockType.Heading1, "Heading 1",
+            "<svg viewBox='0 0 16 16' fill='currentColor'><text x='1' y='12' font-size='9' font-weight='700' font-family='inherit'>H</text><text x='10' y='13' font-size='7' font-family='inherit'>1</text></svg>"),
+
+        (BlockType.Heading2, "Heading 2",
+            "<svg viewBox='0 0 16 16' fill='currentColor'><text x='1' y='12' font-size='9' font-weight='700' font-family='inherit'>H</text><text x='10' y='13' font-size='7' font-family='inherit'>2</text></svg>"),
+
+        (BlockType.Heading3, "Heading 3",
+            "<svg viewBox='0 0 16 16' fill='currentColor'><text x='1' y='12' font-size='9' font-weight='700' font-family='inherit'>H</text><text x='10' y='13' font-size='7' font-family='inherit'>3</text></svg>"),
+
+        (BlockType.Paragraph, "Paragraph",
+            "<svg viewBox='0 0 16 16' fill='none' stroke='currentColor' stroke-width='1.5' stroke-linecap='round'><line x1='2' y1='5' x2='14' y2='5'/><line x1='2' y1='8' x2='14' y2='8'/><line x1='2' y1='11' x2='10' y2='11'/></svg>"),
+
+        (BlockType.BulletItem, "Bullet list",
+            "<svg viewBox='0 0 16 16' fill='none' stroke='currentColor' stroke-width='1.5' stroke-linecap='round'><circle cx='3.5' cy='5' r='1.2' fill='currentColor' stroke='none'/><line x1='7' y1='5' x2='14' y2='5'/><circle cx='3.5' cy='9' r='1.2' fill='currentColor' stroke='none'/><line x1='7' y1='9' x2='14' y2='9'/><circle cx='3.5' cy='13' r='1.2' fill='currentColor' stroke='none'/><line x1='7' y1='13' x2='14' y2='13'/></svg>"),
+
+        (BlockType.NumberedItem, "Numbered list",
+            "<svg viewBox='0 0 16 16' fill='currentColor'><text x='1' y='7' font-size='5.5' font-family='inherit'>1.</text><text x='1' y='11.5' font-size='5.5' font-family='inherit'>2.</text><text x='1' y='16' font-size='5.5' font-family='inherit'>3.</text><line x1='7' y1='5' x2='14' y2='5' stroke='currentColor' stroke-width='1.5' stroke-linecap='round'/><line x1='7' y1='9.5' x2='14' y2='9.5' stroke='currentColor' stroke-width='1.5' stroke-linecap='round'/><line x1='7' y1='14' x2='14' y2='14' stroke='currentColor' stroke-width='1.5' stroke-linecap='round'/></svg>"),
+
+        (BlockType.Quote, "Quote",
+            "<svg viewBox='0 0 16 16' fill='currentColor'><text x='1' y='13' font-size='18' font-family='Georgia, serif' opacity='0.9'>“</text></svg>"),
+    };
+
+    protected override void OnInitialized()
+    {
+        State.OnChange += HandleStateChanged;
+        RefreshDoc();
+    }
+
+    private void RefreshDoc()
+    {
+        _doc = State.CurrentSession?.ActiveDocument;
+        RecalcWordCount();
+    }
+
+    private void HandleStateChanged()
+    {
+        RefreshDoc();
+        InvokeAsync(StateHasChanged);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_pendingFocusId != null)
+        {
+            var id  = _pendingFocusId;
+            var end = _pendingFocusAtEnd;
+            _pendingFocusId = null;
+            await JS.InvokeVoidAsync("avaDocFocusBlock", id, end);
+        }
+    }
+
+    // ── Block events ─────────────────────────────────────────────────────────
+
+    private void HandleContentChanged((string BlockId, string Content) args)
+    {
+        State.UpdateDocumentBlock(args.BlockId, args.Content);
+        _dirty = true;
+        RecalcWordCount();
+    }
+
+    private void HandleFocused(string blockId)
+    {
+        _focusedBlockId = blockId;
+        var block = _doc?.Blocks.FirstOrDefault(b => b.BlockId == blockId);
+        if (block != null) _focusedType = block.Type;
+    }
+
+    private void HandleEnter(string blockId)
+    {
+        var current = _doc?.Blocks.FirstOrDefault(b => b.BlockId == blockId);
+        var newType = current?.Type is BlockType.BulletItem or BlockType.NumberedItem
+            ? current.Type
+            : BlockType.Paragraph;
+
+        var newBlock = State.AddDocumentBlock(blockId, newType);
+        _dirty = true;
+        _pendingFocusId    = newBlock.BlockId;
+        _pendingFocusAtEnd = false;
+    }
+
+    private void HandleBackspaceEmpty(string blockId)
+    {
+        if (_doc == null || _doc.Blocks.Count <= 1) return;
+
+        var idx  = _doc.Blocks.FindIndex(b => b.BlockId == blockId);
+        var prev = idx > 0 ? _doc.Blocks[idx - 1] : null;
+
+        State.DeleteDocumentBlock(blockId);
+        _dirty = true;
+
+        if (prev != null)
+        {
+            _pendingFocusId    = prev.BlockId;
+            _pendingFocusAtEnd = true;
+        }
+    }
+
+    // ── Toolbar actions ───────────────────────────────────────────────────────
+
+    private void SetFocusedBlockType(BlockType type)
+    {
+        if (_focusedBlockId == null) return;
+        State.ChangeBlockType(_focusedBlockId, type);
+        _focusedType = type;
+        _dirty = true;
+        _pendingFocusId    = _focusedBlockId;
+        _pendingFocusAtEnd = true;
+    }
+
+    private async Task Save()
+    {
+        State.SaveDocument();
+        _dirty  = false;
+        _saving = true;
+        StateHasChanged();
+        await Task.Delay(900);
+        _saving = false;
+        StateHasChanged();
+    }
+
+    private void CreateDocument() => State.OpenOrCreateDocument();
+
+    private void RecalcWordCount()
+    {
+        if (_doc == null) { _wordCount = 0; return; }
+        _wordCount = _doc.Blocks
+            .Where(b => b.Type != BlockType.Divider)
+            .Sum(b => b.Content.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length);
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= HandleStateChanged;
+    }
+}

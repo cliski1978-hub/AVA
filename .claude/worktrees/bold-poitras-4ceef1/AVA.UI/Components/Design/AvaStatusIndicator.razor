@@ -1,0 +1,32 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   AvaStatusIndicator.razor
+   Purpose: Colored dot indicator showing state (ok, warn, err, idle, connecting).
+   ───────────────────────────────────────────────────────────────────────── *@
+
+<div class="ava-status-indicator ava-status-indicator--@State.ToLowerInvariant()">
+    <div class="ava-status-indicator__dot"></div>
+    @if (ShowLabel && !string.IsNullOrWhiteSpace(Label))
+    {
+        <span style="font-size: 11px; color: var(--TextMuted);">@Label</span>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// State: ok, warn, err, idle, connecting
+    /// </summary>
+    [Parameter]
+    public string State { get; set; } = "idle";
+
+    /// <summary>
+    /// Optional label text to display next to the dot.
+    /// </summary>
+    [Parameter]
+    public string? Label { get; set; }
+
+    /// <summary>
+    /// Whether to show the label.
+    /// </summary>
+    [Parameter]
+    public bool ShowLabel { get; set; } = true;
+}

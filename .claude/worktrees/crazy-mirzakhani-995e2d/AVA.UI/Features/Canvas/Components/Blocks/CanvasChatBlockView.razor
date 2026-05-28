@@ -1,0 +1,22 @@
+<div class="canvas-chat-block">
+    <span class="canvas-chat-block__role">@Block.Role</span>
+    <CanvasEditableBlock CssClass="canvas-editor-input canvas-editor-input--chat"
+                         Value="@Block.Content"
+                         ValueChanged="OnTextChanged"
+                         Placeholder="Chat content" />
+</div>
+
+@code {
+    /// <summary>
+    /// Gets or sets the chat block to render.
+    /// </summary>
+    [Parameter]
+    public CanvasChatBlock Block { get; set; } = default!;
+
+    /// <summary>
+    /// Gets or sets the callback raised when the chat content changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> OnTextChanged { get; set; }
+
+}

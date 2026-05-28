@@ -1,0 +1,50 @@
+<span class="@CssClass" @attributes="AdditionalAttributes">
+    @ChildContent
+</span>
+
+@code {
+    /// <summary>
+    /// Gets or sets the visual intent for the badge.
+    /// </summary>
+    [Parameter]
+    public string Intent { get; set; } = "neutral";
+
+    /// <summary>
+    /// Gets or sets the size variant for the badge.
+    /// </summary>
+    [Parameter]
+    public string Size { get; set; } = "md";
+
+    /// <summary>
+    /// Gets or sets an optional state class for the badge.
+    /// </summary>
+    [Parameter]
+    public string State { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the badge content.
+    /// </summary>
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = default!;
+
+    /// <summary>
+    /// Gets or sets additional HTML attributes for the badge.
+    /// </summary>
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string CssClass =>
+        string.Join(" ",
+            "ava-badge",
+            Normalize("ava-badge", Intent, "neutral"),
+            Normalize("ava-badge", Size, "md"),
+            string.IsNullOrWhiteSpace(State) ? string.Empty : State);
+
+    private static string Normalize(string prefix, string value, string fallback)
+    {
+        var resolved = string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
+        return resolved.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            ? resolved
+            : $"{prefix}-{resolved}";
+    }
+}

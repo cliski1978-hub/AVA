@@ -1,0 +1,32 @@
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+
+<div class="prompt-raw">
+    <div class="prompt-raw__header">
+        <span>Raw Prompt</span>
+        <button class="prompt-raw__btn" @onclick="CopyAsync" disabled="@string.IsNullOrWhiteSpace(Text)">
+            @(Copied ? "Copied" : "Copy")
+        </button>
+    </div>
+    <pre class="prompt-raw__text">@Text</pre>
+</div>
+
+<style>
+.prompt-raw { display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+.prompt-raw__header { display: flex; align-items: center; justify-content: space-between; color: var(--Text); font-size: var(--FzXs); font-weight: 600; }
+.prompt-raw__btn { height: 24px; padding: 0 8px; border: 1px solid var(--Border); border-radius: var(--RxSm); background: var(--BgElevated); color: var(--TextMuted); font-size: var(--FzXs); cursor: pointer; }
+.prompt-raw__btn:hover:not(:disabled) { border-color: var(--Accent); color: var(--Accent); }
+.prompt-raw__btn:disabled { opacity: 0.45; cursor: default; }
+.prompt-raw__text { margin: 0; min-height: 220px; max-height: 360px; overflow: auto; white-space: pre-wrap; color: var(--Text); font-size: var(--FzXs); font-family: var(--FontMono); background: var(--BgSurface); border: 1px solid var(--Border); border-radius: var(--RxSm); padding: 8px; }
+</style>
+
+@code {
+    [Parameter] public string Text { get; set; } = string.Empty;
+
+    private bool Copied { get; set; }
+
+    private async Task CopyAsync()
+    {
+        Copied = await JS.InvokeAsync<bool>("avaCopyToClipboard", Text ?? string.Empty);
+    }
+}

@@ -1,0 +1,88 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   SessionCanvas.razor
+   Namespace: AVA.UI.Components.Canvas
+   Purpose  : Free-form draggable surface for all card types.
+              Owns drag state; persists positions on drag-end.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@using AVA.UI.CORE.Models.UI
+@inject AppState State
+@implements IDisposable
+
+<div class="canvas"
+     @onmouseup="StopDrag"
+     @onmousemove="DragCard"
+     @onmouseleave="StopDrag">
+
+    @foreach (var card in State.CurrentSession.Canvas.Cards)
+    {
+        var c = card;
+        <CardContainer Card="c" OnDragStart="StartDrag" />
+    }
+
+    <AddCardButton />
+    <GlobalPromptBar />
+
+</div>
+
+<style>
+.canvas {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background: radial-gradient(var(--Border) 1px, transparent 1px);
+    background-size: 40px 40px;
+    background-color: var(--BgBase, #0a0a0a);
+}
+</style>
+
+@code {
+    private CardState? _dragging;
+    private double _offsetX;
+    private double _offsetY;
+
+    protected override void OnInitialized()
+    {
+        State.OnChange += StateHasChanged;
+    }
+
+    private void StartDrag((CardState Card, double OffsetX, double OffsetY) args)
+    {
+        _dragging = args.Card;
+        _offsetX  = args.OffsetX;
+        _offsetY  = args.OffsetY;
+
+        // Bring to front
+        var maxZ = State.CurrentSession.Canvas.Cards.Max(c => c.ZIndex);
+        _dragging.ZIndex = maxZ + 1;
+    }
+
+    private void DragCard(MouseEventArgs e)
+    {
+        if (_dragging == null) return;
+
+        _dragging.X = e.ClientX - _offsetX;
+        _dragging.Y = e.ClientY - _offsetY;
+
+        // Clamp to positive coordinates
+        if (_dragging.X < 0) _dragging.X = 0;
+        if (_dragging.Y < 0) _dragging.Y = 0;
+
+        StateHasChanged();
+    }
+
+    private void StopDrag(MouseEventArgs e)
+    {
+        if (_dragging != null)
+        {
+            _dragging = null;
+            State.SaveCanvasState();
+        }
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= StateHasChanged;
+    }
+}

@@ -1,0 +1,120 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   FloatingPanel.razor
+   Namespace: AVA.UI.Components.Dock
+   Purpose  : Renders a detached floating panel with drag support via JS.
+              Can be docked back to any zone via header context menu.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@using AVA.UI.CORE.Models.UI
+@using AVA.UI.CORE.Services
+@inject DockLayoutService Dock
+@inject IJSRuntime JS
+
+<div class="floating-panel"
+     id="float-@PanelState.PanelId"
+     style="left: @(PanelState.FloatX)px;
+            top: @(PanelState.FloatY)px;
+            width: @(PanelState.FloatWidth)px;
+            height: @(PanelState.FloatHeight)px;">
+
+    <!-- ── Float Header ──────────────────────────────────────────────────── -->
+    <div class="floating-panel__header"
+         id="float-header-@PanelState.PanelId">
+
+        <div class="floating-panel__header-left">
+            <span class="floating-panel__drag-handle">⠿</span>
+            <span class="floating-panel__title">@PanelState.PanelId</span>
+        </div>
+
+        <div class="floating-panel__header-right">
+            <button class="dock-panel__action-btn"
+                    title="Dock panel"
+                    @onclick="ToggleDockMenu">
+                ⊞
+            </button>
+            <button class="dock-panel__action-btn"
+                    title="Hide panel"
+                    @onclick="() => Dock.SetVisible(PanelState.PanelId, false)">
+                ✕
+            </button>
+        </div>
+
+        @if (_ShowDockMenu)
+        {
+            <div class="dock-panel__move-menu">
+                <div class="dock-panel__move-menu__title">Dock to</div>
+                @foreach (var Zone in Zones)
+                {
+                    var Z = Zone;
+                    <div class="dock-panel__move-menu__item"
+                         @onclick="() => DockTo(Z)">
+                        @ZoneLabel(Z)
+                    </div>
+                }
+            </div>
+        }
+
+    </div>
+
+    <!-- ── Float Content ─────────────────────────────────────────────────── -->
+    <div class="floating-panel__content">
+        @ChildContent
+    </div>
+
+    <!-- ── Resize Handle ─────────────────────────────────────────────────── -->
+    <div class="floating-panel__resize-handle"></div>
+
+</div>
+
+@code {
+    [Parameter, EditorRequired] public DockPanelState PanelState { get; set; } = default!;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private bool _ShowDockMenu = false;
+
+    private static readonly string[] Zones = new[]
+    {
+        DockZoneId.Center,
+        DockZoneId.Left,
+        DockZoneId.Right,
+        DockZoneId.Top,
+        DockZoneId.Bottom
+    };
+
+    protected override async Task OnAfterRenderAsync(bool FirstRender)
+    {
+        if (FirstRender)
+        {
+            await JS.InvokeVoidAsync(
+                "avaDockMakeDraggable",
+                $"float-{PanelState.PanelId}",
+                $"float-header-{PanelState.PanelId}",
+                DotNetObjectReference.Create(this));
+        }
+    }
+
+    /// <summary>Called by JS after drag ends to persist the new position.</summary>
+    [JSInvokable]
+    public void OnDragEnd(double X, double Y)
+    {
+        Dock.SaveFloatPosition(PanelState.PanelId, X, Y);
+    }
+
+    private void ToggleDockMenu() => _ShowDockMenu = !_ShowDockMenu;
+
+    private void DockTo(string ZoneId)
+    {
+        Dock.DockPanel(PanelState.PanelId, ZoneId);
+        _ShowDockMenu = false;
+    }
+
+    private static string ZoneLabel(string ZoneId) => ZoneId switch
+    {
+        DockZoneId.Center => "⬛ Center",
+        DockZoneId.Left   => "◀ Left",
+        DockZoneId.Right  => "▶ Right",
+        DockZoneId.Top    => "▲ Top",
+        DockZoneId.Bottom => "▼ Bottom",
+        _                 => ZoneId
+    };
+}

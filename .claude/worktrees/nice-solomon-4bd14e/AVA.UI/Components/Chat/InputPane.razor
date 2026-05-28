@@ -1,0 +1,107 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   InputPane.razor
+   Namespace: AVA.UI.Chat
+   Purpose  : Prompt input + submit. Replaces InputPaneView.xaml +
+              InputPaneVM.cs.
+   Notes    : Send button disabled until connected (replaces late-wired
+              InputVM null check in WPF).
+   ───────────────────────────────────────────────────────────────────────── *@
+
+@using AVA.UI.State
+@using AVA.UI.CORE.Models
+@inject AppState State
+@implements IDisposable
+
+<div class="input-pane">
+    <textarea class="input-pane__text"
+              @bind="_promptText"
+              @bind:event="oninput"
+              placeholder="Type a message…"
+              rows="4"
+              disabled="@_isSending"
+              @onkeydown="HandleKeyDown" />
+
+    <div class="input-pane__actions">
+        <button class="input-pane__btn input-pane__btn--preview"
+                @onclick="ShowPreview"
+                disabled="@(string.IsNullOrWhiteSpace(_promptText))">
+            Preview
+        </button>
+        <button class="input-pane__btn input-pane__btn--send"
+                @onclick="Submit"
+                disabled="@(!CanSend)">
+            @(_isSending ? "Sending…" : "Send")
+        </button>
+    </div>
+
+    @if (!State.IsConnected)
+    {
+        <div class="input-pane__warning">
+            ⚠️ Not connected — go to Settings to connect.
+        </div>
+    }
+</div>
+
+@code {
+    private string _promptText = string.Empty;
+    private bool _isSending = false;
+
+    private bool CanSend => State.IsConnected
+                         && !string.IsNullOrWhiteSpace(_promptText)
+                         && !_isSending;
+
+    protected override void OnInitialized()
+    {
+        State.OnChange += HandleStateChanged;
+    }
+
+    private void HandleStateChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task Submit()
+    {
+        var prompt = _promptText.Trim();
+        if (string.IsNullOrEmpty(prompt)) return;
+
+        _promptText = string.Empty;
+        _isSending = true;
+        StateHasChanged();
+
+        try
+        {
+            await State.SendPromptAsync(prompt);
+        }
+        catch (Exception ex)
+        {
+            State.AppendOutputSystem($"⚠️ Error: {ex.Message}");
+        }
+        finally
+        {
+            _isSending = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ShowPreview()
+    {
+        State.PromptPreviewText = _promptText.Trim();
+        State.PromptTokenEstimate = _promptText.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
+        State.ShowPromptPreview = true;
+        StateHasChanged();
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+        {
+            await Submit();
+        }
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= HandleStateChanged;
+    }
+}

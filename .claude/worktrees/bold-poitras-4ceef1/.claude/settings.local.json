@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir C:\\\\Apps\\\\AVA /s /b)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Apps\\\\AVA\" -Recurse -File | Where-Object { $_.Extension -in @\\('.cs','.csproj','.sln','.json','.html','.razor','.css'\\) } | ForEach-Object { $_.FullName })",
+      "Bash(dotnet build *)",
+      "Bash(xargs grep *)",
+      "Bash(xargs head *)"
+    ]
+  }
+}

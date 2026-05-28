@@ -1,0 +1,57 @@
+@* ─────────────────────────────────────────────────────────────────────────
+   AvaSlider.razor
+   Purpose: Range input slider with min/max/step and change callback.
+   ───────────────────────────────────────────────────────────────────────── *@
+
+<input type="range"
+       class="ava-slider"
+       value="@Value"
+       @onchange="async (e) => { if (int.TryParse(e.Value?.ToString(), out int v)) { Value = v; await ValueChanged.InvokeAsync(Value); } }"
+       min="@Min"
+       max="@Max"
+       step="@Step"
+       disabled="@Disabled" />
+
+@code {
+    /// <summary>
+    /// Current slider value.
+    /// </summary>
+    [Parameter]
+    public int Value { get; set; }
+
+    /// <summary>
+    /// Callback when value changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<int> ValueChanged { get; set; }
+
+    /// <summary>
+    /// Minimum value.
+    /// </summary>
+    [Parameter]
+    public int Min { get; set; } = 0;
+
+    /// <summary>
+    /// Maximum value.
+    /// </summary>
+    [Parameter]
+    public int Max { get; set; } = 100;
+
+    /// <summary>
+    /// Step increment.
+    /// </summary>
+    [Parameter]
+    public int Step { get; set; } = 1;
+
+    /// <summary>
+    /// Whether the slider is disabled.
+    /// </summary>
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    /// <summary>
+    /// Intent color (prepared for styling).
+    /// </summary>
+    [Parameter]
+    public string Intent { get; set; } = "primary";
+}
