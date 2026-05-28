@@ -20,10 +20,8 @@ namespace AVA.Vault.Core.Persistence
         {
             await using var db = _dbFactory.CreateDbContext();
             return await db.AvaProviderProfiles
-                .Include(p => p.ModelDefinitions)
                 .OrderBy(p => p.SortOrder)
                 .ThenBy(p => p.Name)
-                .AsSplitQuery()
                 .ToListAsync(ct);
         }
 

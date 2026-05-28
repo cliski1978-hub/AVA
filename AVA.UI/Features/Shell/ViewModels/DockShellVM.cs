@@ -43,6 +43,8 @@ public class DockShellVM : IDisposable
     public async Task InitializeAsync()
     {
         await _settings.LoadAsync();
+        using var profileLoadTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(8));
+        await _appState.LoadProfilesFromVaultAsync(profileLoadTimeout.Token);
         await _vaultWorkspace.LoadAsync();
         await _appState.LoadWorkspaceStateAsync();
 

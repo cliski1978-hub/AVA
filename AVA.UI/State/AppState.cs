@@ -272,11 +272,6 @@ namespace AVA.UI.State
             _chatState.OnChange += Notify;
             _settingsState.OnChange += Notify;
 
-            _settingsService.LoadSettings();
-
-            // Override profile data from Vault (source of truth for provider/model profiles)
-            LoadProfilesFromVaultAsync().GetAwaiter().GetResult();
-
             UPSClient = new UPSClientService();
             Sessions = new SessionManager(UPSClient);
             Sessions.OnChange += Notify;
@@ -286,38 +281,49 @@ namespace AVA.UI.State
             AppendMemory("Memory log initialized.");
             AppendReflection("Reflection system initialized.");
             AppendOutput(new OutputSegment { Type = "system", Value = "AVA ready." });
-
-            InitializeWorkspaceState();
-            _ = ConnectAsync();
         }
 
         public void NotifyStateChanged() => Notify();
 
         // ── Vault-backed profile management ──────────────────────────────────────
-        private async Task LoadProfilesFromVaultAsync()
+        public async Task LoadProfilesFromVaultAsync(CancellationToken ct = default)
         {
+            const string source = "ProfilePersistence";
+
             try
             {
-                var providers = await _profileService.GetAllProviderProfilesAsync();
-                var llmProfiles = await _profileService.GetAllLlmProfilesAsync();
+                _errorState.ClearSource(source);
+
+                var providers = await _profileService.GetAllProviderProfilesAsync(ct);
 
                 _settingsService.AppSettings.ProviderProfiles = providers;
-                _settingsService.AppSettings.LLMProfiles = llmProfiles;
+                _settingsService.AppSettings.LLMProfiles = new();
 
                 var models = new List<ModelDefinition>();
                 foreach (var provider in providers)
                 {
-                    var providerModels = await _profileService.GetModelsByProfileIdAsync(provider.ProviderProfileId);
+                    var providerModels = await _profileService.GetModelsByProfileIdAsync(provider.ProviderProfileId, ct);
                     models.AddRange(providerModels);
                 }
                 _settingsService.AppSettings.ModelDefinitions = models;
+                SettingsArchitectureMigration.Normalize(_settingsService.AppSettings);
+
+                if (providers.Count == 0)
+                {
+                    AppendMemory("No provider profiles are configured in the Vault database yet.");
+                    _errorState.AddError(
+                        "No provider profiles are configured yet. Open Settings and add a provider profile to get started.",
+                        source: source,
+                        feature: "Settings",
+                        severity: AppErrorSeverity.Info);
+                }
             }
             catch (Exception ex)
             {
                 AppendMemory($"Vault profile load failed (falling back to JSON): {ex.Message}");
                 _errorState.AddError(
                     "Your provider profiles could not be loaded from the database. Falling back to local settings.",
-                    source: "ProfilePersistence",
+                    source: source,
                     feature: "Settings",
                     severity: AppErrorSeverity.Warning);
             }

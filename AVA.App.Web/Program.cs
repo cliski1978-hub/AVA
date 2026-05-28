@@ -42,29 +42,83 @@ using AVA.Vault.Core.Interfaces;
 using AVA.Vault.Core.Logger;
 using AVA.Vault.Core.Persistence;
 using AVA.Vault.Core.Services;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
+
+var appDataRoot = Path.Combine(builder.Environment.ContentRootPath, "App_Data", "AVA");
+var dataProtectionKeysPath = Path.Combine(appDataRoot, "DataProtection-Keys");
+Directory.CreateDirectory(dataProtectionKeysPath);
+
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath))
+    .SetApplicationName("AVA.App.Web");
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
     .AddCircuitOptions(o => o.DetailedErrors = true);
 
-// â”€â”€ EF Core (in-memory for dev) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-builder.Services.AddDbContextFactory<VaultDbContext>(o => o.UseInMemoryDatabase("AVA_Vault"));
-builder.Services.AddDbContextFactory<MemoryDbContext>(o => o.UseInMemoryDatabase("AVA_Memory"));
+// â”€â”€ EF Core â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+var vaultConnectionString = builder.Configuration.GetConnectionString("AvaVault")
+    ?? throw new InvalidOperationException("ConnectionStrings:AvaVault is not configured.");
+var memoryConnectionString = builder.Configuration.GetConnectionString("AvaMemory")
+    ?? throw new InvalidOperationException("ConnectionStrings:AvaMemory is not configured.");
+
+builder.Services.AddDbContextFactory<VaultDbContext>(o => o.UseSqlServer(vaultConnectionString));
+builder.Services.AddDbContextFactory<MemoryDbContext>(o => o.UseSqlServer(memoryConnectionString));
 
 // â”€â”€ Base state & services â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-builder.Services.AddScoped<AvaSettingsService>();
+builder.Services.AddScoped<AvaSettingsService>(_ =>
+{
+    var configuredPath = builder.Configuration["AvaStorage:SettingsPath"]
+        ?? Path.Combine("App_Data", "AVA", "settings", "settings.json");
+    var settingsPath = Path.IsPathRooted(configuredPath)
+        ? configuredPath
+        : Path.Combine(builder.Environment.ContentRootPath, configuredPath);
+
+    var configuredVaultsPath = builder.Configuration["AvaStorage:VaultsPath"]
+        ?? Path.Combine("App_Data", "AVA", "vaults");
+    var vaultsPath = Path.IsPathRooted(configuredVaultsPath)
+        ? configuredVaultsPath
+        : Path.Combine(builder.Environment.ContentRootPath, configuredVaultsPath);
+
+    return new AvaSettingsService(settingsPath, vaultsPath);
+});
 builder.Services.AddScoped<VaultWorkspaceFileService>();
 builder.Services.AddScoped<ErrorState>();
 builder.Services.AddScoped<ISessionStorageService, SessionStorageService>();
-builder.Services.AddScoped<ISessionModelStateStore, SessionModelStateStore>();
+builder.Services.AddScoped<ISessionModelStateStore>(_ =>
+{
+    var configuredSessionsPath = builder.Configuration["AvaStorage:SessionsPath"]
+        ?? Path.Combine("App_Data", "AVA", "sessions");
+    var sessionsPath = Path.IsPathRooted(configuredSessionsPath)
+        ? configuredSessionsPath
+        : Path.Combine(builder.Environment.ContentRootPath, configuredSessionsPath);
+
+    return new SessionModelStateStore(sessionsPath);
+});
 builder.Services.AddScoped<IAvaIdService, AvaIdService>();
 builder.Services.AddScoped<NavigationState>();
 builder.Services.AddScoped<ReflectionState>();
 builder.Services.AddScoped<SettingsState>();
-builder.Services.AddScoped<ISessionChatLogService, SessionChatLogService>();
+builder.Services.AddScoped<ISessionChatLogService>(sp =>
+{
+    var configuredSessionsPath = builder.Configuration["AvaStorage:SessionsPath"]
+        ?? Path.Combine("App_Data", "AVA", "sessions");
+    var sessionsPath = Path.IsPathRooted(configuredSessionsPath)
+        ? configuredSessionsPath
+        : Path.Combine(builder.Environment.ContentRootPath, configuredSessionsPath);
+
+    return new SessionChatLogService(
+        sp.GetRequiredService<ISessionStorageService>(),
+        sp.GetRequiredService<IAvaIdService>(),
+        sessionsPath);
+});
 builder.Services.AddScoped<ISessionChatHistoryService, SessionChatHistoryService>();
 builder.Services.AddScoped<ChatConversationState>();
 
@@ -135,9 +189,9 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
     app.UseHsts();
+    app.UseHttpsRedirection();
 }
 
-app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseAntiforgery();
 

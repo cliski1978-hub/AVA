@@ -23,6 +23,7 @@ namespace AVA.UI.CORE.Services
 
         private readonly string SettingsFolder;
         private readonly string SettingsFile;
+        private readonly string? VaultsFolderOverride;
 
         private static readonly JsonSerializerOptions SerializerOptions = new()
         {
@@ -34,8 +35,10 @@ namespace AVA.UI.CORE.Services
 
         #region Constructor
 
-        public AvaSettingsService(string? settingsFilePath = null)
+        public AvaSettingsService(string? settingsFilePath = null, string? vaultsFolderPath = null)
         {
+            VaultsFolderOverride = vaultsFolderPath;
+
             if (string.IsNullOrWhiteSpace(settingsFilePath))
             {
                 var root = Path.Combine(
@@ -86,12 +89,14 @@ namespace AVA.UI.CORE.Services
                         AllowFileDrop = loaded.AllowFileDrop;
                         AppSettings = loaded.AppSettings ?? new AppSettings();
                         SettingsArchitectureMigration.Normalize(AppSettings);
+                        ApplyPathOverrides();
                     }
                 }
                 else
                 {
                     AppSettings = new AppSettings();
                     SettingsArchitectureMigration.Normalize(AppSettings);
+                    ApplyPathOverrides();
                     await SaveAsync().ConfigureAwait(false);
                 }
             }
@@ -108,6 +113,7 @@ namespace AVA.UI.CORE.Services
             {
                 EnsureSettingsDirectory();
                 SettingsArchitectureMigration.Normalize(AppSettings);
+                ApplyPathOverrides();
 
                 var wrapper = new PersistedSettingsWrapper
                 {
@@ -137,6 +143,14 @@ namespace AVA.UI.CORE.Services
             if (!Directory.Exists(SettingsFolder))
             {
                 Directory.CreateDirectory(SettingsFolder);
+            }
+        }
+
+        private void ApplyPathOverrides()
+        {
+            if (!string.IsNullOrWhiteSpace(VaultsFolderOverride))
+            {
+                AppSettings.VaultsFolderPath = VaultsFolderOverride;
             }
         }
 

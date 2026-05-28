@@ -112,7 +112,7 @@
                                 @onclick="() => ShowModels(provider)">
                             Show Models
                         </button>
-                        <button class="settings-btn settings-btn--sm" @onclick="SaveSettings">Save Provider</button>
+                        <button class="settings-btn settings-btn--sm" @onclick="async () => await SaveProvider(provider)">Save Provider</button>
                     </div>
                 </section>
             }
@@ -604,7 +604,6 @@
         };
 
         State.AppSettings.ProviderProfiles.Add(provider);
-        State.SaveSettings();
         StateHasChanged();
     }
 
@@ -629,6 +628,15 @@
         }
 
         State.SaveSettings();
+        StateHasChanged();
+    }
+
+    private async Task SaveProvider(ProviderProfile provider)
+    {
+        NormalizeProviderProfiles();
+        provider.ApiKey = string.Empty;
+        provider.Secret = string.Empty;
+        await State.SaveProviderProfileAsync(provider);
         StateHasChanged();
     }
 
