@@ -20,7 +20,7 @@
         <label class="settings-row">
             <input type="checkbox" @bind="State.UseDirectEndpoints" />
             Use Direct Endpoints
-            <span class="settings-hint">Bypass legacy core, talk directly to LLM endpoints</span>
+            <span class="settings-hint">Bypass core routing, talk directly to LLM endpoints</span>
         </label>
 
         <div class="settings-row">
@@ -133,15 +133,15 @@
                 </div>
                 <div class="settings-field">
                     <label>Title</label>
-                    <input @bind="Log.LogTitle" />
+                    <input @bind="Log.LogTitle" @bind:after="MarkSettingsDirty" />
                 </div>
                 <div class="settings-field">
                     <label>Description</label>
-                    <input @bind="Log.LogDescription" />
+                    <input @bind="Log.LogDescription" @bind:after="MarkSettingsDirty" />
                 </div>
                 <div class="settings-field">
                     <label>File Path</label>
-                    <input @bind="Log.LogFilePath" />
+                    <input @bind="Log.LogFilePath" @bind:after="MarkSettingsDirty" />
                 </div>
             </div>
         }
@@ -156,6 +156,7 @@
             <label>Vaults Folder</label>
             <input class="settings-input"
                    @bind="State.AppSettings.VaultsFolderPath"
+                   @bind:after="MarkSettingsDirty"
                    placeholder="e.g. C:\Data\AVA\Vaults" />
             <span class="settings-hint">Folder containing vaults.json. Move the file yourself before changing. Takes effect on next start.</span>
         </div>
@@ -163,7 +164,7 @@
 
     <!-- ── Action Buttons ──────────────────────────────────────────────── -->
     <div class="settings-actions">
-        <button class="settings-btn settings-btn--primary" @onclick="State.SaveSettings">
+        <button class="settings-btn settings-btn--primary" @onclick="async () => await State.SaveSettingsAsync()">
             Save Settings
         </button>
     </div>
@@ -187,6 +188,11 @@
     private string _ActionMessage = string.Empty;
     private bool _ActionOk = true;
 #pragma warning restore CS0414
+
+    private void MarkSettingsDirty()
+    {
+        State.MarkSettingsDirty();
+    }
 
     // ── Mode ──────────────────────────────────────────────────────────────
 
@@ -218,6 +224,7 @@
                 _SelectedProfile = Agent;
                 break;
         }
+        State.MarkSettingsDirty();
         StateHasChanged();
     }
 
@@ -228,6 +235,7 @@
         if (!Confirmed) return;
         State.AppSettings.LocalProfiles.Remove(Profile);
         if (_SelectedProfile == Profile) _SelectedProfile = null;
+        State.MarkSettingsDirty();
         StateHasChanged();
     }
 
@@ -238,6 +246,7 @@
         if (!Confirmed) return;
         State.AppSettings.RemoteProfiles.Remove(Profile);
         if (_SelectedProfile == Profile) _SelectedProfile = null;
+        State.MarkSettingsDirty();
         StateHasChanged();
     }
 
@@ -248,6 +257,7 @@
         if (!Confirmed) return;
         State.AppSettings.AgentProfiles.Remove(Profile);
         if (_SelectedProfile == Profile) _SelectedProfile = null;
+        State.MarkSettingsDirty();
         StateHasChanged();
     }
 
@@ -258,6 +268,7 @@
         var Log = new LogSettings { LogTitle = "New Log", LogFilePath = "log.txt" };
         State.AppSettings.LogSettings.Add(Log);
         _SelectedLog = Log;
+        State.MarkSettingsDirty();
         StateHasChanged();
     }
 
@@ -268,6 +279,7 @@
         if (!Confirmed) return;
         State.AppSettings.LogSettings.Remove(Log);
         if (_SelectedLog == Log) _SelectedLog = null;
+        State.MarkSettingsDirty();
         StateHasChanged();
     }
 

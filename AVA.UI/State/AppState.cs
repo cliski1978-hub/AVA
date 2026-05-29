@@ -104,11 +104,21 @@ namespace AVA.UI.State
         public AppSettings Settings => _settingsService.AppSettings;
         public List<LLMProfile> LLMProfiles => _settingsService.AppSettings.LLMProfiles;
         public LLMProfile? SelectedLLMProfile { get; set; }
+        public bool SettingsDirty { get; private set; }
 
         public bool UseDirectEndpoints
         {
             get => _settingsService.AppSettings.UseDirectEndpoints;
-            set => _settingsService.AppSettings.UseDirectEndpoints = value;
+            set
+            {
+                if (_settingsService.AppSettings.UseDirectEndpoints == value)
+                {
+                    return;
+                }
+
+                _settingsService.AppSettings.UseDirectEndpoints = value;
+                MarkSettingsDirty();
+            }
         }
 
         // ── Navigation — delegates to NavigationState ─────────────────────────
@@ -335,16 +345,16 @@ namespace AVA.UI.State
             {
                 foreach (var provider in _settingsService.AppSettings.ProviderProfiles)
                 {
-                    provider.ApiKey = string.Empty;
-                    provider.Secret = string.Empty;
                     var saved = await _profileService.SaveProviderProfileAsync(provider);
-                    provider.ProviderProfileId = saved.ProviderProfileId;
+                    CopyProviderProfile(saved, provider);
                 }
 
                 foreach (var model in _settingsService.AppSettings.ModelDefinitions)
                 {
                     await _profileService.SaveModelDefinitionAsync(model);
                 }
+
+                SettingsArchitectureMigration.Normalize(_settingsService.AppSettings);
                 return true;
             }
             catch (Exception ex)
@@ -363,10 +373,9 @@ namespace AVA.UI.State
         {
             try
             {
-                provider.ApiKey = string.Empty;
-                provider.Secret = string.Empty;
                 var saved = await _profileService.SaveProviderProfileAsync(provider);
-                provider.ProviderProfileId = saved.ProviderProfileId;
+                CopyProviderProfile(saved, provider);
+                SettingsArchitectureMigration.Normalize(_settingsService.AppSettings);
                 AppendMemory($"Provider profile '{provider.Name}' saved.");
                 _errorState.AddError($"Profile '{provider.Name}' saved.", source: "ProfilePersistence", feature: "Settings", severity: AppErrorSeverity.Info);
                 return true;
@@ -388,6 +397,24 @@ namespace AVA.UI.State
             await _profileService.DeleteProviderProfileAsync(providerProfileId);
         }
 
+        private static void CopyProviderProfile(ProviderProfile source, ProviderProfile target)
+        {
+            target.ProviderProfileId = source.ProviderProfileId;
+            target.Name = source.Name;
+            target.ProviderType = source.ProviderType;
+            target.CustomProviderType = source.CustomProviderType;
+            target.TransportType = source.TransportType;
+            target.CustomTransportType = source.CustomTransportType;
+            target.Endpoint = source.Endpoint;
+            target.ApiKey = source.ApiKey;
+            target.Secret = source.Secret;
+            target.CustomHeadersAsText = source.CustomHeadersAsText;
+            target.TimeoutSeconds = source.TimeoutSeconds;
+            target.RetryCount = source.RetryCount;
+            target.SupportsStreaming = source.SupportsStreaming;
+            target.Metadata = new Dictionary<string, string>(source.Metadata);
+        }
+
         public async Task<bool> SaveModelDefinitionAsync(ModelDefinition model)
         {
             try
@@ -406,6 +433,88 @@ namespace AVA.UI.State
                     feature: "Settings",
                     severity: AppErrorSeverity.Error);
                 return false;
+            }
+        }
+
+        public async Task<ModelDiscoveryResult> LoadModelsForProviderAsync(
+            ProviderProfile provider,
+            CancellationToken token = default)
+        {
+            try
+            {
+                var savedProvider = await _profileService.SaveProviderProfileAsync(provider, token);
+                CopyProviderProfile(savedProvider, provider);
+                SettingsArchitectureMigration.Normalize(_settingsService.AppSettings);
+
+                var runtimeProfile = LLMProfiles.FirstOrDefault(profile =>
+                    profile.ProfileId.Equals(provider.ProviderProfileId, StringComparison.OrdinalIgnoreCase));
+                if (runtimeProfile == null)
+                {
+                    return ModelDiscoveryResult.Fail("Provider runtime profile was not created.");
+                }
+
+                if (!UPSClient.SupportsModelDiscovery(runtimeProfile))
+                {
+                    return ModelDiscoveryResult.Fail(
+                        $"Model discovery is not available for provider type '{runtimeProfile.ResolvedProvider}'.");
+                }
+
+                var discovered = await UPSClient.DiscoverModelsAsync(runtimeProfile, token);
+                if (discovered.Count == 0)
+                {
+                    return ModelDiscoveryResult.Ok(0, 0, "No models returned by provider.");
+                }
+
+                var existing = _settingsService.AppSettings.ModelDefinitions
+                    .Where(model => model.ProviderProfileId.Equals(provider.ProviderProfileId, StringComparison.OrdinalIgnoreCase))
+                    .ToDictionary(model => model.ModelId, StringComparer.OrdinalIgnoreCase);
+
+                var added = 0;
+                foreach (var model in discovered.Where(model => !string.IsNullOrWhiteSpace(model.Id)))
+                {
+                    if (existing.ContainsKey(model.Id))
+                    {
+                        continue;
+                    }
+
+                    var definition = new ModelDefinition
+                    {
+                        ProviderProfileId = provider.ProviderProfileId,
+                        ModelId = model.Id.Trim(),
+                        DisplayName = string.IsNullOrWhiteSpace(model.Label) ? model.Id.Trim() : model.Label.Trim(),
+                        ModelType = string.IsNullOrWhiteSpace(model.Type) ? provider.ProviderType : model.Type,
+                        IsDiscovered = true,
+                        ContextWindow = 8192,
+                        MaxOutputTokens = 1024,
+                        MaxInputCharacters = 0,
+                        DefaultTemperature = runtimeProfile.Temperature,
+                        Metadata = new Dictionary<string, string>(model.Metadata)
+                    };
+
+                    _settingsService.AppSettings.ModelDefinitions.Add(definition);
+                    existing[definition.ModelId] = definition;
+                    await _profileService.SaveModelDefinitionAsync(definition, token);
+                    added++;
+                }
+
+                SettingsArchitectureMigration.Normalize(_settingsService.AppSettings);
+
+                var message = added == 0
+                    ? $"Provider returned {discovered.Count} model(s); all are already loaded."
+                    : $"Loaded {added} new model(s) from {provider.Name}.";
+                AppendMemory(message);
+                Notify();
+                return ModelDiscoveryResult.Ok(added, discovered.Count, message);
+            }
+            catch (Exception ex)
+            {
+                AppendMemory($"Model discovery failed: {ex.Message}");
+                _errorState.AddError(
+                    $"Model discovery failed: {ex.Message}",
+                    source: "ModelDiscovery",
+                    feature: "Settings",
+                    severity: AppErrorSeverity.Error);
+                return ModelDiscoveryResult.Fail(ex.Message);
             }
         }
 
@@ -1211,7 +1320,7 @@ namespace AVA.UI.State
             {
                 SelectedLLMProfile = profile;
                 _settingsService.AppSettings.SelectedLLMProfileName = profile.Name;
-                SaveSettings();
+                await SaveSettingsAsync(token);
                 AppendMemory($"ConnectProfileAsync: {profile.Name} ({profile.ResolvedProvider})...");
                 UpdateStatus("Connecting", "Connecting", $"Connecting to {profile.Name}...");
                 await Sessions.RegisterProfileAsync(profile, token);
@@ -1357,21 +1466,62 @@ namespace AVA.UI.State
         // ── Settings ──────────────────────────────────────────────────────────
         public void SaveSettings()
         {
-            var vaultSaved = SaveProfilesToVaultAsync().GetAwaiter().GetResult();
+            _ = SaveSettingsAsync();
+        }
+
+        public void MarkSettingsDirty()
+        {
+            SettingsDirty = true;
+            Notify();
+        }
+
+        public void ClearSettingsDirty()
+        {
+            if (!SettingsDirty)
+            {
+                return;
+            }
+
+            SettingsDirty = false;
+            Notify();
+        }
+
+        public async Task<bool> SaveSettingsIfDirtyAsync(CancellationToken token = default)
+        {
+            if (!SettingsDirty)
+            {
+                return false;
+            }
+
+            await SaveSettingsAsync(token);
+            return true;
+        }
+
+        public async Task SaveSettingsAsync(CancellationToken token = default)
+        {
+            await SaveProfilesToVaultAsync();
 
             var savedProviders = _settingsService.AppSettings.ProviderProfiles;
             var savedModels = _settingsService.AppSettings.ModelDefinitions;
             var savedLLMProfiles = _settingsService.AppSettings.LLMProfiles;
 
-            _settingsService.AppSettings.ProviderProfiles = new();
-            _settingsService.AppSettings.ModelDefinitions = new();
-            _settingsService.AppSettings.LLMProfiles = new();
+            try
+            {
+                _settingsService.AppSettings.ProviderProfiles = new();
+                _settingsService.AppSettings.ModelDefinitions = new();
+                _settingsService.AppSettings.LLMProfiles = new();
 
-            _settingsService.SaveSettings();
+                await _settingsService.SaveAsync();
+            }
+            finally
+            {
+                _settingsService.AppSettings.ProviderProfiles = savedProviders;
+                _settingsService.AppSettings.ModelDefinitions = savedModels;
+                _settingsService.AppSettings.LLMProfiles = savedLLMProfiles;
+            }
 
-            _settingsService.AppSettings.ProviderProfiles = savedProviders;
-            _settingsService.AppSettings.ModelDefinitions = savedModels;
-            _settingsService.AppSettings.LLMProfiles = savedLLMProfiles;
+            SettingsDirty = false;
+            Notify();
         }
 
         public async Task<TestResult> VerifyPersistenceAsync()
@@ -1809,6 +1959,34 @@ namespace AVA.UI.State
         {
             success = Success;
             message = Message;
+        }
+    }
+
+    public class ModelDiscoveryResult
+    {
+        public bool Success { get; set; }
+        public int AddedCount { get; set; }
+        public int DiscoveredCount { get; set; }
+        public string Message { get; set; } = string.Empty;
+
+        public static ModelDiscoveryResult Ok(int addedCount, int discoveredCount, string message)
+        {
+            return new ModelDiscoveryResult
+            {
+                Success = true,
+                AddedCount = addedCount,
+                DiscoveredCount = discoveredCount,
+                Message = message
+            };
+        }
+
+        public static ModelDiscoveryResult Fail(string message)
+        {
+            return new ModelDiscoveryResult
+            {
+                Success = false,
+                Message = message
+            };
         }
     }
 

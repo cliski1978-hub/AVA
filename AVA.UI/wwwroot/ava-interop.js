@@ -11,7 +11,7 @@ window.avaScrollSentinelIntoView = (sentinel, smooth) => {
     sentinel.scrollIntoView({ block: 'end', behavior: smooth ? 'smooth' : 'instant' });
 };
 
-// Legacy — kept for MemoryLogPane.
+// Kept for MemoryLogPane.
 window.avaScrollToBottom = (element) => {
     if (!element) return;
     element.scrollTop = element.scrollHeight;

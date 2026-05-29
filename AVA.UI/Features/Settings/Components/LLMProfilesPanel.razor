@@ -56,11 +56,11 @@
                     <div class="settings-grid">
                         <label class="settings-field">
                             <span>Provider Label</span>
-                            <input @bind="provider.Name" />
+                            <input @bind="provider.Name" @bind:after="MarkSettingsDirty" />
                         </label>
                         <label class="settings-field">
                             <span>Provider Type</span>
-                            <select @bind="provider.ProviderType">
+                            <select @bind="provider.ProviderType" @bind:after="MarkSettingsDirty">
                                 @foreach (var option in ProviderTypeOptions)
                                 {
                                     <option value="@option">@option</option>
@@ -69,11 +69,11 @@
                         </label>
                         <label class="settings-field settings-field--wide">
                             <span>Endpoint / Base URL</span>
-                            <input @bind="provider.Endpoint" />
+                            <input @bind="provider.Endpoint" @bind:after="MarkSettingsDirty" />
                         </label>
                         <label class="settings-field">
                             <span>Transport</span>
-                            <select @bind="provider.TransportType">
+                            <select @bind="provider.TransportType" @bind:after="MarkSettingsDirty">
                                 @foreach (var option in TransportTypeOptions)
                                 {
                                     <option value="@option">@option</option>
@@ -82,27 +82,27 @@
                         </label>
                         <label class="settings-field">
                             <span>Timeout Seconds</span>
-                            <input type="number" min="1" @bind="provider.TimeoutSeconds" />
+                            <input type="number" min="1" @bind="provider.TimeoutSeconds" @bind:after="MarkSettingsDirty" />
                         </label>
                         <label class="settings-field">
                             <span>Retry Count</span>
-                            <input type="number" min="0" @bind="provider.RetryCount" />
+                            <input type="number" min="0" @bind="provider.RetryCount" @bind:after="MarkSettingsDirty" />
                         </label>
                         <label class="settings-field">
                             <span>API/Auth Value</span>
-                            <input type="password" @bind="provider.ApiKey" autocomplete="off" />
+                            <input type="password" @bind="provider.ApiKey" @bind:after="MarkSettingsDirty" autocomplete="off" />
                         </label>
                         <label class="settings-field">
                             <span>Secondary Secret</span>
-                            <input type="password" @bind="provider.Secret" autocomplete="off" />
+                            <input type="password" @bind="provider.Secret" @bind:after="MarkSettingsDirty" autocomplete="off" />
                         </label>
                         <label class="settings-field settings-field--check">
-                            <input type="checkbox" @bind="provider.SupportsStreaming" />
+                            <input type="checkbox" @bind="provider.SupportsStreaming" @bind:after="MarkSettingsDirty" />
                             <span>Streaming Supported</span>
                         </label>
                         <label class="settings-field settings-field--wide">
                             <span>Custom Headers</span>
-                            <textarea rows="3" @bind="provider.CustomHeadersAsText"></textarea>
+                            <textarea rows="3" @bind="provider.CustomHeadersAsText" @bind:after="MarkSettingsDirty"></textarea>
                         </label>
                     </div>
 
@@ -134,6 +134,11 @@
                     <p>@DisplayProviderName(_ModelsProvider)</p>
                 </div>
                 <div class="settings-card__actions">
+                    <button class="settings-btn settings-btn--primary settings-btn--sm"
+                            @onclick="async () => await LoadProviderModels(_ModelsProvider)"
+                            disabled="@_LoadingModelProviders.Contains(_ModelsProvider.ProviderProfileId)">
+                        @(_LoadingModelProviders.Contains(_ModelsProvider.ProviderProfileId) ? "Loading..." : "Load Models")
+                    </button>
                     <button class="settings-btn settings-btn--sm"
                             @onclick="() => AddModelDefinition(_ModelsProvider)">
                         + Add Model
@@ -143,6 +148,14 @@
             </div>
 
             <div class="settings-model-dialog__body">
+                @if (_ProviderMessages.TryGetValue(_ModelsProvider.ProviderProfileId, out var modelMessage) &&
+                    !string.IsNullOrWhiteSpace(modelMessage.Text))
+                {
+                    <div class="settings-feedback @(modelMessage.Ok ? "settings-feedback--ok" : "settings-feedback--err")">
+                        @modelMessage.Text
+                    </div>
+                }
+
                 <p class="settings-model-dialog__hint">
                     Basic model settings are shown here. Use Show Details for full capability and context-window configuration.
                 </p>
@@ -218,19 +231,19 @@
                 <div class="settings-grid">
                     <label class="settings-field">
                         <span>Model ID</span>
-                        <input @bind="_DetailsModel.ModelId" />
+                        <input @bind="_DetailsModel.ModelId" @bind:after="MarkSettingsDirty" />
                     </label>
                     <label class="settings-field">
                         <span>Display Label</span>
-                        <input @bind="_DetailsModel.DisplayName" />
+                        <input @bind="_DetailsModel.DisplayName" @bind:after="MarkSettingsDirty" />
                     </label>
                     <label class="settings-field">
                         <span>Model Type</span>
-                        <input @bind="_DetailsModel.ModelType" />
+                        <input @bind="_DetailsModel.ModelType" @bind:after="MarkSettingsDirty" />
                     </label>
                     <label class="settings-field">
                         <span>Provider</span>
-                        <select @bind="_DetailsModel.ProviderProfileId">
+                        <select @bind="_DetailsModel.ProviderProfileId" @bind:after="MarkSettingsDirty">
                             @foreach (var provider in Providers)
                             {
                                 <option value="@provider.ProviderProfileId">@DisplayProviderName(provider)</option>
@@ -239,43 +252,43 @@
                     </label>
                     <label class="settings-field">
                         <span>Context Window</span>
-                        <input type="number" min="1" @bind="_DetailsModel.ContextWindow" />
+                        <input type="number" min="1" @bind="_DetailsModel.ContextWindow" @bind:after="MarkSettingsDirty" />
                     </label>
                     <label class="settings-field">
                         <span>Max Output Tokens</span>
-                        <input type="number" min="1" @bind="_DetailsModel.MaxOutputTokens" />
+                        <input type="number" min="1" @bind="_DetailsModel.MaxOutputTokens" @bind:after="MarkSettingsDirty" />
                     </label>
                     <label class="settings-field">
                         <span>Max Input Characters</span>
-                        <input type="number" min="0" @bind="_DetailsModel.MaxInputCharacters" />
+                        <input type="number" min="0" @bind="_DetailsModel.MaxInputCharacters" @bind:after="MarkSettingsDirty" />
                     </label>
                     <label class="settings-field">
                         <span>Default Temperature</span>
-                        <input type="number" step="0.1" min="0" max="2" @bind="_DetailsModel.DefaultTemperature" />
+                        <input type="number" step="0.1" min="0" max="2" @bind="_DetailsModel.DefaultTemperature" @bind:after="MarkSettingsDirty" />
                     </label>
                     <label class="settings-field settings-field--check">
-                        <input type="checkbox" @bind="_DetailsModel.IsDiscovered" />
+                        <input type="checkbox" @bind="_DetailsModel.IsDiscovered" @bind:after="MarkSettingsDirty" />
                         <span>Discovered From Provider</span>
                     </label>
                     <label class="settings-field settings-field--check">
-                        <input type="checkbox" @bind="_DetailsModel.SupportsToolCalls" />
+                        <input type="checkbox" @bind="_DetailsModel.SupportsToolCalls" @bind:after="MarkSettingsDirty" />
                         <span>Supports Tools</span>
                     </label>
                     <label class="settings-field settings-field--check">
-                        <input type="checkbox" @bind="_DetailsModel.SupportsVision" />
+                        <input type="checkbox" @bind="_DetailsModel.SupportsVision" @bind:after="MarkSettingsDirty" />
                         <span>Supports Vision</span>
                     </label>
                     <label class="settings-field settings-field--check">
-                        <input type="checkbox" @bind="_DetailsModel.SupportsReasoning" />
+                        <input type="checkbox" @bind="_DetailsModel.SupportsReasoning" @bind:after="MarkSettingsDirty" />
                         <span>Supports Reasoning</span>
                     </label>
                     <label class="settings-field settings-field--check">
-                        <input type="checkbox" @bind="_DetailsModel.SupportsProviderMemory" />
+                        <input type="checkbox" @bind="_DetailsModel.SupportsProviderMemory" @bind:after="MarkSettingsDirty" />
                         <span>Provider-Managed Memory</span>
                     </label>
                     <label class="settings-field settings-field--wide">
                         <span>System Prompt Default</span>
-                        <textarea rows="5" @bind="_DetailsModel.SystemPrompt"></textarea>
+                        <textarea rows="5" @bind="_DetailsModel.SystemPrompt" @bind:after="MarkSettingsDirty"></textarea>
                     </label>
                 </div>
             </div>
@@ -587,11 +600,17 @@
 
     private readonly HashSet<string> _TestingProviders = new();
     private readonly HashSet<string> _ConnectingProviders = new();
+    private readonly HashSet<string> _LoadingModelProviders = new();
     private readonly Dictionary<string, (string Text, bool Ok)> _ProviderMessages = new();
     private ProviderProfile? _ModelsProvider;
     private ModelDefinition? _DetailsModel;
 
     private IReadOnlyList<ProviderProfile> Providers => State.AppSettings.ProviderProfiles;
+
+    private void MarkSettingsDirty()
+    {
+        State.MarkSettingsDirty();
+    }
 
     private void AddProvider()
     {
@@ -604,6 +623,7 @@
         };
 
         State.AppSettings.ProviderProfiles.Add(provider);
+        State.MarkSettingsDirty();
         StateHasChanged();
     }
 
@@ -620,48 +640,59 @@
             string.Equals(model.ProviderProfileId, provider.ProviderProfileId, StringComparison.OrdinalIgnoreCase));
         State.AppSettings.ProviderProfiles.Remove(provider);
 
-        var legacy = State.AppSettings.LLMProfiles.FirstOrDefault(profile =>
+        var runtimeProfile = State.AppSettings.LLMProfiles.FirstOrDefault(profile =>
             string.Equals(profile.ProfileId, provider.ProviderProfileId, StringComparison.OrdinalIgnoreCase));
-        if (legacy != null)
+        if (runtimeProfile != null)
         {
-            State.AppSettings.LLMProfiles.Remove(legacy);
+            State.AppSettings.LLMProfiles.Remove(runtimeProfile);
         }
 
-        State.SaveSettings();
+        State.MarkSettingsDirty();
         StateHasChanged();
     }
 
     private async Task SaveProvider(ProviderProfile provider)
     {
         NormalizeProviderProfiles();
-        provider.ApiKey = string.Empty;
-        provider.Secret = string.Empty;
         await State.SaveProviderProfileAsync(provider);
+        State.ClearSettingsDirty();
         StateHasChanged();
     }
 
     private void ShowModels(ProviderProfile provider)
     {
-        SaveSettings();
         _ModelsProvider = provider;
+    }
+
+    private async Task LoadProviderModels(ProviderProfile provider)
+    {
+        NormalizeProviderProfiles();
+        await State.SaveSettingsIfDirtyAsync();
+        var providerId = provider.ProviderProfileId;
+        _LoadingModelProviders.Add(providerId);
+        _ProviderMessages.Remove(providerId);
+        StateHasChanged();
+
+        var result = await State.LoadModelsForProviderAsync(provider);
+        _ProviderMessages[providerId] = (result.Message, result.Success);
+
+        _LoadingModelProviders.Remove(providerId);
+        StateHasChanged();
     }
 
     private void CloseModels()
     {
-        SaveSettings();
         _DetailsModel = null;
         _ModelsProvider = null;
     }
 
     private void ShowModelDetails(ModelDefinition definition)
     {
-        SaveSettings();
         _DetailsModel = definition;
     }
 
     private void CloseModelDetails()
     {
-        SaveSettings();
         _DetailsModel = null;
     }
 
@@ -678,7 +709,7 @@
         };
 
         State.AppSettings.ModelDefinitions.Add(definition);
-        State.SaveSettings();
+        State.MarkSettingsDirty();
         StateHasChanged();
     }
 
@@ -692,13 +723,13 @@
         }
 
         State.AppSettings.ModelDefinitions.Remove(definition);
-        State.SaveSettings();
+        State.MarkSettingsDirty();
         StateHasChanged();
     }
 
     private async Task AttachModel(ModelDefinition definition)
     {
-        SaveSettings();
+        await State.SaveSettingsIfDirtyAsync();
         await State.AttachModelToActiveSessionAsync(definition.ModelId);
     }
 
@@ -706,17 +737,17 @@
     {
         _TestingProviders.Add(provider.ProviderProfileId);
         _ProviderMessages.Remove(provider.ProviderProfileId);
-        SaveSettings();
+        await State.SaveSettingsIfDirtyAsync();
         StateHasChanged();
 
-        var legacy = GetLegacyProfile(provider);
-        if (legacy == null)
+        var runtimeProfile = GetRuntimeProfile(provider);
+        if (runtimeProfile == null)
         {
-            _ProviderMessages[provider.ProviderProfileId] = ("Provider compatibility profile was not created.", false);
+            _ProviderMessages[provider.ProviderProfileId] = ("Provider runtime profile was not created.", false);
         }
         else
         {
-            var (ok, message) = await State.TestEndpointAsync(legacy);
+            var (ok, message) = await State.TestEndpointAsync(runtimeProfile);
             _ProviderMessages[provider.ProviderProfileId] = (message, ok);
         }
 
@@ -728,21 +759,21 @@
     {
         _ConnectingProviders.Add(provider.ProviderProfileId);
         _ProviderMessages.Remove(provider.ProviderProfileId);
-        SaveSettings();
+        await State.SaveSettingsIfDirtyAsync();
         StateHasChanged();
 
-        var legacy = GetLegacyProfile(provider);
-        if (legacy == null)
+        var runtimeProfile = GetRuntimeProfile(provider);
+        if (runtimeProfile == null)
         {
-            _ProviderMessages[provider.ProviderProfileId] = ("Provider compatibility profile was not created.", false);
+            _ProviderMessages[provider.ProviderProfileId] = ("Provider runtime profile was not created.", false);
         }
         else
         {
-            await State.ConnectProfileAsync(legacy);
+            await State.ConnectProfileAsync(runtimeProfile);
 
             var ok = State.IsConnected;
             var message = ok
-                ? $"Connected - {legacy.Models.Count} model(s) available."
+                ? $"Connected - {runtimeProfile.Models.Count} model(s) available."
                 : State.ConnectionDetails;
             _ProviderMessages[provider.ProviderProfileId] = (message, ok);
         }
@@ -751,11 +782,11 @@
         StateHasChanged();
     }
 
-    private void SaveSettings()
+    private async Task SaveSettings()
     {
         NormalizeProviderProfiles();
         NormalizeModelDefinitions();
-        State.SaveSettings();
+        await State.SaveSettingsAsync();
         StateHasChanged();
     }
 
@@ -811,7 +842,7 @@
             .OrderBy(DisplayModelName);
     }
 
-    private LLMProfile? GetLegacyProfile(ProviderProfile provider)
+    private LLMProfile? GetRuntimeProfile(ProviderProfile provider)
     {
         return State.AppSettings.LLMProfiles.FirstOrDefault(profile =>
             string.Equals(profile.ProfileId, provider.ProviderProfileId, StringComparison.OrdinalIgnoreCase));

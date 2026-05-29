@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace AVA.Vault.Core.Migrations
 {
     /// <inheritdoc />
-    public partial class IntialMigration : Migration
+    public partial class InitialDatabase : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -60,6 +60,26 @@ namespace AVA.Vault.Core.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_AvaProviderProfiles", x => x.ProviderProfileId);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AvaSecrets",
+                columns: table => new
+                {
+                    SecretId = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
+                    SecretRef = table.Column<string>(type: "nvarchar(512)", maxLength: 512, nullable: false),
+                    SecretName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
+                    SecretType = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
+                    EncryptedValue = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    EncryptionProvider = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
+                    MetadataJson = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AvaSecrets", x => x.SecretId);
                 });
 
             migrationBuilder.CreateTable(
@@ -1212,6 +1232,22 @@ namespace AVA.Vault.Core.Migrations
                 column: "TransportType");
 
             migrationBuilder.CreateIndex(
+                name: "IX_AvaSecrets_IsActive",
+                table: "AvaSecrets",
+                column: "IsActive");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AvaSecrets_SecretType",
+                table: "AvaSecrets",
+                column: "SecretType");
+
+            migrationBuilder.CreateIndex(
+                name: "UX_AvaSecrets_SecretRef",
+                table: "AvaSecrets",
+                column: "SecretRef",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_VaultFileRefNotes_FileRefID",
                 table: "VaultFileRefNotes",
                 column: "FileRefID");
@@ -1734,6 +1770,9 @@ namespace AVA.Vault.Core.Migrations
 
             migrationBuilder.DropTable(
                 name: "AvaModelDefinitions");
+
+            migrationBuilder.DropTable(
+                name: "AvaSecrets");
 
             migrationBuilder.DropTable(
                 name: "ModuleIdentity");

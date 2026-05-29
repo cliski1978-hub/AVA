@@ -125,7 +125,9 @@ namespace AVA.Vault.Core.Persistence
         {
             await using var db = _dbFactory.CreateDbContext();
             var existing = await db.AvaModelDefinitions
-                .FirstOrDefaultAsync(m => m.ModelDefinitionId == model.ModelDefinitionId, ct);
+                .FirstOrDefaultAsync(m =>
+                    m.ModelDefinitionId == model.ModelDefinitionId ||
+                    (m.ProviderProfileId == model.ProviderProfileId && m.ModelId == model.ModelId), ct);
 
             if (existing != null)
             {

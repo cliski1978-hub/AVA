@@ -39,6 +39,7 @@ namespace AVA.Vault.Core.Data.Entities
         public DbSet<VaultFileRefRelation> VaultFileRefRelations { get; set; }
         public DbSet<AvaProviderProfile> AvaProviderProfiles { get; set; }
         public DbSet<AvaModelDefinition> AvaModelDefinitions { get; set; }
+        public DbSet<AvaSecret> AvaSecrets { get; set; }
         public DbSet<ModuleIdentity> ModuleIdentity { get; set; }
 
         public VaultDbContext(DbContextOptions<VaultDbContext> options)
@@ -616,6 +617,14 @@ namespace AVA.Vault.Core.Data.Entities
                 entity.HasIndex(p => p.IsActive).HasDatabaseName("IX_AvaProviderProfiles_IsActive");
                 entity.HasIndex(p => p.IsDefault).HasDatabaseName("IX_AvaProviderProfiles_IsDefault");
                 entity.HasIndex(p => p.TransportType).HasDatabaseName("IX_AvaProviderProfiles_TransportType");
+            });
+
+            // -- AvaSecret ---------------------------------------------------
+            modelBuilder.Entity<AvaSecret>(entity =>
+            {
+                entity.HasIndex(s => s.SecretRef).IsUnique().HasDatabaseName("UX_AvaSecrets_SecretRef");
+                entity.HasIndex(s => s.SecretType).HasDatabaseName("IX_AvaSecrets_SecretType");
+                entity.HasIndex(s => s.IsActive).HasDatabaseName("IX_AvaSecrets_IsActive");
             });
 
             // -- AvaModelDefinition -------------------------------------------

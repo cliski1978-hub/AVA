@@ -3,12 +3,12 @@ using AVA.UI.CORE.Models.Settings;
 namespace AVA.UI.CORE.Services
 {
     /// <summary>
-    /// Normalizes settings into the separated provider/model architecture while preserving legacy connectivity.
+    /// Normalizes settings into the separated provider/model architecture while preserving session connectivity.
     /// </summary>
     public static class SettingsArchitectureMigration
     {
         /// <summary>
-        /// Ensures provider profiles and model definitions exist, seeding them from legacy LLM profiles when needed.
+        /// Ensures provider profiles and model definitions exist, seeding them from existing session profiles when needed.
         /// </summary>
         public static void Normalize(AppSettings settings)
         {
@@ -16,38 +16,38 @@ namespace AVA.UI.CORE.Services
 
             SeedProviderProfiles(settings);
             SeedModelDefinitions(settings);
-            MirrorProviderModelsForLegacyRuntime(settings);
+            MirrorProviderModelsForSessionRuntime(settings);
         }
 
         private static void SeedProviderProfiles(AppSettings settings)
         {
-            foreach (var legacy in settings.LLMProfiles)
+            foreach (var sessionProfile in settings.LLMProfiles)
             {
                 var provider = settings.ProviderProfiles.FirstOrDefault(existing =>
-                    existing.ProviderProfileId.Equals(legacy.ProfileId, StringComparison.OrdinalIgnoreCase));
+                    existing.ProviderProfileId.Equals(sessionProfile.ProfileId, StringComparison.OrdinalIgnoreCase));
 
                 if (provider == null)
                 {
                     provider = new ProviderProfile
                     {
-                        ProviderProfileId = legacy.ProfileId,
+                        ProviderProfileId = sessionProfile.ProfileId,
                         Metadata = new Dictionary<string, string>
                         {
-                            ["MigratedFrom"] = "LLMProfile"
+                            ["SeededFrom"] = "LLMProfile"
                         }
                     };
                     settings.ProviderProfiles.Add(provider);
-                }
 
-                provider.Name = legacy.Name;
-                provider.ProviderType = legacy.ModelType;
-                provider.CustomProviderType = legacy.CustomModelType;
-                provider.TransportType = legacy.EndpointType;
-                provider.CustomTransportType = legacy.CustomEndpointType;
-                provider.Endpoint = legacy.Endpoint;
-                provider.ApiKey = legacy.ApiKey;
-                provider.Secret = legacy.Secret;
-                provider.CustomHeadersAsText = legacy.CustomHeadersAsText;
+                    provider.Name = sessionProfile.Name;
+                    provider.ProviderType = sessionProfile.ModelType;
+                    provider.CustomProviderType = sessionProfile.CustomModelType;
+                    provider.TransportType = sessionProfile.EndpointType;
+                    provider.CustomTransportType = sessionProfile.CustomEndpointType;
+                    provider.Endpoint = sessionProfile.Endpoint;
+                    provider.ApiKey = sessionProfile.ApiKey;
+                    provider.Secret = sessionProfile.Secret;
+                    provider.CustomHeadersAsText = sessionProfile.CustomHeadersAsText;
+                }
             }
         }
 
@@ -89,45 +89,45 @@ namespace AVA.UI.CORE.Services
             }
         }
 
-        private static void MirrorProviderModelsForLegacyRuntime(AppSettings settings)
+        private static void MirrorProviderModelsForSessionRuntime(AppSettings settings)
         {
             foreach (var provider in settings.ProviderProfiles)
             {
-                var legacy = settings.LLMProfiles.FirstOrDefault(profile =>
+                var runtimeProfile = settings.LLMProfiles.FirstOrDefault(profile =>
                     profile.ProfileId.Equals(provider.ProviderProfileId, StringComparison.OrdinalIgnoreCase));
 
-                if (legacy == null)
+                if (runtimeProfile == null)
                 {
-                    legacy = new LLMProfile
+                    runtimeProfile = new LLMProfile
                     {
                         ProfileId = provider.ProviderProfileId,
                         Name = provider.Name,
                         IsActive = false,
                         IsDefault = settings.LLMProfiles.Count == 0
                     };
-                    settings.LLMProfiles.Add(legacy);
+                    settings.LLMProfiles.Add(runtimeProfile);
                 }
 
-                legacy.Name = provider.Name;
-                legacy.ModelType = provider.ProviderType;
-                legacy.CustomModelType = provider.CustomProviderType;
-                legacy.EndpointType = provider.TransportType;
-                legacy.CustomEndpointType = provider.CustomTransportType;
-                legacy.Endpoint = provider.Endpoint;
-                legacy.ApiKey = provider.ApiKey;
-                legacy.Secret = provider.Secret;
-                legacy.CustomHeadersAsText = provider.CustomHeadersAsText;
+                runtimeProfile.Name = provider.Name;
+                runtimeProfile.ModelType = provider.ProviderType;
+                runtimeProfile.CustomModelType = provider.CustomProviderType;
+                runtimeProfile.EndpointType = provider.TransportType;
+                runtimeProfile.CustomEndpointType = provider.CustomTransportType;
+                runtimeProfile.Endpoint = provider.Endpoint;
+                runtimeProfile.ApiKey = provider.ApiKey;
+                runtimeProfile.Secret = provider.Secret;
+                runtimeProfile.CustomHeadersAsText = provider.CustomHeadersAsText;
 
                 foreach (var definition in settings.ModelDefinitions.Where(model =>
                              model.ProviderProfileId.Equals(provider.ProviderProfileId, StringComparison.OrdinalIgnoreCase)))
                 {
-                    var model = legacy.Models.FirstOrDefault(existing =>
+                    var model = runtimeProfile.Models.FirstOrDefault(existing =>
                         existing.Id.Equals(definition.ModelId, StringComparison.OrdinalIgnoreCase));
 
                     if (model == null)
                     {
                         model = new ModelProfile { Id = definition.ModelId };
-                        legacy.Models.Add(model);
+                        runtimeProfile.Models.Add(model);
                     }
 
                     model.Label = definition.DisplayName;

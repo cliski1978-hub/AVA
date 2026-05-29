@@ -1,7 +1,7 @@
 ﻿// ─────────────────────────────────────────────────────────────────────────────
 //  Class     : EndpointClientService
 //  Namespace : AVA.UI.CORE.Services.Network
-//  Purpose   : Legacy HTTP client used for endpoint connectivity testing.
+//  Purpose   : HTTP client used for endpoint connectivity testing.
 //              Real message routing goes through UPSClientService.
 //              ModelName removed — model identity lives in ModelProfile.
 // ─────────────────────────────────────────────────────────────────────────────

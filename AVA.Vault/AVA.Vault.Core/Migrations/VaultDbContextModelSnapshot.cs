@@ -305,6 +305,63 @@ namespace AVA.Vault.Core.Migrations
                     b.ToTable("AvaProviderProfiles");
                 });
 
+            modelBuilder.Entity("AVA.Vault.Core.Data.Models.AvaSecret", b =>
+                {
+                    b.Property<string>("SecretId")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<string>("EncryptedValue")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EncryptionProvider")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("MetadataJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SecretName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("SecretRef")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
+                    b.Property<string>("SecretType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime");
+
+                    b.HasKey("SecretId");
+
+                    b.HasIndex("IsActive")
+                        .HasDatabaseName("IX_AvaSecrets_IsActive");
+
+                    b.HasIndex("SecretRef")
+                        .IsUnique()
+                        .HasDatabaseName("UX_AvaSecrets_SecretRef");
+
+                    b.HasIndex("SecretType")
+                        .HasDatabaseName("IX_AvaSecrets_SecretType");
+
+                    b.ToTable("AvaSecrets");
+                });
+
             modelBuilder.Entity("AVA.Vault.Core.Data.Models.VaultFileRef", b =>
                 {
                     b.Property<string>("ID")

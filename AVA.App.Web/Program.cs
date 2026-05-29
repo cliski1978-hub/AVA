@@ -42,6 +42,7 @@ using AVA.Vault.Core.Interfaces;
 using AVA.Vault.Core.Logger;
 using AVA.Vault.Core.Persistence;
 using AVA.Vault.Core.Services;
+using AVA.Vault.Core.Services.Secrets;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 
@@ -128,6 +129,7 @@ builder.Services.AddScoped<VaultLogger>();
 builder.Services.AddScoped<IVaultIdService, VaultIdService>();
 builder.Services.AddScoped<VaultManager>();
 builder.Services.AddScoped<IProfilePersistenceProvider, DbProfilePersistenceProvider>();
+builder.Services.AddScoped<IVaultSecretStore, DbVaultSecretStore>();
 builder.Services.AddScoped<LlmProfileService>();
 builder.Services.AddScoped<IMemoryStore, SqlMemoryStore>();
 builder.Services.AddScoped<IVaultUiSyncService>(sp =>

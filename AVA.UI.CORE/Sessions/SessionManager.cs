@@ -135,7 +135,7 @@ namespace AVA.UI.CORE.UPS.Sessions
 
         /// <summary>
         /// Registers any HTTP endpoint as a routable UPS module.
-        /// Legacy support — prefer RegisterProfileAsync.
+        /// Compatibility support for registering a direct HTTP endpoint.
         /// </summary>
         public async Task RegisterHttpEndpointAsync(
             string ModuleName,

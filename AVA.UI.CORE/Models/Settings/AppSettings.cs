@@ -45,7 +45,7 @@ namespace AVA.UI.CORE.Models.Settings
             "AVA", "Vaults");
 
         /// <summary>
-        /// When true, bypasses legacy core and connects directly
+        /// When true, bypasses core routing and connects directly
         /// to configured LLM endpoints.
         /// </summary>
         public bool UseDirectEndpoints { get; set; } = true;
