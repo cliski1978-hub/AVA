@@ -1014,7 +1014,7 @@ namespace AVA.UI.State
 
         // ── Canvas ────────────────────────────────────────────────────────────
         // TODO Step 6: Move to CanvasRuntimeState / Canvas Actions
-        public void SaveCanvasState() => SaveSettings();
+        public void SaveCanvasState() => _ = SaveSettingsIfDirtyAsync();
 
         public void AddCard(string cardType = "SingleModel")
         {
@@ -1431,7 +1431,9 @@ namespace AVA.UI.State
                 return false;
             }
 
-            await SaveSettingsAsync(token);
+            await _settingsService.SaveAsync();
+            SettingsDirty = false;
+            Notify();
             return true;
         }
 
