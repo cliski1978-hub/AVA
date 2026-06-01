@@ -1018,14 +1018,17 @@ namespace AVA.UI.State
 
         public void AddCard(string cardType = "SingleModel")
         {
-            var offset = CurrentSession!.Canvas.Cards.Count * 32;
+            var session = CurrentSession;
+            if (session == null) return;
+
+            var offset = session.Canvas.Cards.Count * 32;
             var card = new CardState
             {
                 CardType = cardType,
                 X = 80 + offset,
                 Y = 80 + offset,
                 Width = cardType == "Broadcast" ? 520 : 380,
-                ZIndex = CurrentSession.Canvas.Cards.Count + 1
+                ZIndex = session.Canvas.Cards.Count + 1
             };
 
             if (cardType == "Broadcast")
@@ -1036,7 +1039,7 @@ namespace AVA.UI.State
                 if (first != null) card.ModelProfileIds.Add(first);
             }
 
-            CurrentSession.Canvas.Cards.Add(card);
+            session.Canvas.Cards.Add(card);
             Notify();
         }
 

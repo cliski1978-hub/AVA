@@ -10,7 +10,7 @@ namespace AVA.Vault.Core.Data.Entities
         {
             var optionsBuilder = new DbContextOptionsBuilder<VaultDbContext>();
 
-            optionsBuilder.UseSqlServer("Server=4D-C76\\SQLEXPRESS;Database=AvaVault;Integrated Security=True;MultipleActiveResultSets=True;Encrypt=False;TrustServerCertificate=True;");
+            optionsBuilder.UseSqlServer("Server=WITMNCND3112P9Q;Database=AvaVault;User ID=MECRAPPS;Password=!Qazxsw2;MultipleActiveResultSets=True;Encrypt=False;TrustServerCertificate=True;");
 
             return new VaultDbContext(optionsBuilder.Options);
         }

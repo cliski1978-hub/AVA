@@ -12,10 +12,13 @@
 
 <div class="canvas">
 
-    @foreach (var card in State.CurrentSession.Canvas.Cards)
+    @if (State.CurrentSession is { Canvas: { Cards: { } cards } })
     {
-        var c = card;
-        <CardContainer @key="c.CardId" Card="c" IsDragging="@(_vm.DraggingCardId == c.CardId)" OnDragStart="_vm.StartDrag" OnResizeStart="_vm.StartResize" OnActivate="_vm.Activate" />
+    @foreach (var card in cards)
+        {
+            var c = card;
+            <CardContainer @key="c.CardId" Card="c" IsDragging="@(_vm.DraggingCardId == c.CardId)" OnDragStart="_vm.StartDrag" OnResizeStart="_vm.StartResize" OnActivate="_vm.Activate" />
+        }
     }
 
     <AddCardButton />
