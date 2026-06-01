@@ -11,8 +11,7 @@ namespace AVA.UI.Features.Navigation.ViewModels;
 /// <summary>
 /// ViewModel for LeftNav.razor.
 /// Owns collapse state and inline vault creation form.
-/// Vault creation routes through the runtime context's storage-neutral Vault boundary.
-/// The VM never knows whether the vault is file-based or DB-based.
+/// Vault creation routes through the runtime context's database-backed Vault boundary.
 /// </summary>
 public class LeftNavVM : IDisposable
 {
@@ -29,7 +28,6 @@ public class LeftNavVM : IDisposable
     // ── Creation form state ───────────────────────────────────────────────────
     public bool IsCreating { get; private set; }
     public string NewVaultName { get; set; } = string.Empty;
-    public string NewVaultStorageMode { get; set; } = "Database";
 
     public LeftNavVM(
         AppState appState,
@@ -64,9 +62,8 @@ public class LeftNavVM : IDisposable
     // ── Creation form ─────────────────────────────────────────────────────────
     public void BeginCreate()
     {
-        NewVaultName        = $"Vault {_appState.Vaults.Count + 1}";
-        NewVaultStorageMode = "Database";
-        IsCreating          = true;
+        NewVaultName = $"Vault {_appState.Vaults.Count + 1}";
+        IsCreating   = true;
         Notify();
     }
 
@@ -74,12 +71,6 @@ public class LeftNavVM : IDisposable
     {
         IsCreating   = false;
         NewVaultName = string.Empty;
-        Notify();
-    }
-
-    public void SetStorageMode(string mode)
-    {
-        NewVaultStorageMode = mode;
         Notify();
     }
 
@@ -97,8 +88,7 @@ public class LeftNavVM : IDisposable
         {
             _ctx.Errors.ClearSource(source);
 
-            // Storage-neutral: the runtime Vault boundary routes to DB or File provider.
-            var response = await _ctx.Vault.CreateVaultAsync(name, NewVaultStorageMode);
+            var response = await _ctx.Vault.CreateVaultAsync(name);
 
             if (!response.Succeeded)
             {
@@ -110,7 +100,6 @@ public class LeftNavVM : IDisposable
             {
                 VaultId     = response.Vault!.ID,
                 Name        = response.Vault.DisplayName,
-                StorageMode = NewVaultStorageMode,
                 IsExpanded  = true
             };
 

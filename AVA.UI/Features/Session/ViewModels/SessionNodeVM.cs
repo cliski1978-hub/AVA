@@ -22,7 +22,6 @@ public class SessionNodeVM : IDisposable
     private readonly SessionState _session;
     private readonly string _vaultId;
     private readonly string? _projectId;
-    private readonly string _vaultStorageMode;
 
     public event Action? OnChange;
     private void Notify() => OnChange?.Invoke();
@@ -37,7 +36,6 @@ public class SessionNodeVM : IDisposable
         SessionState session,
         string vaultId,
         string? projectId,
-        string vaultStorageMode,
         IAvaRuntimeContext ctx,
         ILogger<SessionNodeVM> logger)
     {
@@ -45,7 +43,6 @@ public class SessionNodeVM : IDisposable
         _session          = session;
         _vaultId          = vaultId;
         _projectId        = projectId;
-        _vaultStorageMode = vaultStorageMode;
         _ctx              = ctx;
         _logger           = logger;
     }
@@ -82,7 +79,7 @@ public class SessionNodeVM : IDisposable
 
         try
         {
-            var response = await _ctx.Vault.RenameSessionAsync(_vaultId, _session.SessionId, trimmed, _vaultStorageMode);
+            var response = await _ctx.Vault.RenameSessionAsync(_vaultId, _session.SessionId, trimmed);
 
             if (!response.Succeeded)
             {
@@ -111,7 +108,7 @@ public class SessionNodeVM : IDisposable
 
         try
         {
-            var response = await _ctx.Vault.DeleteSessionAsync(_vaultId, _session.SessionId, _vaultStorageMode);
+            var response = await _ctx.Vault.DeleteSessionAsync(_vaultId, _session.SessionId);
 
             if (!response.Succeeded)
             {

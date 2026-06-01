@@ -82,27 +82,11 @@ builder.Services.AddScoped<AvaSettingsService>(_ =>
         ? configuredPath
         : Path.Combine(builder.Environment.ContentRootPath, configuredPath);
 
-    var configuredVaultsPath = builder.Configuration["AvaStorage:VaultsPath"]
-        ?? Path.Combine("App_Data", "AVA", "vaults");
-    var vaultsPath = Path.IsPathRooted(configuredVaultsPath)
-        ? configuredVaultsPath
-        : Path.Combine(builder.Environment.ContentRootPath, configuredVaultsPath);
-
-    return new AvaSettingsService(settingsPath, vaultsPath);
+    return new AvaSettingsService(settingsPath);
 });
-builder.Services.AddScoped<VaultWorkspaceFileService>();
+builder.Services.AddScoped<VaultWorkspaceState>();
 builder.Services.AddScoped<ErrorState>();
 builder.Services.AddScoped<ISessionStorageService, SessionStorageService>();
-builder.Services.AddScoped<ISessionModelStateStore>(_ =>
-{
-    var configuredSessionsPath = builder.Configuration["AvaStorage:SessionsPath"]
-        ?? Path.Combine("App_Data", "AVA", "sessions");
-    var sessionsPath = Path.IsPathRooted(configuredSessionsPath)
-        ? configuredSessionsPath
-        : Path.Combine(builder.Environment.ContentRootPath, configuredSessionsPath);
-
-    return new SessionModelStateStore(sessionsPath);
-});
 builder.Services.AddScoped<IAvaIdService, AvaIdService>();
 builder.Services.AddScoped<NavigationState>();
 builder.Services.AddScoped<ReflectionState>();
@@ -137,12 +121,10 @@ builder.Services.AddScoped<IVaultUiSyncService>(sp =>
     var dbFactory  = sp.GetRequiredService<IDbContextFactory<VaultDbContext>>();
     var logger     = sp.GetRequiredService<VaultLogger>();
     var ids        = sp.GetRequiredService<IVaultIdService>();
-    var vaultMgr   = sp.GetRequiredService<VaultManager>();
     var memStore   = sp.GetRequiredService<IMemoryStore>();
     var genericLog = sp.GetRequiredService<ILogger<VaultUiSyncService>>();
     var dbProvider = new DbVaultPersistenceProvider(dbFactory, logger, ids);
-    var fileProv   = new FileVaultPersistenceProvider(vaultMgr, logger, ids, "Vaults");
-    return new VaultUiSyncService(dbFactory, dbProvider, fileProv, memStore, logger, genericLog);
+    return new VaultUiSyncService(dbFactory, dbProvider, memStore, logger, genericLog);
 });
 
 // â”€â”€ Runtime contexts (null stubs) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

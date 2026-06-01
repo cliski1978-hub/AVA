@@ -27,26 +27,11 @@ namespace AVA.UI.CORE.Models.Settings
         public string SelectedLLMProfileName { get; set; } = string.Empty;
 
         /// <summary>
-        /// Navigation memory — last active selections restored on startup.
-        /// Vault/Project/Session hierarchy lives in vaults.json, not here.
+        /// Navigation memory for last active selections restored on startup.
         /// </summary>
         public string? LastSelectedVaultId { get; set; }
         public string? LastSelectedProjectId { get; set; }
         public string? LastSelectedSessionId { get; set; }
-
-        /// <summary>
-        /// Default storage mode for new vaults (File or Database).
-        /// </summary>
-        public string DefaultStorageMode { get; set; } = "Database";
-
-        /// <summary>
-        /// Folder that contains vaults.json.
-        /// Defaults to %LOCALAPPDATA%\AVA\Vaults. Move the file manually before changing this.
-        /// Takes effect on next application start.
-        /// </summary>
-        public string VaultsFolderPath { get; set; } = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "AVA", "Vaults");
 
         /// <summary>
         /// When true, bypasses core routing and connects directly

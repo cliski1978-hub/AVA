@@ -32,6 +32,7 @@ namespace AVA.Vault.Core.Services.Data
 
                 if (exists)
                 {
+                    response.Code = 409;
                     response.UserMessage = $"A session with ID '{request.SessionId}' already exists.";
                     return response;
                 }
@@ -67,6 +68,7 @@ namespace AVA.Vault.Core.Services.Data
             catch (Exception ex)
             {
                 _logger.LogError(nameof(CreateVaultSessionService), "Error creating VaultSession.", ex);
+                response.Code = 400;
                 response.UserMessage = "An error occurred while creating the session.";
             }
 

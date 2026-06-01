@@ -45,11 +45,10 @@ namespace AVA.UI.State
 
         // ── Core dependencies ─────────────────────────────────────────────────
         private readonly AvaSettingsService _settingsService;
-        private readonly VaultWorkspaceFileService _vaultWorkspace;
+        private readonly VaultWorkspaceState _vaultWorkspace;
         private readonly IVaultUiSyncService _vaultSync;
         private readonly ErrorState _errorState;
         private readonly ISessionStorageService _session;
-        private readonly ISessionModelStateStore _sessionModelStateStore;
         private readonly IAvaIdService _ids;
         private readonly LlmProfileService _profileService;
 
@@ -251,11 +250,10 @@ namespace AVA.UI.State
         // ── Constructor ───────────────────────────────────────────────────────
         public AppState(
             AvaSettingsService settingsService,
-            VaultWorkspaceFileService vaultWorkspace,
+            VaultWorkspaceState vaultWorkspace,
             IVaultUiSyncService vaultSync,
             ErrorState errorState,
             ISessionStorageService session,
-            ISessionModelStateStore sessionModelStateStore,
             IAvaIdService ids,
             LlmProfileService profileService,
             NavigationState navState,
@@ -268,7 +266,6 @@ namespace AVA.UI.State
             _vaultSync       = vaultSync;
             _errorState      = errorState;
             _session         = session;
-            _sessionModelStateStore = sessionModelStateStore;
             _ids             = ids;
             _profileService  = profileService;
             _navState        = navState;
@@ -543,56 +540,10 @@ namespace AVA.UI.State
         public async Task LoadWorkspaceStateAsync()
         {
             // DB vaults — loaded via DbVaultPersistenceProvider
-            var fromDb = await _vaultSync.LoadVaultsFromDatabaseAsync();
+            var vaults = await _vaultSync.LoadVaultsFromDatabaseAsync();
+            _vaultWorkspace.SetVaults(vaults);
 
-            // File vaults — loaded via FileVaultPersistenceProvider (VaultManager)
-            // vaults.json serves as offline mirror/index only — not authoritative
-            var fromFileSystem = await _vaultSync.LoadVaultsFromFileSystemAsync();
 
-            // Merge: DB and file system are peers. StorageMode already set by each provider.
-            // vaults.json used as fallback only if both providers return nothing.
-            var merged = fromDb.ToDictionary(v => v.VaultId, v => v);
-
-            foreach (var fileVault in fromFileSystem)
-            {
-                if (!merged.ContainsKey(fileVault.VaultId))
-                {
-                    merged[fileVault.VaultId] = fileVault;
-                }
-                else
-                {
-                    // Vault exists in both — merge projects missing from DB result.
-                    var dbVault      = merged[fileVault.VaultId];
-                    var dbProjectIds = dbVault.Projects.Select(p => p.ProjectId).ToHashSet();
-
-                    foreach (var fileProject in fileVault.Projects)
-                    {
-                        if (!dbProjectIds.Contains(fileProject.ProjectId))
-                            dbVault.Projects.Add(fileProject);
-                    }
-                }
-            }
-
-            var mergedList = merged.Values.ToList();
-
-            // If both providers returned nothing, fall back to vaults.json mirror.
-            if (!mergedList.Any())
-            {
-                await _vaultWorkspace.LoadAsync();
-                mergedList = _vaultWorkspace.Vaults;
-            }
-            else
-            {
-                // Keep vaults.json in sync as offline mirror.
-                await _vaultWorkspace.SaveVaultsAsync(mergedList);
-            }
-
-            // DB is the primary source for session model state (via MapToSessionState).
-            // Apply JSON as a fallback for any session where DB had no model state.
-            // JSON is never used to overwrite non-empty DB values.
-            await _sessionModelStateStore.ApplyToVaultsAsync(mergedList);
-
-            await _vaultWorkspace.SaveVaultsAsync(mergedList);
 
             // Restore last selection from session storage before initialising state.
             var lastVaultId   = await _session.GetAsync<string>(SessionStorageKeys.VaultSelectedVaultId);
@@ -614,43 +565,29 @@ namespace AVA.UI.State
 
         // ── Vault CRUD ────────────────────────────────────────────────────────
         /// <summary>
-        /// Updates a vault's StorageMode in the runtime list and persists to vaults.json.
-        /// Called after a successful DB promotion to flip the badge from FILE to DB.
+        /// Receives a pre-built VaultState after durable persistence succeeds and updates UI runtime state.
         /// </summary>
-        public async Task UpdateVaultStorageModeAsync(string vaultId, string storageMode)
-        {
-            var vault = Vaults.FirstOrDefault(v => v.VaultId == vaultId);
-            if (vault == null) return;
-            vault.StorageMode = storageMode;
-            await _vaultWorkspace.SaveVaultsAsync(Vaults);
-            Notify();
-        }
-
-        /// <summary>
-        /// Receives a pre-built VaultState after durable persistence succeeds and updates UI runtime state plus vaults.json mirror.
-        /// </summary>
-        public async Task CreateVaultAsync(VaultState vault)
+        public Task CreateVaultAsync(VaultState vault)
         {
             Vaults.Add(vault);
             SelectVault(vault.VaultId);
-            await _vaultWorkspace.SaveVaultsAsync(Vaults);
             Notify();
+            return Task.CompletedTask;
         }
 
-        public async Task<bool> RenameVaultAsync(string vaultId, string name)
+        public Task<bool> RenameVaultAsync(string vaultId, string name)
         {
             var vault = Vaults.FirstOrDefault(v => v.VaultId == vaultId);
-            if (vault == null || string.IsNullOrWhiteSpace(name)) return false;
+            if (vault == null || string.IsNullOrWhiteSpace(name)) return Task.FromResult(false);
             vault.Name = name.Trim();
-            await _vaultWorkspace.SaveVaultsAsync(Vaults);
             Notify();
-            return true;
+            return Task.FromResult(true);
         }
 
-        public async Task<bool> RemoveVaultAsync(string vaultId)
+        public Task<bool> RemoveVaultAsync(string vaultId)
         {
             var vault = Vaults.FirstOrDefault(v => v.VaultId == vaultId);
-            if (vault == null) return false;
+            if (vault == null) return Task.FromResult(false);
             Vaults.Remove(vault);
             if (ActiveVaultId == vaultId)
             {
@@ -659,72 +596,68 @@ namespace AVA.UI.State
                 ActiveProjectId = next?.Projects.FirstOrDefault()?.ProjectId;
                 ActiveWorkspaceSessionId = GetMostRecentSession(next)?.SessionId;
             }
-            await _vaultWorkspace.SaveVaultsAsync(Vaults);
             Notify();
-            return true;
+            return Task.FromResult(true);
         }
 
         // ── Project CRUD ──────────────────────────────────────────────────────
         /// <summary>
-        /// Receives a pre-built ProjectState after durable persistence succeeds and updates UI runtime state plus vaults.json mirror.
+        /// Receives a pre-built ProjectState after durable persistence succeeds and updates UI runtime state.
         /// </summary>
-        public async Task CreateProjectAsync(string vaultId, ProjectState project)
+        public Task CreateProjectAsync(string vaultId, ProjectState project)
         {
             var vault = Vaults.FirstOrDefault(v => v.VaultId == vaultId);
-            if (vault == null) return;
+            if (vault == null) return Task.CompletedTask;
             vault.Projects.Add(project);
             SelectProject(vaultId, project.ProjectId);
-            await _vaultWorkspace.SaveVaultsAsync(Vaults);
             Notify();
+            return Task.CompletedTask;
         }
 
-        public async Task<bool> RenameProjectAsync(string vaultId, string projectId, string name)
+        public Task<bool> RenameProjectAsync(string vaultId, string projectId, string name)
         {
             var vault = Vaults.FirstOrDefault(v => v.VaultId == vaultId);
             var project = vault?.Projects.FirstOrDefault(p => p.ProjectId == projectId);
-            if (project == null || string.IsNullOrWhiteSpace(name)) return false;
+            if (project == null || string.IsNullOrWhiteSpace(name)) return Task.FromResult(false);
             project.Name = name.Trim();
-            await _vaultWorkspace.SaveVaultsAsync(Vaults);
             Notify();
-            return true;
+            return Task.FromResult(true);
         }
 
-        public async Task<bool> RemoveProjectAsync(string vaultId, string projectId)
+        public Task<bool> RemoveProjectAsync(string vaultId, string projectId)
         {
             var vault = Vaults.FirstOrDefault(v => v.VaultId == vaultId);
             var project = vault?.Projects.FirstOrDefault(p => p.ProjectId == projectId);
-            if (project == null) return false;
+            if (project == null) return Task.FromResult(false);
             vault!.Projects.Remove(project);
             if (ActiveProjectId == projectId)
             {
                 ActiveProjectId = null;
                 ActiveWorkspaceSessionId = null;
             }
-            await _vaultWorkspace.SaveVaultsAsync(Vaults);
             InitializeWorkspaceState();
             Notify();
-            return true;
+            return Task.FromResult(true);
         }
 
-        public async Task<bool> AddProjectFileRefAsync(string path, string? name = null)
+        public Task<bool> AddProjectFileRefAsync(string path, string? name = null)
         {
             var project = ActiveProject;
-            if (project == null || string.IsNullOrWhiteSpace(path)) return false;
+            if (project == null || string.IsNullOrWhiteSpace(path)) return Task.FromResult(false);
             project.FileRefs.Add(new FileRef
             {
                 Path = path,
                 Name = string.IsNullOrWhiteSpace(name) ? System.IO.Path.GetFileName(path) : name.Trim(),
                 CreatedAt = DateTime.UtcNow
             });
-            await _vaultWorkspace.SaveVaultsAsync(Vaults);
             Notify();
-            return true;
+            return Task.FromResult(true);
         }
 
-        public async Task<FileRef?> AddPlaceholderFileToActiveProjectAsync()
+        public Task<FileRef?> AddPlaceholderFileToActiveProjectAsync()
         {
             var project = ActiveProject;
-            if (project == null) return null;
+            if (project == null) return Task.FromResult<FileRef?>(null);
             var stamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
             var fileRef = new FileRef
             {
@@ -733,26 +666,24 @@ namespace AVA.UI.State
                 CreatedAt = DateTime.UtcNow
             };
             project.FileRefs.Add(fileRef);
-            await _vaultWorkspace.SaveVaultsAsync(Vaults);
             Notify();
-            return fileRef;
+            return Task.FromResult<FileRef?>(fileRef);
         }
 
-        public async Task<string?> ToggleKnowledgeBaseForActiveProjectAsync()
+        public Task<string?> ToggleKnowledgeBaseForActiveProjectAsync()
         {
             var project = ActiveProject;
-            if (project == null) return null;
+            if (project == null) return Task.FromResult<string?>(null);
             project.KnowledgeBaseId = string.IsNullOrWhiteSpace(project.KnowledgeBaseId)
                 ? $"kb-{project.ProjectId[..Math.Min(8, project.ProjectId.Length)]}"
                 : null;
-            await _vaultWorkspace.SaveVaultsAsync(Vaults);
             Notify();
-            return project.KnowledgeBaseId;
+            return Task.FromResult(project.KnowledgeBaseId);
         }
 
         // ── Session CRUD ──────────────────────────────────────────────────────
         /// <summary>
-        /// Receives a pre-built SessionState after durable persistence succeeds and updates UI runtime state plus vaults.json mirror.
+        /// Receives a pre-built SessionState after durable persistence succeeds and updates UI runtime state.
         /// </summary>
         public async Task CreateWorkspaceSessionAsync(string vaultId, string? projectId, SessionState session)
         {
@@ -764,51 +695,48 @@ namespace AVA.UI.State
             if (project == null) vault.Sessions.Add(session);
             else project.Sessions.Add(session);
 
-            _ = SelectSessionAsync(vaultId, projectId, session.SessionId);
-            await _vaultWorkspace.SaveSessionAsync(vaultId, projectId, session);
+            await SelectSessionAsync(vaultId, projectId, session.SessionId);
             Notify();
         }
 
-        public async Task<bool> RenameSessionAsync(
+        public Task<bool> RenameSessionAsync(
             string vaultId, string? projectId, string sessionId, string name)
         {
-            if (string.IsNullOrWhiteSpace(name)) return false;
+            if (string.IsNullOrWhiteSpace(name)) return Task.FromResult(false);
             var session = FindSession(vaultId, projectId, sessionId);
-            if (session == null) return false;
+            if (session == null) return Task.FromResult(false);
             session.Name = name.Trim();
-            await _vaultWorkspace.SaveSessionAsync(vaultId, projectId, session);
             Notify();
-            return true;
+            return Task.FromResult(true);
         }
 
-        public async Task<bool> RemoveSessionAsync(
+        public Task<bool> RemoveSessionAsync(
             string vaultId, string? projectId, string sessionId)
         {
             var vault = Vaults.FirstOrDefault(v => v.VaultId == vaultId);
-            if (vault == null) return false;
+            if (vault == null) return Task.FromResult(false);
 
             SessionState? session;
             if (string.IsNullOrWhiteSpace(projectId))
             {
                 session = vault.Sessions.FirstOrDefault(s => s.SessionId == sessionId);
-                if (session == null) return false;
+                if (session == null) return Task.FromResult(false);
                 vault.Sessions.Remove(session);
             }
             else
             {
                 var project = vault.Projects.FirstOrDefault(p => p.ProjectId == projectId);
                 session = project?.Sessions.FirstOrDefault(s => s.SessionId == sessionId);
-                if (session == null || project == null) return false;
+                if (session == null || project == null) return Task.FromResult(false);
                 project.Sessions.Remove(session);
             }
 
             if (ActiveWorkspaceSessionId == sessionId)
                 ActiveWorkspaceSessionId = null;
 
-            await _vaultWorkspace.SaveVaultsAsync(Vaults);
             InitializeWorkspaceState();
             Notify();
-            return true;
+            return Task.FromResult(true);
         }
 
         public async Task<bool> SaveActiveWorkspaceSessionAsync()
@@ -818,38 +746,21 @@ namespace AVA.UI.State
             session.LastActiveAt = DateTime.UtcNow;
             EnsureSessionModelBindings(session);
 
-            var storageMode = ActiveVault?.StorageMode ?? "Database";
-
-            // Primary: persist model state to DB (or file session header).
-            // Wrapped so a DB outage never breaks the save path — JSON backup covers it.
+            // Primary: persist model state to DB.
             try
             {
                 await _vaultSync.UpdateSessionModelStateAsync(
                     ActiveVaultId,
                     session.SessionId,
-                    storageMode,
                     session.AttachedModelIds.ToList(),
                     session.BroadcastGroupIds.ToList(),
                     session.DefaultModelId);
             }
             catch (Exception ex)
             {
-                AppendMemory($"SaveActiveWorkspaceSessionAsync: DB model state update failed — JSON backup will cover it. {ex.Message}");
+                AppendMemory($"SaveActiveWorkspaceSessionAsync: DB model state update failed. {ex.Message}");
             }
 
-            // Backup: mirror to session-model-state.json for offline resilience.
-            await _sessionModelStateStore.SaveAsync(new SessionModelStateRecord
-            {
-                VaultId           = ActiveVaultId,
-                ProjectId         = ActiveProjectId,
-                SessionId         = session.SessionId,
-                AttachedModelIds  = session.AttachedModelIds.ToList(),
-                BroadcastGroupIds = session.BroadcastGroupIds.ToList(),
-                DefaultModelId    = session.DefaultModelId,
-                ModelBindings     = session.ModelBindings.Select(CopyBinding).ToList()
-            });
-
-            await _vaultWorkspace.SaveSessionAsync(ActiveVaultId, ActiveProjectId, session);
             Notify();
             return true;
         }
@@ -1019,8 +930,6 @@ namespace AVA.UI.State
 
             if (session == null) return;
 
-            await _sessionModelStateStore.ApplyToSessionAsync(vaultId, project?.ProjectId, session);
-
             ActiveVaultId = vaultId;
             ActiveProjectId = project?.ProjectId;
             ActiveWorkspaceSessionId = sessionId;
@@ -1047,27 +956,16 @@ namespace AVA.UI.State
             // Either way, both stores end up in agreement after selection.
             if (session.AttachedModelIds.Any())
             {
-                var storageMode = vault?.StorageMode ?? "Database";
-
                 try
                 {
                     await _vaultSync.UpdateSessionModelStateAsync(
-                        vaultId, sessionId, storageMode,
+                        vaultId, sessionId,
                         session.AttachedModelIds.ToList(),
                         session.BroadcastGroupIds.ToList(),
                         session.DefaultModelId);
                 }
-                catch { /* DB unavailable — JSON backup still has correct data */ }
+                catch { /* DB unavailable; keep runtime state unchanged. */ }
 
-                await _sessionModelStateStore.SaveAsync(new SessionModelStateRecord
-                {
-                    VaultId           = vaultId,
-                    ProjectId         = project?.ProjectId,
-                    SessionId         = sessionId,
-                    AttachedModelIds  = session.AttachedModelIds.ToList(),
-                    BroadcastGroupIds = session.BroadcastGroupIds.ToList(),
-                    DefaultModelId    = session.DefaultModelId
-                });
             }
 
             await RestoreActiveChatHistoryAsync();
@@ -1519,20 +1417,6 @@ namespace AVA.UI.State
             Notify();
         }
 
-        public async Task<TestResult> VerifyPersistenceAsync()
-        {
-            try
-            {
-                var verifier = new StatePersistenceVerifier(_vaultWorkspace);
-                var result = await verifier.VerifyAsync();
-                return new TestResult { Success = result.Success, Message = result.Message };
-            }
-            catch (Exception ex)
-            {
-                return new TestResult { Success = false, Message = $"Persistence verification failed: {ex.Message}" };
-            }
-        }
-
         // ── UPS extract helper ────────────────────────────────────────────────
         public static string ExtractContent(UPSResponse response)
         {
@@ -1558,7 +1442,21 @@ namespace AVA.UI.State
 
         private void InitializeWorkspaceState()
         {
-            EnsureWorkspaceDefaults();
+            if (Vaults.Count == 0)
+            {
+                ActiveVaultId = null;
+                ActiveProjectId = null;
+                ActiveWorkspaceSessionId = null;
+
+                _chatState.ActiveSessionId = null;
+                _chatState.ActiveSessionName = string.Empty;
+                _chatState.ActiveVaultId = null;
+                _chatState.ActiveProjectId = null;
+
+                Sessions.CloseAll();
+                Notify();
+                return;
+            }
 
             var firstVault = Vaults.FirstOrDefault();
             ActiveVaultId ??= firstVault?.VaultId;
@@ -1625,19 +1523,6 @@ namespace AVA.UI.State
 
             SyncRuntimeModelSessionsFromActiveSession();
             Notify();
-        }
-
-        private void EnsureWorkspaceDefaults()
-        {
-            if (Vaults.Count > 0) return;
-
-            var now = DateTime.UtcNow;
-            var session = new SessionState { Name = "Session 1", CreatedAt = now, LastActiveAt = now };
-            var project = new ProjectState { Name = "Project 1", IsExpanded = true, Sessions = new List<SessionState> { session } };
-            var vault = new VaultState { Name = "Vault 1", IsExpanded = true, Projects = new List<ProjectState> { project } };
-
-            Vaults.Add(vault);
-            _vaultWorkspace.SaveVaultsAsync(Vaults).GetAwaiter().GetResult();
         }
 
         private async Task RestoreActiveChatHistoryAsync()

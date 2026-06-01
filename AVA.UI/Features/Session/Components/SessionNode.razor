@@ -234,9 +234,6 @@
     [Parameter]
     public string? ProjectId { get; set; }
 
-    [Parameter]
-    public string VaultStorageMode { get; set; } = "Database";
-
     [Parameter, EditorRequired]
     public SessionState Session { get; set; } = default!;
 
@@ -248,7 +245,7 @@
 
     protected override void OnInitialized()
     {
-        _vm = new SessionNodeVM(AppState, Session, VaultId, ProjectId, VaultStorageMode, RuntimeContext, VmLogger);
+        _vm = new SessionNodeVM(AppState, Session, VaultId, ProjectId, RuntimeContext, VmLogger);
         _vmHandler = () => InvokeAsync(StateHasChanged);
         _vm.OnChange += _vmHandler;
     }

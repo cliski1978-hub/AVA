@@ -16,7 +16,6 @@ public class DockShellVM : IDisposable
 {
     private readonly AppState _appState;
     private readonly AvaSettingsService _settings;
-    private readonly VaultWorkspaceFileService _vaultWorkspace;
     private readonly LeftNavVM _leftNavVM;
     private readonly NavigationState _navState;
     private readonly ChatConversationState _chatState;
@@ -26,14 +25,12 @@ public class DockShellVM : IDisposable
     public DockShellVM(
         AppState appState,
         AvaSettingsService settings,
-        VaultWorkspaceFileService vaultWorkspace,
         LeftNavVM leftNavVM,
         NavigationState navState,
         ChatConversationState chatState)
     {
         _appState       = appState;
         _settings       = settings;
-        _vaultWorkspace = vaultWorkspace;
         _leftNavVM      = leftNavVM;
         _navState       = navState;
         _chatState      = chatState;
@@ -45,7 +42,6 @@ public class DockShellVM : IDisposable
         await _settings.LoadAsync();
         using var profileLoadTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(8));
         await _appState.LoadProfilesFromVaultAsync(profileLoadTimeout.Token);
-        await _vaultWorkspace.LoadAsync();
         await _appState.LoadWorkspaceStateAsync();
 
         // Restore session storage for all feature ViewModels.

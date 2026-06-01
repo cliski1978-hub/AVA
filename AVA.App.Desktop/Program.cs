@@ -82,7 +82,7 @@ public class Program
         // ── Core Services ──────────────────────────────────────────────────────
         AppBuilder.Services.AddLogging();
         AppBuilder.Services.AddSingleton<AvaSettingsService>();
-        AppBuilder.Services.AddSingleton<VaultWorkspaceFileService>();
+        AppBuilder.Services.AddSingleton<VaultWorkspaceState>();
         AppBuilder.Services.AddSingleton<IEndpointClientService, EndpointClientService>();
         AppBuilder.Services.AddSingleton<DockLayoutService>();
 
@@ -97,7 +97,6 @@ public class Program
         AppBuilder.Services.AddSingleton<ISessionStorageService, SessionStorageService>();
         AppBuilder.Services.AddSingleton<ISessionChatLogService, SessionChatLogService>();
         AppBuilder.Services.AddSingleton<ISessionChatHistoryService, SessionChatHistoryService>();
-        AppBuilder.Services.AddSingleton<ISessionModelStateStore, SessionModelStateStore>();
 
         // ── ChatContext — Sprint 3.5 ───────────────────────────────────────────
         AppBuilder.Services.AddSingleton<ITokenEstimator, TokenEstimator>();
@@ -146,11 +145,10 @@ public class Program
 
             return new AppState(
                 ServiceProvider.GetRequiredService<AvaSettingsService>(),
-                ServiceProvider.GetRequiredService<VaultWorkspaceFileService>(),
+                ServiceProvider.GetRequiredService<VaultWorkspaceState>(),
                 ServiceProvider.GetRequiredService<IVaultUiSyncService>(),
                 ServiceProvider.GetRequiredService<ErrorState>(),
                 ServiceProvider.GetRequiredService<ISessionStorageService>(),
-                ServiceProvider.GetRequiredService<ISessionModelStateStore>(),
                 ServiceProvider.GetRequiredService<IAvaIdService>(),
                 ServiceProvider.GetRequiredService<LlmProfileService>(),
                 ServiceProvider.GetRequiredService<NavigationState>(),
@@ -197,18 +195,7 @@ public class Program
         AppBuilder.Services.AddVaultModule(VaultConfig);
 
         // ── Vault Persistence Providers ───────────────────────────────────────
-        var VaultsRoot = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "AVA", "Vaults");
-
-        AppBuilder.Services.AddSingleton<VaultManager>(_ => new VaultManager(VaultsRoot));
-
         AppBuilder.Services.AddSingleton<DbVaultPersistenceProvider>();
-        AppBuilder.Services.AddSingleton<FileVaultPersistenceProvider>(sp => new FileVaultPersistenceProvider(
-            sp.GetRequiredService<VaultManager>(),
-            sp.GetRequiredService<VaultLogger>(),
-            sp.GetRequiredService<IVaultIdService>(),
-            VaultsRoot));
 
         // ── Profile Persistence ──────────────────────────────────────────────
         AppBuilder.Services.AddSingleton<IProfilePersistenceProvider, DbProfilePersistenceProvider>();
@@ -218,7 +205,6 @@ public class Program
         AppBuilder.Services.AddSingleton<IVaultUiSyncService>(sp => new VaultUiSyncService(
             sp.GetRequiredService<IDbContextFactory<VaultDbContext>>(),
             sp.GetRequiredService<DbVaultPersistenceProvider>(),
-            sp.GetRequiredService<FileVaultPersistenceProvider>(),
             sp.GetRequiredService<IMemoryStore>(),
             sp.GetRequiredService<VaultLogger>(),
             sp.GetRequiredService<ILogger<VaultUiSyncService>>()));

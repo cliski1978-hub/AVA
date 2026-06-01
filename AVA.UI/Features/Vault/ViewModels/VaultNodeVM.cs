@@ -76,7 +76,7 @@ public class VaultNodeVM : IDisposable
         try
         {
             var name     = $"Project {_vault.Projects.Count + 1}";
-            var response = await _ctx.Vault.CreateProjectAsync(_vault.VaultId, name, _vault.StorageMode);
+            var response = await _ctx.Vault.CreateProjectAsync(_vault.VaultId, name);
 
             if (!response.Succeeded)
             {
@@ -111,15 +111,15 @@ public class VaultNodeVM : IDisposable
         try
         {
             var name     = $"Session {_vault.Sessions.Count + 1}";
-            var response = await _ctx.Vault.CreateSessionAsync(_vault.VaultId, null, name, _vault.StorageMode);
+            var response = await _ctx.Vault.CreateSessionAsync(_vault.VaultId, null, name);
 
-            if (!response.Succeeded)
+            if (!response.Succeeded || response.Session == null)
             {
                 _ctx.Errors.AddModelErrors(response, source, "Vault");
                 return;
             }
 
-            var session = MapToSessionState(response.Session!);
+            var session = MapToSessionState(response.Session);
             _vault.IsExpanded = true;
             await _appState.CreateWorkspaceSessionAsync(_vault.VaultId, null, session);
             _appState.SetSelectedNavigationItem("Chat");
@@ -142,7 +142,7 @@ public class VaultNodeVM : IDisposable
 
         try
         {
-            var response = await _ctx.Vault.RenameVaultAsync(_vault.VaultId, trimmed, _vault.StorageMode);
+            var response = await _ctx.Vault.RenameVaultAsync(_vault.VaultId, trimmed);
 
             if (!response.Succeeded)
             {
@@ -172,7 +172,7 @@ public class VaultNodeVM : IDisposable
 
         try
         {
-            var response = await _ctx.Vault.DeleteVaultAsync(_vault.VaultId, _vault.StorageMode);
+            var response = await _ctx.Vault.DeleteVaultAsync(_vault.VaultId);
 
             if (!response.Succeeded)
             {
@@ -186,45 +186,6 @@ public class VaultNodeVM : IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "RemoveVaultAsync: failed");
-            _ctx.Errors.AddError(ex.Message, source, "Vault", AppErrorSeverity.Critical);
-        }
-    }
-
-    public async Task PromoteToDatabaseAsync()
-    {
-        const string source = nameof(PromoteToDatabaseAsync);
-        _ctx.Errors.ClearSource(source);
-        ShowMenu = false;
-
-        try
-        {
-            var vaultResponse = await _ctx.Vault.CreateVaultAsync(_vault.Name, "Database", _vault.VaultId);
-            if (!vaultResponse.Succeeded) { _ctx.Errors.AddModelErrors(vaultResponse, source, "Vault"); return; }
-
-            foreach (var project in _vault.Projects)
-            {
-                var projectResponse = await _ctx.Vault.CreateProjectAsync(_vault.VaultId, project.Name, "Database", project.ProjectId);
-                if (!projectResponse.Succeeded) { _ctx.Errors.AddModelErrors(projectResponse, source, "Vault"); return; }
-
-                foreach (var session in project.Sessions)
-                {
-                    var sessionResponse = await _ctx.Vault.CreateSessionAsync(_vault.VaultId, project.ProjectId, session.Name, "Database", session.SessionId);
-                    if (!sessionResponse.Succeeded) { _ctx.Errors.AddModelErrors(sessionResponse, source, "Vault"); return; }
-                }
-            }
-
-            foreach (var session in _vault.Sessions)
-            {
-                var sessionResponse = await _ctx.Vault.CreateSessionAsync(_vault.VaultId, null, session.Name, "Database", session.SessionId);
-                if (!sessionResponse.Succeeded) { _ctx.Errors.AddModelErrors(sessionResponse, source, "Vault"); return; }
-            }
-
-            await _appState.UpdateVaultStorageModeAsync(_vault.VaultId, "Database");
-            Notify();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "PromoteToDatabaseAsync: failed");
             _ctx.Errors.AddError(ex.Message, source, "Vault", AppErrorSeverity.Critical);
         }
     }

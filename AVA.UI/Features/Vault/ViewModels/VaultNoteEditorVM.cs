@@ -2,7 +2,6 @@ using Microsoft.Extensions.Logging;
 
 using AVA.UI.Errors;
 using AVA.UI.Runtime;
-using AVA.UI.State;
 using AVA.Vault.Core.Data.Models;
 using AVA.Vault.Core.Services.Data;
 
@@ -18,7 +17,6 @@ namespace AVA.UI.Features.Vault.ViewModels;
 public class VaultNoteEditorVM : IDisposable
 {
     private readonly IAvaRuntimeContext _ctx;
-    private readonly AppState _appState;
     private readonly ILogger<VaultNoteEditorVM> _logger;
 
     public event Action? OnChange;
@@ -48,11 +46,9 @@ public class VaultNoteEditorVM : IDisposable
 
     public VaultNoteEditorVM(
         IAvaRuntimeContext ctx,
-        AppState appState,
         ILogger<VaultNoteEditorVM> logger)
     {
         _ctx      = ctx;
-        _appState = appState;
         _logger   = logger;
     }
 
@@ -67,12 +63,11 @@ public class VaultNoteEditorVM : IDisposable
 
         try
         {
-            var storageMode  = _appState.ActiveVault?.StorageMode ?? "Database";
-            ActiveNote       = await _ctx.Vault.GetNoteAsync(vaultId, noteId, storageMode);
+            ActiveNote       = await _ctx.Vault.GetNoteAsync(vaultId, noteId);
             DraftTitle       = ActiveNote?.Title   ?? string.Empty;
             DraftContent     = ActiveNote?.Content ?? string.Empty;
-            AvailableTags    = (await _ctx.Vault.ListTagsAsync(vaultId, storageMode)).ToList();
-            RelatedNotes     = (await _ctx.Vault.GetRelatedNotesAsync(vaultId, noteId, storageMode)).ToList();
+            AvailableTags    = (await _ctx.Vault.ListTagsAsync(vaultId)).ToList();
+            RelatedNotes     = (await _ctx.Vault.GetRelatedNotesAsync(vaultId, noteId)).ToList();
         }
         catch (Exception ex)
         {
@@ -99,13 +94,11 @@ public class VaultNoteEditorVM : IDisposable
 
         try
         {
-            var storageMode = _appState.ActiveVault?.StorageMode ?? "Database";
             var response    = await _ctx.Vault.UpdateNoteAsync(
                 ActiveNote.VaultID,
                 ActiveNote.ID,
                 DraftTitle.Trim(),
-                DraftContent,
-                storageMode);
+                DraftContent);
 
             if (!response.Succeeded)
             {
@@ -114,7 +107,7 @@ public class VaultNoteEditorVM : IDisposable
             }
 
             // Reload to confirm saved state and updated timestamps
-            ActiveNote = await _ctx.Vault.GetNoteAsync(ActiveNote.VaultID, ActiveNote.ID, storageMode);
+            ActiveNote = await _ctx.Vault.GetNoteAsync(ActiveNote.VaultID, ActiveNote.ID);
         }
         catch (Exception ex)
         {
@@ -146,8 +139,7 @@ public class VaultNoteEditorVM : IDisposable
 
         try
         {
-            var storageMode = _appState.ActiveVault?.StorageMode ?? "Database";
-            var response    = await _ctx.Vault.AssignTagToNoteAsync(ActiveNote.VaultID, ActiveNote.ID, tagId, storageMode);
+            var response    = await _ctx.Vault.AssignTagToNoteAsync(ActiveNote.VaultID, ActiveNote.ID, tagId);
 
             if (!response.Succeeded)
             {
@@ -155,7 +147,7 @@ public class VaultNoteEditorVM : IDisposable
                 return;
             }
 
-            ActiveNote = await _ctx.Vault.GetNoteAsync(ActiveNote.VaultID, ActiveNote.ID, storageMode);
+            ActiveNote = await _ctx.Vault.GetNoteAsync(ActiveNote.VaultID, ActiveNote.ID);
             Notify();
         }
         catch (Exception ex)
@@ -174,8 +166,7 @@ public class VaultNoteEditorVM : IDisposable
 
         try
         {
-            var storageMode = _appState.ActiveVault?.StorageMode ?? "Database";
-            var response    = await _ctx.Vault.RemoveTagFromNoteAsync(ActiveNote.VaultID, ActiveNote.ID, tagId, storageMode);
+            var response    = await _ctx.Vault.RemoveTagFromNoteAsync(ActiveNote.VaultID, ActiveNote.ID, tagId);
 
             if (!response.Succeeded)
             {
@@ -183,7 +174,7 @@ public class VaultNoteEditorVM : IDisposable
                 return;
             }
 
-            ActiveNote = await _ctx.Vault.GetNoteAsync(ActiveNote.VaultID, ActiveNote.ID, storageMode);
+            ActiveNote = await _ctx.Vault.GetNoteAsync(ActiveNote.VaultID, ActiveNote.ID);
             Notify();
         }
         catch (Exception ex)
@@ -204,8 +195,7 @@ public class VaultNoteEditorVM : IDisposable
 
         try
         {
-            var storageMode = _appState.ActiveVault?.StorageMode ?? "Database";
-            var response    = await _ctx.Vault.DeleteNoteAsync(ActiveNote.VaultID, ActiveNote.ID, storageMode);
+            var response    = await _ctx.Vault.DeleteNoteAsync(ActiveNote.VaultID, ActiveNote.ID);
 
             if (!response.Succeeded)
             {
@@ -233,8 +223,7 @@ public class VaultNoteEditorVM : IDisposable
 
         try
         {
-            var storageMode = _appState.ActiveVault?.StorageMode ?? "Database";
-            var createResp  = await _ctx.Vault.CreateTagAsync(ActiveNote.VaultID, tagName.Trim(), storageMode);
+            var createResp  = await _ctx.Vault.CreateTagAsync(ActiveNote.VaultID, tagName.Trim());
 
             if (!createResp.Succeeded)
             {
@@ -243,7 +232,7 @@ public class VaultNoteEditorVM : IDisposable
             }
 
             var assignResp = await _ctx.Vault.AssignTagToNoteAsync(
-                ActiveNote.VaultID, ActiveNote.ID, createResp.Tag!.ID, storageMode);
+                ActiveNote.VaultID, ActiveNote.ID, createResp.Tag!.ID);
 
             if (!assignResp.Succeeded)
             {
@@ -251,8 +240,8 @@ public class VaultNoteEditorVM : IDisposable
                 return;
             }
 
-            ActiveNote     = await _ctx.Vault.GetNoteAsync(ActiveNote.VaultID, ActiveNote.ID, storageMode);
-            AvailableTags  = (await _ctx.Vault.ListTagsAsync(ActiveNote!.VaultID, storageMode)).ToList();
+            ActiveNote     = await _ctx.Vault.GetNoteAsync(ActiveNote.VaultID, ActiveNote.ID);
+            AvailableTags  = (await _ctx.Vault.ListTagsAsync(ActiveNote!.VaultID)).ToList();
             Notify();
         }
         catch (Exception ex)
@@ -273,9 +262,8 @@ public class VaultNoteEditorVM : IDisposable
 
         try
         {
-            var storageMode = _appState.ActiveVault?.StorageMode ?? "Database";
             var response    = await _ctx.Vault.CreateLinkAsync(
-                ActiveNote.VaultID, ActiveNote.ID, targetNoteId, relationType, storageMode);
+                ActiveNote.VaultID, ActiveNote.ID, targetNoteId, relationType);
 
             if (!response.Succeeded)
             {
@@ -284,7 +272,7 @@ public class VaultNoteEditorVM : IDisposable
             }
 
             RelatedNotes = (await _ctx.Vault.GetRelatedNotesAsync(
-                ActiveNote.VaultID, ActiveNote.ID, storageMode)).ToList();
+                ActiveNote.VaultID, ActiveNote.ID)).ToList();
             Notify();
         }
         catch (Exception ex)
@@ -305,8 +293,7 @@ public class VaultNoteEditorVM : IDisposable
 
         try
         {
-            var storageMode = _appState.ActiveVault?.StorageMode ?? "Database";
-            var response    = await _ctx.Vault.DeleteLinkAsync(ActiveNote.VaultID, linkId, storageMode);
+            var response    = await _ctx.Vault.DeleteLinkAsync(ActiveNote.VaultID, linkId);
 
             if (!response.Succeeded)
             {
@@ -315,7 +302,7 @@ public class VaultNoteEditorVM : IDisposable
             }
 
             RelatedNotes = (await _ctx.Vault.GetRelatedNotesAsync(
-                ActiveNote.VaultID, ActiveNote.ID, storageMode)).ToList();
+                ActiveNote.VaultID, ActiveNote.ID)).ToList();
             Notify();
         }
         catch (Exception ex)

@@ -149,19 +149,6 @@
     </section>
 
     <!-- ── Workspace ─────────────────────────────────────────────────────── -->
-    <section class="settings-section">
-        <h3 class="settings-section__title">Workspace</h3>
-
-        <div class="settings-field">
-            <label>Vaults Folder</label>
-            <input class="settings-input"
-                   @bind="State.AppSettings.VaultsFolderPath"
-                   @bind:after="MarkSettingsDirty"
-                   placeholder="e.g. C:\Data\AVA\Vaults" />
-            <span class="settings-hint">Folder containing vaults.json. Move the file yourself before changing. Takes effect on next start.</span>
-        </div>
-    </section>
-
     <!-- ── Action Buttons ──────────────────────────────────────────────── -->
     <div class="settings-actions">
         <button class="settings-btn settings-btn--primary" @onclick="async () => await State.SaveSettingsAsync()">

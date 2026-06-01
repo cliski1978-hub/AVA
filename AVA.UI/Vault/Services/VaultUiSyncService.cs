@@ -15,7 +15,7 @@ using AVA.Vault.Core.Services.Data.VaultProjects;
 namespace AVA.UI.Vault.Services;
 
 /// <summary>
-/// Storage-neutral bridge between ViewModels and AVA.Vault.Core.
+/// Database-backed bridge between ViewModels and AVA.Vault.Core.
 /// All write operations return the CfkApiResponse-derived response object directly —
 /// no wrapping, no exception conversion. Succeeded and UserMessage travel intact to the VM.
 /// </summary>
@@ -23,7 +23,6 @@ public class VaultUiSyncService : IVaultUiSyncService
 {
     private readonly IDbContextFactory<VaultDbContext> _dbFactory;
     private readonly IVaultPersistenceProvider _dbProvider;
-    private readonly IVaultPersistenceProvider _fileProvider;
     private readonly IMemoryStore _memoryStore;
     private readonly VaultLogger _vaultLogger;
     private readonly ILogger<VaultUiSyncService> _logger;
@@ -31,14 +30,12 @@ public class VaultUiSyncService : IVaultUiSyncService
     public VaultUiSyncService(
         IDbContextFactory<VaultDbContext> dbFactory,
         IVaultPersistenceProvider dbProvider,
-        IVaultPersistenceProvider fileProvider,
         IMemoryStore memoryStore,
         VaultLogger vaultLogger,
         ILogger<VaultUiSyncService> logger)
     {
         _dbFactory    = dbFactory;
         _dbProvider   = dbProvider;
-        _fileProvider = fileProvider;
         _memoryStore  = memoryStore;
         _vaultLogger  = vaultLogger;
         _logger       = logger;
@@ -54,11 +51,6 @@ public class VaultUiSyncService : IVaultUiSyncService
 
     public Task EnsureVaultExistsAsync(VaultState vaultState) => Task.CompletedTask;
     public Task EnsureProjectExistsAsync(VaultState vaultState, ProjectState projectState) => Task.CompletedTask;
-
-    // ── Provider routing ──────────────────────────────────────────────────────
-
-    private IVaultPersistenceProvider Provider(string storageMode)
-        => storageMode == "File" ? _fileProvider : _dbProvider;
 
     // ── Startup hydration ─────────────────────────────────────────────────────
 
@@ -79,7 +71,6 @@ public class VaultUiSyncService : IVaultUiSyncService
                 {
                     VaultId     = header.ID,
                     Name        = header.DisplayName,
-                    StorageMode = "Database",
                     IsExpanded  = true
                 };
 
@@ -98,8 +89,13 @@ public class VaultUiSyncService : IVaultUiSyncService
 
                 foreach (var s in sessions)
                 {
+                    if (s == null)
+                    {
+                        continue;
+                    }
+
                     var ss = MapToSessionState(s);
-                    if (s.ID != null && projectIndex.TryGetValue(s.ID, out var ps))
+                    if (!string.IsNullOrWhiteSpace(s.ProjectID) && projectIndex.TryGetValue(s.ProjectID, out var ps))
                         ps.Sessions.Add(ss);
                     else
                         vaultState.Sessions.Add(ss);
@@ -116,141 +112,87 @@ public class VaultUiSyncService : IVaultUiSyncService
         return result;
     }
 
-    public async Task<List<VaultState>> LoadVaultsFromFileSystemAsync()
-    {
-        var result = new List<VaultState>();
-
-        try
-        {
-            var headers = await _fileProvider.ListVaultsAsync();
-
-            foreach (var header in headers)
-            {
-                var projects = await _fileProvider.ListProjectsAsync(header.ID);
-                var sessions = await _fileProvider.ListSessionsAsync(header.ID);
-
-                var vaultState = new VaultState
-                {
-                    VaultId     = header.ID,
-                    Name        = header.DisplayName,
-                    StorageMode = "File",
-                    IsExpanded  = true
-                };
-
-                var projectIndex = new Dictionary<string, ProjectState>();
-                foreach (var p in projects)
-                {
-                    var ps = new ProjectState
-                    {
-                        ProjectId  = p.ID,
-                        Name       = p.Name,
-                        IsExpanded = p.IsExpanded
-                    };
-                    projectIndex[p.ID] = ps;
-                    vaultState.Projects.Add(ps);
-                }
-
-                foreach (var s in sessions)
-                {
-                    var ss = MapToSessionState(s);
-                    if (s.ID != null && projectIndex.TryGetValue(s.ID, out var ps))
-                        ps.Sessions.Add(ss);
-                    else
-                        vaultState.Sessions.Add(ss);
-                }
-
-                result.Add(vaultState);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "VaultUiSyncService: failed to load vaults from file system.");
-        }
-
-        return result;
-    }
-
     // ── Vault ─────────────────────────────────────────────────────────────────
 
-    public Task<CreateVaultHeaderResponse> CreateVaultAsync(string name, string storageMode, string? vaultId = null)
-        => Provider(storageMode).CreateVaultAsync(name, vaultId);
+    public Task<CreateVaultHeaderResponse> CreateVaultAsync(string name, string? vaultId = null)
+        => _dbProvider.CreateVaultAsync(name, vaultId);
 
-    public Task<UpdateVaultHeaderResponse> RenameVaultAsync(string vaultId, string newName, string storageMode)
-        => Provider(storageMode).RenameVaultAsync(vaultId, newName);
+    public Task<UpdateVaultHeaderResponse> RenameVaultAsync(string vaultId, string newName)
+        => _dbProvider.RenameVaultAsync(vaultId, newName);
 
-    public Task<DeleteVaultHeaderResponse> DeleteVaultAsync(string vaultId, string storageMode)
-        => Provider(storageMode).DeleteVaultAsync(vaultId);
+    public Task<DeleteVaultHeaderResponse> DeleteVaultAsync(string vaultId)
+        => _dbProvider.DeleteVaultAsync(vaultId);
 
     // ── Project ───────────────────────────────────────────────────────────────
 
-    public Task<CreateVaultProjectResponse> CreateProjectAsync(string vaultId, string name, string storageMode, string? projectId = null)
-        => Provider(storageMode).CreateProjectAsync(vaultId, name, projectId);
+    public Task<CreateVaultProjectResponse> CreateProjectAsync(string vaultId, string name, string? projectId = null)
+        => _dbProvider.CreateProjectAsync(vaultId, name, projectId);
 
-    public Task<UpdateVaultProjectResponse> RenameProjectAsync(string vaultId, string projectId, string newName, string storageMode)
-        => Provider(storageMode).RenameProjectAsync(vaultId, projectId, newName);
+    public Task<UpdateVaultProjectResponse> RenameProjectAsync(string vaultId, string projectId, string newName)
+        => _dbProvider.RenameProjectAsync(vaultId, projectId, newName);
 
-    public Task<DeleteVaultProjectResponse> DeleteProjectAsync(string vaultId, string projectId, string storageMode)
-        => Provider(storageMode).DeleteProjectAsync(vaultId, projectId);
+    public Task<DeleteVaultProjectResponse> DeleteProjectAsync(string vaultId, string projectId)
+        => _dbProvider.DeleteProjectAsync(vaultId, projectId);
 
     // ── Session ───────────────────────────────────────────────────────────────
 
-    public Task<CreateVaultSessionResponse> CreateSessionAsync(string vaultId, string? projectId, string name, string storageMode, string? sessionId = null)
-        => Provider(storageMode).CreateSessionAsync(vaultId, projectId, name, sessionId);
+    public Task<CreateVaultSessionResponse> CreateSessionAsync(string vaultId, string? projectId, string name, string? sessionId = null)
+        => _dbProvider.CreateSessionAsync(vaultId, projectId, name, sessionId);
 
-    public Task<UpdateVaultSessionResponse> RenameSessionAsync(string vaultId, string sessionId, string newName, string storageMode)
-        => Provider(storageMode).RenameSessionAsync(vaultId, sessionId, newName);
+    public Task<UpdateVaultSessionResponse> RenameSessionAsync(string vaultId, string sessionId, string newName)
+        => _dbProvider.RenameSessionAsync(vaultId, sessionId, newName);
 
-    public Task<UpdateVaultSessionResponse> UpdateSessionModelStateAsync(string vaultId, string sessionId, string storageMode, List<string> attachedModelIds, List<string> broadcastGroupIds, string? defaultModelId)
-        => Provider(storageMode).UpdateSessionModelStateAsync(vaultId, sessionId, attachedModelIds, broadcastGroupIds, defaultModelId);
+    public Task<UpdateVaultSessionResponse> UpdateSessionModelStateAsync(string vaultId, string sessionId, List<string> attachedModelIds, List<string> broadcastGroupIds, string? defaultModelId)
+        => _dbProvider.UpdateSessionModelStateAsync(vaultId, sessionId, attachedModelIds, broadcastGroupIds, defaultModelId);
 
-    public Task<DeleteVaultSessionResponse> DeleteSessionAsync(string vaultId, string sessionId, string storageMode)
-        => Provider(storageMode).DeleteSessionAsync(vaultId, sessionId);
+    public Task<DeleteVaultSessionResponse> DeleteSessionAsync(string vaultId, string sessionId)
+        => _dbProvider.DeleteSessionAsync(vaultId, sessionId);
 
     // ── Note ──────────────────────────────────────────────────────────────────
 
-    public Task<CreateVaultNoteResponse> CreateNoteAsync(string vaultId, string projectId, string title, string content, string storageMode, string? sessionId = null)
-        => Provider(storageMode).CreateNoteAsync(vaultId, projectId, title, content, sessionId);
+    public Task<CreateVaultNoteResponse> CreateNoteAsync(string vaultId, string projectId, string title, string content, string? sessionId = null)
+        => _dbProvider.CreateNoteAsync(vaultId, projectId, title, content, sessionId);
 
-    public Task<VaultNote?> GetNoteAsync(string vaultId, string noteId, string storageMode)
-        => Provider(storageMode).GetNoteAsync(vaultId, noteId);
+    public Task<VaultNote?> GetNoteAsync(string vaultId, string noteId)
+        => _dbProvider.GetNoteAsync(vaultId, noteId);
 
-    public Task<UpdateVaultNoteResponse> UpdateNoteAsync(string vaultId, string noteId, string? title, string? content, string storageMode)
-        => Provider(storageMode).UpdateNoteAsync(vaultId, noteId, title, content);
+    public Task<UpdateVaultNoteResponse> UpdateNoteAsync(string vaultId, string noteId, string? title, string? content)
+        => _dbProvider.UpdateNoteAsync(vaultId, noteId, title, content);
 
-    public Task<DeleteVaultNoteResponse> DeleteNoteAsync(string vaultId, string noteId, string storageMode)
-        => Provider(storageMode).DeleteNoteAsync(vaultId, noteId);
+    public Task<DeleteVaultNoteResponse> DeleteNoteAsync(string vaultId, string noteId)
+        => _dbProvider.DeleteNoteAsync(vaultId, noteId);
 
     // ── Tag ───────────────────────────────────────────────────────────────────
 
-    public Task<CreateVaultTagResponse> CreateTagAsync(string vaultId, string name, string storageMode, string? color = null)
-        => Provider(storageMode).CreateTagAsync(vaultId, name, color);
+    public Task<CreateVaultTagResponse> CreateTagAsync(string vaultId, string name, string? color = null)
+        => _dbProvider.CreateTagAsync(vaultId, name, color);
 
-    public Task<DeleteVaultTagResponse> DeleteTagAsync(string vaultId, string tagId, string storageMode)
-        => Provider(storageMode).DeleteTagAsync(vaultId, tagId);
+    public Task<DeleteVaultTagResponse> DeleteTagAsync(string vaultId, string tagId)
+        => _dbProvider.DeleteTagAsync(vaultId, tagId);
 
-    public async Task<IEnumerable<VaultTag>> ListTagsAsync(string vaultId, string storageMode)
+    public async Task<IEnumerable<VaultTag>> ListTagsAsync(string vaultId)
     {
-        try { return await Provider(storageMode).ListTagsAsync(vaultId); }
+        try { return await _dbProvider.ListTagsAsync(vaultId); }
         catch (Exception ex) { _logger.LogError(ex, "ListTagsAsync failed [{VaultId}]", vaultId); return Enumerable.Empty<VaultTag>(); }
     }
 
-    public Task<AssignTagToNoteResponse> AssignTagToNoteAsync(string vaultId, string noteId, string tagId, string storageMode)
-        => Provider(storageMode).AssignTagToNoteAsync(vaultId, noteId, tagId);
+    public Task<AssignTagToNoteResponse> AssignTagToNoteAsync(string vaultId, string noteId, string tagId)
+        => _dbProvider.AssignTagToNoteAsync(vaultId, noteId, tagId);
 
-    public Task<RemoveTagFromNoteResponse> RemoveTagFromNoteAsync(string vaultId, string noteId, string tagId, string storageMode)
-        => Provider(storageMode).RemoveTagFromNoteAsync(vaultId, noteId, tagId);
+    public Task<RemoveTagFromNoteResponse> RemoveTagFromNoteAsync(string vaultId, string noteId, string tagId)
+        => _dbProvider.RemoveTagFromNoteAsync(vaultId, noteId, tagId);
 
     // ── Link ──────────────────────────────────────────────────────────────────
 
-    public Task<CreateVaultLinkResponse> CreateLinkAsync(string vaultId, string sourceNoteId, string targetNoteId, string relationType, string storageMode, string? description = null)
-        => Provider(storageMode).CreateLinkAsync(vaultId, sourceNoteId, targetNoteId, relationType, description);
+    public Task<CreateVaultLinkResponse> CreateLinkAsync(string vaultId, string sourceNoteId, string targetNoteId, string relationType, string? description = null)
+        => _dbProvider.CreateLinkAsync(vaultId, sourceNoteId, targetNoteId, relationType, description);
 
-    public Task<DeleteVaultLinkResponse> DeleteLinkAsync(string vaultId, string linkId, string storageMode)
-        => Provider(storageMode).DeleteLinkAsync(vaultId, linkId);
+    public Task<DeleteVaultLinkResponse> DeleteLinkAsync(string vaultId, string linkId)
+        => _dbProvider.DeleteLinkAsync(vaultId, linkId);
 
-    public async Task<IEnumerable<RelatedNoteResult>> GetRelatedNotesAsync(string vaultId, string noteId, string storageMode, string? relationType = null)
+    public async Task<IEnumerable<RelatedNoteResult>> GetRelatedNotesAsync(string vaultId, string noteId, string? relationType = null)
     {
-        try { return await Provider(storageMode).GetRelatedNotesAsync(vaultId, noteId, relationType); }
+        try { return await _dbProvider.GetRelatedNotesAsync(vaultId, noteId, relationType); }
         catch (Exception ex) { _logger.LogError(ex, "GetRelatedNotesAsync failed [{NoteId}]", noteId); return Enumerable.Empty<RelatedNoteResult>(); }
     }
 
@@ -268,12 +210,11 @@ public class VaultUiSyncService : IVaultUiSyncService
         DateTime? createdBefore = null,
         DateTime? updatedAfter  = null,
         DateTime? updatedBefore = null,
-        string storageMode      = "Database",
         CancellationToken ct    = default)
     {
         try
         {
-            var results = await Provider(storageMode).SearchNotesAsync(
+            var results = await _dbProvider.SearchNotesAsync(
                 vaultId, projectId, sessionId, keyword, tag,
                 sortBy, sortDescending,
                 createdAfter, createdBefore, updatedAfter, updatedBefore, ct);
@@ -312,8 +253,6 @@ public class VaultUiSyncService : IVaultUiSyncService
         CreatedAt         = s.CreatedAt,
         LastActiveAt      = s.LastActiveAt,
         IsPinned          = s.IsPinned,
-        // DB is the primary source for model selection state.
-        // session-model-state.json is the offline backup — applied as fallback when DB is unavailable.
         AttachedModelIds  = DeserializeIds(s.AttachedModelIdsJson),
         BroadcastGroupIds = DeserializeIds(s.BroadcastGroupIdsJson),
         DefaultModelId    = s.DefaultModelId,
@@ -322,8 +261,13 @@ public class VaultUiSyncService : IVaultUiSyncService
         SpawnCount        = s.SpawnCount
     };
 
-    private static List<string> DeserializeIds(string json)
+    private static List<string> DeserializeIds(string? json)
     {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return new();
+        }
+
         try { return System.Text.Json.JsonSerializer.Deserialize<List<string>>(json) ?? new(); }
         catch { return new(); }
     }

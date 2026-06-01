@@ -43,10 +43,6 @@
                 @if (!IsCollapsed)
                 {
                     <span class="vault-name">@Vault.Name</span>
-                    <span class="vault-storage-badge vault-storage-badge--@Vault.StorageMode.ToLowerInvariant()"
-                          title="@(Vault.StorageMode == "Database" ? "Stored in AvaVault database" : "Stored in vaults.json (file mode)")">
-                        @(Vault.StorageMode == "Database" ? "DB" : "FILE")
-                    </span>
                     <span class="vault-count">@(@Vault.Projects.Count + @Vault.Sessions.Count)</span>
                 }
             </div>
@@ -96,17 +92,6 @@
                 Rename Vault
             </button>
 
-            @if (Vault.StorageMode == "File")
-            {
-                <button type="button"
-                        class="vault-menu__item vault-menu__item--promote"
-                        @onclick:stopPropagation="true"
-                        @onclick="PromoteToDatabase"
-                        title="Save this vault and its contents to the database">
-                    Push to DB
-                </button>
-            }
-
             <button type="button"
                     class="vault-menu__item vault-menu__item--danger"
                     @onclick:stopPropagation="true"
@@ -124,7 +109,6 @@
                 <SessionNode @key="session.SessionId"
                              VaultId="@Vault.VaultId"
                              ProjectId="@null"
-                             VaultStorageMode="@Vault.StorageMode"
                              Session="session"
                              OnSessionChanged="OnVaultChanged" />
             }
@@ -133,7 +117,6 @@
             {
                 <ProjectNode @key="project.ProjectId"
                              VaultId="@Vault.VaultId"
-                             VaultStorageMode="@Vault.StorageMode"
                              Project="project"
                              OnProjectChanged="OnVaultChanged" />
             }
@@ -142,30 +125,6 @@
 </div>
 
 <style>
-    .vault-storage-badge {
-        font-size: 9px;
-        font-weight: 700;
-        letter-spacing: 0.06em;
-        padding: 1px 5px;
-        border-radius: var(--RxPill);
-        border: 1px solid;
-        flex-shrink: 0;
-        line-height: 14px;
-        cursor: default;
-    }
-
-    .vault-storage-badge--database {
-        color: var(--Accent);
-        border-color: rgba(0, 200, 255, 0.35);
-        background: rgba(0, 200, 255, 0.08);
-    }
-
-    .vault-storage-badge--file {
-        color: #f5a623;
-        border-color: rgba(245, 166, 35, 0.35);
-        background: rgba(245, 166, 35, 0.08);
-    }
-
     .vault {
         margin-bottom: var(--RxSm);
         border-radius: var(--RxMd);
@@ -413,12 +372,6 @@
     private async Task SaveRenameAsync()
     {
         await _vm.SaveRenameAsync();
-        await OnVaultChanged.InvokeAsync();
-    }
-
-    private async Task PromoteToDatabase()
-    {
-        await _vm.PromoteToDatabaseAsync();
         await OnVaultChanged.InvokeAsync();
     }
 

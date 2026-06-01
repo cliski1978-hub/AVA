@@ -67,8 +67,6 @@ public class VaultSearchVM : IDisposable
 
         try
         {
-            var storageMode = _appState.ActiveVault?.StorageMode ?? "Database";
-
             Results = await _ctx.Vault.SearchNotesAsync(
                 vaultId:       vaultId,
                 projectId:     FilterProjectId,
@@ -80,8 +78,7 @@ public class VaultSearchVM : IDisposable
                 createdAfter:  FilterCreatedAfter,
                 createdBefore: FilterCreatedBefore,
                 updatedAfter:  FilterUpdatedAfter,
-                updatedBefore: FilterUpdatedBefore,
-                storageMode:   storageMode);
+                updatedBefore: FilterUpdatedBefore);
         }
         catch (Exception ex)
         {
@@ -109,9 +106,8 @@ public class VaultSearchVM : IDisposable
 
         try
         {
-            var storageMode = _appState.ActiveVault?.StorageMode ?? "Database";
             var response    = await _ctx.Vault.CreateNoteAsync(
-                vaultId, projectId, "New Note", string.Empty, storageMode);
+                vaultId, projectId, "New Note", string.Empty);
 
             if (!response.Succeeded)
             {

@@ -88,7 +88,6 @@
                 <SessionNode @key="session.SessionId"
                              VaultId="@VaultId"
                              ProjectId="@Project.ProjectId"
-                             VaultStorageMode="@VaultStorageMode"
                              Session="session"
                              OnSessionChanged="OnProjectChanged" />
             }
@@ -277,9 +276,6 @@
     public ProjectState Project { get; set; } = default!;
 
     [Parameter]
-    public string VaultStorageMode { get; set; } = "Database";
-
-    [Parameter]
     public EventCallback OnProjectChanged { get; set; }
 
     private ProjectNodeVM _vm = default!;
@@ -287,15 +283,10 @@
 
     protected override void OnInitialized()
     {
-        _vm = new ProjectNodeVM(AppState, Project, VaultId, VaultStorageMode, RuntimeContext, VmLogger);
+        _vm = new ProjectNodeVM(AppState, Project, VaultId, RuntimeContext, VmLogger);
 
         _vmHandler = () => InvokeAsync(StateHasChanged);
         _vm.OnChange += _vmHandler;
-    }
-
-    protected override void OnParametersSet()
-    {
-        _vm?.UpdateVaultStorageMode(VaultStorageMode);
     }
 
     private async Task AddSessionAsync()

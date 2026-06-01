@@ -21,7 +21,6 @@ public class ProjectNodeVM : IDisposable
     private readonly ILogger<ProjectNodeVM> _logger;
     private readonly ProjectState _project;
     private readonly string _vaultId;
-    private string _vaultStorageMode;
 
     public event Action? OnChange;
     private void Notify() => OnChange?.Invoke();
@@ -35,19 +34,15 @@ public class ProjectNodeVM : IDisposable
         AppState appState,
         ProjectState project,
         string vaultId,
-        string vaultStorageMode,
         IAvaRuntimeContext ctx,
         ILogger<ProjectNodeVM> logger)
     {
         _appState         = appState;
         _project          = project;
         _vaultId          = vaultId;
-        _vaultStorageMode = vaultStorageMode;
         _ctx              = ctx;
         _logger           = logger;
     }
-
-    public void UpdateVaultStorageMode(string mode) { _vaultStorageMode = mode; }
 
     public void ToggleExpand() { ShowMenu = false; _project.IsExpanded = !_project.IsExpanded; Notify(); }
     public void ToggleMenu()   { ShowMenu = !ShowMenu; Notify(); }
@@ -66,15 +61,15 @@ public class ProjectNodeVM : IDisposable
         try
         {
             var name     = $"Session {_project.Sessions.Count + 1}";
-            var response = await _ctx.Vault.CreateSessionAsync(_vaultId, _project.ProjectId, name, _vaultStorageMode);
+            var response = await _ctx.Vault.CreateSessionAsync(_vaultId, _project.ProjectId, name);
 
-            if (!response.Succeeded)
+            if (!response.Succeeded || response.Session == null)
             {
                 _ctx.Errors.AddModelErrors(response, source, "Session");
                 return;
             }
 
-            var session = MapToSessionState(response.Session!);
+            var session = MapToSessionState(response.Session);
             await _appState.CreateWorkspaceSessionAsync(_vaultId, _project.ProjectId, session);
             _appState.SetSelectedNavigationItem("Chat");
             Notify();
@@ -96,7 +91,7 @@ public class ProjectNodeVM : IDisposable
 
         try
         {
-            var response = await _ctx.Vault.RenameProjectAsync(_vaultId, _project.ProjectId, trimmed, _vaultStorageMode);
+            var response = await _ctx.Vault.RenameProjectAsync(_vaultId, _project.ProjectId, trimmed);
 
             if (!response.Succeeded)
             {
@@ -125,7 +120,7 @@ public class ProjectNodeVM : IDisposable
 
         try
         {
-            var response = await _ctx.Vault.DeleteProjectAsync(_vaultId, _project.ProjectId, _vaultStorageMode);
+            var response = await _ctx.Vault.DeleteProjectAsync(_vaultId, _project.ProjectId);
 
             if (!response.Succeeded)
             {

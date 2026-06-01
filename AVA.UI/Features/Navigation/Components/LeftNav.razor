@@ -26,19 +26,6 @@
                    placeholder="Vault name…"
                    @onkeydown="HandleCreateKeyDown" />
 
-            <div class="vault-create-modes">
-                <button class="vault-mode-btn @(VM.NewVaultStorageMode == "Database" ? "vault-mode-btn--active" : "")"
-                        title="Store in database"
-                        @onclick='() => VM.SetStorageMode("Database")'>
-                    DB
-                </button>
-                <button class="vault-mode-btn @(VM.NewVaultStorageMode == "File" ? "vault-mode-btn--active" : "")"
-                        title="Store in file"
-                        @onclick='() => VM.SetStorageMode("File")'>
-                    FILE
-                </button>
-            </div>
-
             <div class="vault-create-actions">
                 <button class="vault-create-btn vault-create-btn--cancel"
                         @onclick="VM.CancelCreate">
@@ -295,8 +282,8 @@
 
     private async Task HandleVaultChanged()
     {
-        await AppState.SaveSettingsAsync();
         AppState.NotifyStateChanged();
+        await Task.CompletedTask;
     }
 
     private async Task ToggleCollapse()

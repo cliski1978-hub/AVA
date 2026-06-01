@@ -48,11 +48,5 @@ namespace AVA.UI.CORE.Models.UI
         /// </summary>
         public string? StoragePath { get; set; }
 
-        /// <summary>
-        /// Indicates where this vault's data is sourced from at runtime.
-        /// "Database" = loaded from AvaVault SQL.
-        /// "File" = loaded from vaults.json only (offline or file-mode vault).
-        /// </summary>
-        public string StorageMode { get; set; } = "Database";
     }
 }
