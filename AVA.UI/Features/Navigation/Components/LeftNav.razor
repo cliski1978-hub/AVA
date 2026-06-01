@@ -295,7 +295,7 @@
 
     private async Task HandleVaultChanged()
     {
-        await SettingsService.SaveAsync();
+        await AppState.SaveSettingsAsync();
         AppState.NotifyStateChanged();
     }
 

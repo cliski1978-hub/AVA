@@ -106,9 +106,20 @@ namespace AVA.UPS.Adapter.LLMAdapters
             try
             {
                 var httpResponse = await _http.SendAsync(httpRequest, cancellationToken);
-                httpResponse.EnsureSuccessStatusCode();
-
                 var responseJson = await httpResponse.Content.ReadAsStringAsync(cancellationToken);
+
+                if (!httpResponse.IsSuccessStatusCode)
+                {
+                    return new UPSResponse
+                    {
+                        Success = false,
+                        ErrorMessage = BuildHttpErrorMessage(httpResponse, responseJson),
+                        ModelId = _config.ModelId,
+                        ProviderResponse = responseJson,
+                        RespondedAt = DateTime.UtcNow
+                    };
+                }
+
                 var result = JsonSerializer.Deserialize<AnthropicResponse>(responseJson, _jsonOpts);
                 var responseText = result?.Content?[0]?.Text ?? "(empty response)";
 
@@ -131,6 +142,15 @@ namespace AVA.UPS.Adapter.LLMAdapters
                 return new UPSResponse { Success = false, ErrorMessage = "Request timed out.", ModelId = _config.ModelId };
             }
 
+        }
+
+        private static string BuildHttpErrorMessage(HttpResponseMessage response, string responseBody)
+        {
+            var body = string.IsNullOrWhiteSpace(responseBody)
+                ? string.Empty
+                : $" Body: {responseBody[..Math.Min(500, responseBody.Length)]}";
+
+            return $"HTTP {(int)response.StatusCode} {response.StatusCode}.{body}";
         }
 
         /// <inheritdoc />
@@ -171,9 +191,18 @@ namespace AVA.UPS.Adapter.LLMAdapters
         private string BuildEndpointUrl()
         {
             var baseUrl = string.IsNullOrWhiteSpace(_config.Endpoint) ? DefaultEndpoint : _config.Endpoint.TrimEnd('/');
-            return baseUrl.EndsWith("/v1/messages", StringComparison.OrdinalIgnoreCase)
-                ? baseUrl
-                : $"{baseUrl}/v1/messages";
+
+            if (baseUrl.EndsWith("/v1/messages", StringComparison.OrdinalIgnoreCase))
+            {
+                return baseUrl;
+            }
+
+            if (baseUrl.EndsWith("/v1", StringComparison.OrdinalIgnoreCase))
+            {
+                return $"{baseUrl}/messages";
+            }
+
+            return $"{baseUrl}/v1/messages";
         }
 
         private sealed class AnthropicRequest

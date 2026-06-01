@@ -111,9 +111,20 @@ namespace AVA.UPS.Adapter.LLMAdapters
             try
             {
                 var httpResponse = await _http.SendAsync(httpRequest, cancellationToken);
-                httpResponse.EnsureSuccessStatusCode();
-
                 var responseJson = await httpResponse.Content.ReadAsStringAsync(cancellationToken);
+
+                if (!httpResponse.IsSuccessStatusCode)
+                {
+                    return new UPSResponse
+                    {
+                        Success = false,
+                        ErrorMessage = BuildHttpErrorMessage(httpResponse, responseJson),
+                        ModelId = _config.ModelId,
+                        ProviderResponse = responseJson,
+                        RespondedAt = DateTime.UtcNow
+                    };
+                }
+
                 var result = JsonSerializer.Deserialize<ChatCompletionResponse>(responseJson, _jsonOpts);
                 var responseText = result?.Choices?[0]?.Message?.Content ?? "(empty response)";
 
@@ -136,6 +147,15 @@ namespace AVA.UPS.Adapter.LLMAdapters
                 return new UPSResponse { Success = false, ErrorMessage = "Request timed out.", ModelId = _config.ModelId };
             }
 
+        }
+
+        private static string BuildHttpErrorMessage(HttpResponseMessage response, string responseBody)
+        {
+            var body = string.IsNullOrWhiteSpace(responseBody)
+                ? string.Empty
+                : $" Body: {responseBody[..Math.Min(500, responseBody.Length)]}";
+
+            return $"HTTP {(int)response.StatusCode} {response.StatusCode}.{body}";
         }
 
         /// <inheritdoc />
@@ -176,9 +196,23 @@ namespace AVA.UPS.Adapter.LLMAdapters
         private string BuildEndpointUrl()
         {
             var baseUrl = _config.Endpoint.TrimEnd('/');
-            return baseUrl.EndsWith("/chat/completions", StringComparison.OrdinalIgnoreCase)
-                ? baseUrl
-                : $"{baseUrl}/v1/chat/completions";
+
+            if (baseUrl.EndsWith("/chat/completions", StringComparison.OrdinalIgnoreCase))
+            {
+                return baseUrl;
+            }
+
+            if (baseUrl.EndsWith("/completions", StringComparison.OrdinalIgnoreCase))
+            {
+                return $"{baseUrl[..^"/completions".Length]}/chat/completions";
+            }
+
+            if (baseUrl.EndsWith("/v1", StringComparison.OrdinalIgnoreCase))
+            {
+                return $"{baseUrl}/chat/completions";
+            }
+
+            return $"{baseUrl}/v1/chat/completions";
         }
 
         private Dictionary<string, string> ParseCustomHeaders()

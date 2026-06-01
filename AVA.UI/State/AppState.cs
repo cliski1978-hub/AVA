@@ -330,12 +330,12 @@ namespace AVA.UI.State
             }
             catch (Exception ex)
             {
-                AppendMemory($"Vault profile load failed (falling back to JSON): {ex.Message}");
+                AppendMemory($"Vault profile load failed: {ex.Message}");
                 _errorState.AddError(
-                    "Your provider profiles could not be loaded from the database. Falling back to local settings.",
+                    "Provider profiles could not be loaded from the database. Database may be unavailable.",
                     source: source,
                     feature: "Settings",
-                    severity: AppErrorSeverity.Warning);
+                    severity: AppErrorSeverity.Error);
             }
         }
 
@@ -1342,18 +1342,31 @@ namespace AVA.UI.State
         {
             try
             {
-                var client = new EndpointClientService();
-                var ok = await client.ConnectAsync(null, profile, token);
+                var result = await UPSClient.TestLLMProfileAsync(profile, token);
+                var rateLimited = IsProviderRateLimited(result.Message);
                 return new TestResult
                 {
-                    Success = ok,
-                    Message = ok ? $"Endpoint reachable: {profile.Endpoint}" : $"Could not reach endpoint: {profile.Endpoint}"
+                    Success = result.IsSuccess || rateLimited,
+                    Message = result.IsSuccess
+                        ? $"Provider test succeeded: {profile.Name}"
+                        : rateLimited
+                            ? $"Provider route reached, but the provider rate limited the test request: {result.Message}"
+                        : $"Provider test failed: {result.Message}"
                 };
             }
             catch (Exception ex)
             {
                 return new TestResult { Success = false, Message = ex.Message };
             }
+        }
+
+        private static bool IsProviderRateLimited(string message)
+        {
+            return message.Contains("429", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("TooManyRequests", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("Too Many Requests", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("rate limit", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("rate_limit", StringComparison.OrdinalIgnoreCase);
         }
 
         public async Task<TestResult> TestModelAsync(
@@ -1500,25 +1513,7 @@ namespace AVA.UI.State
         public async Task SaveSettingsAsync(CancellationToken token = default)
         {
             await SaveProfilesToVaultAsync();
-
-            var savedProviders = _settingsService.AppSettings.ProviderProfiles;
-            var savedModels = _settingsService.AppSettings.ModelDefinitions;
-            var savedLLMProfiles = _settingsService.AppSettings.LLMProfiles;
-
-            try
-            {
-                _settingsService.AppSettings.ProviderProfiles = new();
-                _settingsService.AppSettings.ModelDefinitions = new();
-                _settingsService.AppSettings.LLMProfiles = new();
-
-                await _settingsService.SaveAsync();
-            }
-            finally
-            {
-                _settingsService.AppSettings.ProviderProfiles = savedProviders;
-                _settingsService.AppSettings.ModelDefinitions = savedModels;
-                _settingsService.AppSettings.LLMProfiles = savedLLMProfiles;
-            }
+            await _settingsService.SaveAsync();
 
             SettingsDirty = false;
             Notify();

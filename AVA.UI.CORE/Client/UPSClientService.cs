@@ -123,20 +123,7 @@ namespace AVA.UI.CORE.UPS.Client
         {
             foreach (var model in profile.Models)
             {
-                var config = new LLMAdapterConfig
-                {
-                    ProfileId          = profile.ProfileId,
-                    ProfileName        = profile.Name,
-                    Provider           = profile.ResolvedProvider,
-                    Endpoint           = profile.Endpoint,
-                    ApiKey             = profile.ApiKey,
-                    CustomHeadersAsText = profile.CustomHeadersAsText,
-                    ModelId            = model.Id,
-                    ModelLabel         = model.Label,
-                    Temperature        = model.Temperature ?? profile.Temperature,
-                    MaxTokens          = model.MaxTokens   ?? profile.MaxTokens,
-                    SystemPrompt       = model.SystemPrompt
-                };
+                var config = BuildAdapterConfig(profile, model);
 
                 var key = AdapterKey(profile.ProfileId, model.Id);
 
@@ -148,8 +135,59 @@ namespace AVA.UI.CORE.UPS.Client
             return Task.CompletedTask;
         }
 
+        /// <summary>
+        /// Tests an LLM profile through the same provider adapter path used by chat.
+        /// </summary>
+        public async Task<LLMTestResult> TestLLMProfileAsync(
+            LLMProfile profile,
+            CancellationToken token = default)
+        {
+            ArgumentNullException.ThrowIfNull(profile);
+
+            var model = profile.Models.FirstOrDefault(entry => entry.IsActive)
+                ?? profile.Models.FirstOrDefault();
+
+            if (model == null)
+            {
+                return new LLMTestResult
+                {
+                    IsSuccess = false,
+                    Message = $"Profile {profile.Name} has no configured models."
+                };
+            }
+
+            var key = AdapterKey(profile.ProfileId, model.Id);
+            if (!_LLMAdapters.TryGetValue(key, out var adapter))
+            {
+                adapter = CreateLLMAdapter(BuildAdapterConfig(profile, model));
+                _LLMAdapters[key] = adapter;
+            }
+
+            return await adapter.TestAsync(token).ConfigureAwait(false);
+        }
+
         private static string AdapterKey(string profileId, string modelId) =>
             $"{profileId}:{modelId}";
+
+        private static LLMAdapterConfig BuildAdapterConfig(
+            LLMProfile profile,
+            ModelProfile model)
+        {
+            return new LLMAdapterConfig
+            {
+                ProfileId           = profile.ProfileId,
+                ProfileName         = profile.Name,
+                Provider            = profile.ResolvedProvider,
+                Endpoint            = profile.Endpoint,
+                ApiKey              = profile.ApiKey,
+                CustomHeadersAsText = profile.CustomHeadersAsText,
+                ModelId             = model.Id,
+                ModelLabel          = model.Label,
+                Temperature         = model.Temperature ?? profile.Temperature,
+                MaxTokens           = model.MaxTokens ?? profile.MaxTokens,
+                SystemPrompt        = model.SystemPrompt
+            };
+        }
 
         public Task<List<ModelProfile>> DiscoverModelsAsync(
             LLMProfile profile,

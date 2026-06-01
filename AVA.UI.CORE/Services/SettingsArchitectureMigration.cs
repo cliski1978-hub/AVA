@@ -3,90 +3,19 @@ using AVA.UI.CORE.Models.Settings;
 namespace AVA.UI.CORE.Services
 {
     /// <summary>
-    /// Normalizes settings into the separated provider/model architecture while preserving session connectivity.
+    /// Mirrors ProviderProfile/ModelDefinition data into LLMProfile/ModelProfile shapes
+    /// for use by the session runtime and adapters.
     /// </summary>
     public static class SettingsArchitectureMigration
     {
         /// <summary>
-        /// Ensures provider profiles and model definitions exist, seeding them from existing session profiles when needed.
+        /// Mirrors canonical provider and model data into runtime shapes.
         /// </summary>
         public static void Normalize(AppSettings settings)
         {
             if (settings == null) return;
 
-            SeedProviderProfiles(settings);
-            SeedModelDefinitions(settings);
             MirrorProviderModelsForSessionRuntime(settings);
-        }
-
-        private static void SeedProviderProfiles(AppSettings settings)
-        {
-            foreach (var sessionProfile in settings.LLMProfiles)
-            {
-                var provider = settings.ProviderProfiles.FirstOrDefault(existing =>
-                    existing.ProviderProfileId.Equals(sessionProfile.ProfileId, StringComparison.OrdinalIgnoreCase));
-
-                if (provider == null)
-                {
-                    provider = new ProviderProfile
-                    {
-                        ProviderProfileId = sessionProfile.ProfileId,
-                        Metadata = new Dictionary<string, string>
-                        {
-                            ["SeededFrom"] = "LLMProfile"
-                        }
-                    };
-                    settings.ProviderProfiles.Add(provider);
-
-                    provider.Name = sessionProfile.Name;
-                    provider.ProviderType = sessionProfile.ModelType;
-                    provider.CustomProviderType = sessionProfile.CustomModelType;
-                    provider.TransportType = sessionProfile.EndpointType;
-                    provider.CustomTransportType = sessionProfile.CustomEndpointType;
-                    provider.Endpoint = sessionProfile.Endpoint;
-                    provider.ApiKey = sessionProfile.ApiKey;
-                    provider.Secret = sessionProfile.Secret;
-                    provider.CustomHeadersAsText = sessionProfile.CustomHeadersAsText;
-                }
-            }
-        }
-
-        private static void SeedModelDefinitions(AppSettings settings)
-        {
-            foreach (var profile in settings.LLMProfiles)
-            {
-                foreach (var model in profile.Models)
-                {
-                    var existing = settings.ModelDefinitions.FirstOrDefault(definition =>
-                            definition.ModelId.Equals(model.Id, StringComparison.OrdinalIgnoreCase) &&
-                            definition.ProviderProfileId.Equals(profile.ProfileId, StringComparison.OrdinalIgnoreCase));
-
-                    if (existing != null)
-                    {
-                        existing.DisplayName = model.Label;
-                        existing.ModelType = model.Type;
-                        existing.IsDiscovered = model.IsDiscovered;
-                        existing.SystemPrompt = model.SystemPrompt;
-                        existing.MaxInputCharacters = ReadInt(model.Metadata, "MaxInputCharacters", existing.MaxInputCharacters);
-                        continue;
-                    }
-
-                    settings.ModelDefinitions.Add(new ModelDefinition
-                    {
-                        ModelId = model.Id,
-                        ProviderProfileId = profile.ProfileId,
-                        DisplayName = model.Label,
-                        ModelType = model.Type,
-                        IsDiscovered = model.IsDiscovered,
-                        MaxOutputTokens = Math.Max(1, model.MaxTokens ?? profile.MaxTokens),
-                        MaxInputCharacters = ReadInt(model.Metadata, "MaxInputCharacters", 0),
-                        DefaultTemperature = model.Temperature ?? profile.Temperature,
-                        SupportsProviderMemory = false, //ATT CLIFFF IF WE FIND A PROVIDER WITH BUILT IN MEMORY THIS NEEDS TO CHANGE
-                        SystemPrompt = model.SystemPrompt,
-                        Metadata = new Dictionary<string, string>(model.Metadata)
-                    });
-                }
-            }
         }
 
         private static void MirrorProviderModelsForSessionRuntime(AppSettings settings)
@@ -140,15 +69,6 @@ namespace AVA.UI.CORE.Services
                     model.Metadata["MaxInputCharacters"] = Math.Max(0, definition.MaxInputCharacters).ToString();
                 }
             }
-        }
-
-        private static int ReadInt(Dictionary<string, string> metadata, string key, int fallback)
-        {
-            return metadata != null &&
-                   metadata.TryGetValue(key, out var raw) &&
-                   int.TryParse(raw, out var value)
-                ? Math.Max(0, value)
-                : fallback;
         }
     }
 }

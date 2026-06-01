@@ -5,6 +5,7 @@
 //             by AvaSettingsService.
 // ─────────────────────────────────────────────────────────────────────────────
 
+using System.Text.Json.Serialization;
 using AVA.UI.CORE.Models.UI;
 
 namespace AVA.UI.CORE.Models.Settings
@@ -14,8 +15,11 @@ namespace AVA.UI.CORE.Models.Settings
         public List<LocalConnectionProfile> LocalProfiles { get; set; } = new();
         public List<RemoteConnectionProfile> RemoteProfiles { get; set; } = new();
         public List<AgentConnectionProfile> AgentProfiles { get; set; } = new();
+        [JsonIgnore]
         public List<LLMProfile> LLMProfiles { get; set; } = new();
+        [JsonIgnore]
         public List<ProviderProfile> ProviderProfiles { get; set; } = new();
+        [JsonIgnore]
         public List<ModelDefinition> ModelDefinitions { get; set; } = new();
         public List<LogSettings> LogSettings { get; set; } = new();
 

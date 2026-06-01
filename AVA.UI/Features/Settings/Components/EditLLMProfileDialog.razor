@@ -93,7 +93,7 @@
                 <label>Endpoint URL <span class="dialog__required">*</span></label>
                 <input value="@_Draft.Endpoint"
                        @oninput="E => { _Draft.Endpoint = E.Value?.ToString() ?? string.Empty; Validate(); }"
-                       placeholder="e.g. http://localhost:8080/v1/chat/completions" />
+                       placeholder="e.g. https://api.openai.com/v1" />
                 @if (_ShowEndpointError)
                 {
                     <span class="dialog__error">Endpoint URL is required.</span>
