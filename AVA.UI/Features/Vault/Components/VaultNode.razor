@@ -104,15 +104,45 @@
     @if (_vm.IsExpanded && !IsCollapsed)
     {
         <div class="vault-children">
-            @foreach (var session in Vault.Sessions.OrderByDescending(s => s.LastActiveAt))
+            @* Category: Notes *@
+            <div class="category category-notes" @onclick="NavigateToNotes">
+                <span class="category-icon">N</span>
+                <span class="category-label">Notes</span>
+            </div>
+
+            @* Category: Workflows *@
+            <div class="category category-workflows" @onclick="NavigateToWorkflows">
+                <span class="category-icon">W</span>
+                <span class="category-label">Workflows</span>
+            </div>
+
+            @* Category: Sessions (expandable) *@
+            <div class="category category-sessions">
+                <button class="category-chevron"
+                        @onclick:stopPropagation="true"
+                        @onclick="_vm.ToggleSessionsExpand">
+                    @(_vm.SessionsExpanded ? "v" : ">")
+                </button>
+                <span class="category-label category-sessions__label"
+                      @onclick="NavigateToSessions">
+                    Sessions
+                </span>
+            </div>
+            @if (_vm.SessionsExpanded)
             {
-                <SessionNode @key="session.SessionId"
-                             VaultId="@Vault.VaultId"
-                             ProjectId="@null"
-                             Session="session"
-                             OnSessionChanged="OnVaultChanged" />
+                <div class="category-children">
+                    @foreach (var session in Vault.Sessions.OrderByDescending(s => s.LastActiveAt))
+                    {
+                        <SessionNode @key="session.SessionId"
+                                     VaultId="@Vault.VaultId"
+                                     ProjectId="@null"
+                                     Session="session"
+                                     OnSessionChanged="OnVaultChanged" />
+                    }
+                </div>
             }
 
+            @* Projects *@
             @foreach (var project in Vault.Projects)
             {
                 <ProjectNode @key="project.ProjectId"
@@ -328,6 +358,77 @@
         margin-top: var(--RxXs);
         margin-bottom: var(--RxSm);
     }
+
+    .category {
+        display: flex;
+        align-items: center;
+        gap: var(--RxSm);
+        min-height: var(--SzSm);
+        padding: 0 var(--RxMd);
+        border-radius: var(--RxSm);
+        cursor: pointer;
+        transition: background var(--T);
+        user-select: none;
+    }
+
+    .category:hover {
+        background: var(--BgHover);
+    }
+
+    .category-icon {
+        font-size: var(--FzXs);
+        font-weight: 700;
+        width: var(--FzLg);
+        text-align: center;
+        flex-shrink: 0;
+    }
+
+    .category-label {
+        font-size: var(--FzSm);
+        font-weight: 500;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .category-chevron {
+        width: var(--FzLg);
+        height: var(--FzLg);
+        border: none;
+        background: transparent;
+        color: var(--TextFaint);
+        font-size: var(--FzXs);
+        cursor: pointer;
+        flex-shrink: 0;
+        padding: 0;
+        transition: color var(--T);
+    }
+
+    .category-chevron:hover {
+        color: var(--Text);
+    }
+
+    .category-notes {
+        color: #a855f7;
+    }
+
+    .category-workflows {
+        color: #22c55e;
+    }
+
+    .category-sessions {
+        color: #16a34a;
+    }
+
+    .category-sessions__label {
+        background: linear-gradient(135deg, #22c55e, #a855f7);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .category-children {
+        padding-left: var(--FzLg);
+    }
 </style>
 
 @code {
@@ -367,6 +468,21 @@
     {
         await _vm.CreateSessionAsync();
         await OnVaultChanged.InvokeAsync();
+    }
+
+    private void NavigateToNotes()
+    {
+        _vm.NavigateToNotes();
+    }
+
+    private void NavigateToWorkflows()
+    {
+        _vm.NavigateToWorkflows();
+    }
+
+    private void NavigateToSessions()
+    {
+        _vm.NavigateToSessions();
     }
 
     private async Task SaveRenameAsync()

@@ -126,6 +126,33 @@ namespace AVA.UI.State
         public void SetSelectedNavigationItem(string item)
             => _navState.SetSelectedNavigationItem(item);
 
+        public void NavigateToNotes(string vaultId, string? projectId)
+        {
+            ActiveVaultId   = vaultId;
+            ActiveProjectId = projectId;
+            ActiveWorkspaceSessionId = null;
+            SetSelectedNavigationItem("Notes");
+            NotifyStateChanged();
+        }
+
+        public void NavigateToWorkflows(string vaultId, string? projectId)
+        {
+            ActiveVaultId   = vaultId;
+            ActiveProjectId = projectId;
+            ActiveWorkspaceSessionId = null;
+            SetSelectedNavigationItem("Workflows");
+            NotifyStateChanged();
+        }
+
+        public void NavigateToSessions(string vaultId, string? projectId)
+        {
+            ActiveVaultId   = vaultId;
+            ActiveProjectId = projectId;
+            ActiveWorkspaceSessionId = null;
+            SetSelectedNavigationItem("Sessions");
+            NotifyStateChanged();
+        }
+
         // ── Connection status — delegates to SettingsState ────────────────────
         public bool IsConnected => _settingsState.IsConnected;
         public string ConnectionType => _settingsState.ConnectionType;

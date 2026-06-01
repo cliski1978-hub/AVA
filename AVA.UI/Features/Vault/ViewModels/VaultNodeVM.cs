@@ -28,6 +28,7 @@ public class VaultNodeVM : IDisposable
     public bool IsRenaming { get; private set; }
     public string DraftName { get; set; } = string.Empty;
     public bool IsExpanded => _vault.IsExpanded;
+    public bool SessionsExpanded { get; private set; }
 
     public VaultNodeVM(
         AppState appState,
@@ -64,6 +65,23 @@ public class VaultNodeVM : IDisposable
     }
 
     public void CancelRename() { IsRenaming = false; DraftName = string.Empty; Notify(); }
+
+    // ── Category expand ───────────────────────────────────────────────────────
+    public void ToggleSessionsExpand()
+    {
+        SessionsExpanded = !SessionsExpanded;
+        Notify();
+    }
+
+    // ── Category navigation ───────────────────────────────────────────────────
+    public void NavigateToNotes()
+        => _appState.NavigateToNotes(_vault.VaultId, null);
+
+    public void NavigateToWorkflows()
+        => _appState.NavigateToWorkflows(_vault.VaultId, null);
+
+    public void NavigateToSessions()
+        => _appState.NavigateToSessions(_vault.VaultId, null);
 
     // ── Business operations ───────────────────────────────────────────────────
 
@@ -121,8 +139,9 @@ public class VaultNodeVM : IDisposable
 
             var session = MapToSessionState(response.Session);
             _vault.IsExpanded = true;
+            SessionsExpanded = true;
             await _appState.CreateWorkspaceSessionAsync(_vault.VaultId, null, session);
-            _appState.SetSelectedNavigationItem("Chat");
+            _appState.SetSelectedNavigationItem("Sessions");
             Notify();
         }
         catch (Exception ex)

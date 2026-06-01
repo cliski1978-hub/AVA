@@ -1,0 +1,179 @@
+@using AVA.UI.Features.Session.ViewModels
+@inject AppState AppState
+@inject IAvaRuntimeContext RuntimeContext
+@inject ILogger<SessionsLayoutVM> VmLogger
+
+<div class="sessions-layout">
+    <div class="sessions-layout__header">
+        <span class="sessions-layout__title">Sessions</span>
+        <span class="sessions-layout__scope">
+            @(AppState.ActiveProjectId is not null ? "Project" : "Vault")
+        </span>
+        <button class="sessions-layout__create-btn"
+                @onclick="CreateSessionAsync">
+            + New Session
+        </button>
+    </div>
+
+    <div class="sessions-layout__list">
+        @if (_vm.Sessions.Count == 0)
+        {
+            <div class="sessions-layout__empty">
+                No sessions yet. Create one to get started.
+            </div>
+        }
+        else
+        {
+            @foreach (var session in _vm.Sessions.OrderByDescending(s => s.LastActiveAt))
+            {
+                <div class="session-row @(session.SessionId == AppState.ActiveWorkspaceSessionId ? "active" : "")"
+                     @onclick="() => SelectSessionAsync(session.SessionId)">
+                    <span class="session-row__name">@session.Name</span>
+                    <span class="session-row__date">@session.LastActiveAt?.ToString("MMM dd")</span>
+                    @if (session.IsPinned)
+                    {
+                        <span class="session-row__pin">P</span>
+                    }
+                </div>
+            }
+        }
+    </div>
+</div>
+
+<style>
+    .sessions-layout {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        overflow: hidden;
+    }
+
+    .sessions-layout__header {
+        display: flex;
+        align-items: center;
+        gap: var(--RxMd);
+        padding: var(--RxMd) var(--RxLg);
+        border-bottom: 1px solid var(--Border);
+        flex-shrink: 0;
+    }
+
+    .sessions-layout__title {
+        font-size: var(--FzLg);
+        font-weight: 600;
+        color: var(--Text);
+    }
+
+    .sessions-layout__scope {
+        font-size: var(--FzXs);
+        font-weight: 600;
+        color: var(--TextMuted);
+        background: var(--BgElevated);
+        padding: 0 var(--RxMd);
+        border-radius: var(--RxPill);
+        line-height: var(--SzXs);
+    }
+
+    .sessions-layout__create-btn {
+        margin-left: auto;
+        height: var(--SzSm);
+        border-radius: var(--RxSm);
+        border: 1px solid var(--BorderMid);
+        background: var(--BgBase);
+        color: var(--Accent);
+        font-size: var(--FzSm);
+        padding: 0 var(--RxLg);
+        cursor: pointer;
+        transition: all var(--T);
+    }
+
+    .sessions-layout__create-btn:hover {
+        background: var(--Accent);
+        color: var(--BgBase);
+        border-color: var(--Accent);
+    }
+
+    .sessions-layout__list {
+        flex: 1;
+        overflow-y: auto;
+        padding: var(--RxSm) 0;
+    }
+
+    .sessions-layout__empty {
+        text-align: center;
+        padding: var(--RxLg);
+        color: var(--TextMuted);
+        font-size: var(--FzSm);
+    }
+
+    .session-row {
+        display: flex;
+        align-items: center;
+        gap: var(--RxMd);
+        padding: var(--RxSm) var(--RxLg);
+        cursor: pointer;
+        transition: background var(--T);
+        border-left: 3px solid transparent;
+    }
+
+    .session-row:hover {
+        background: var(--BgHover);
+    }
+
+    .session-row.active {
+        background: var(--BgElevated);
+        border-left-color: var(--Accent);
+    }
+
+    .session-row__name {
+        flex: 1;
+        min-width: 0;
+        font-size: var(--FzSm);
+        color: var(--Text);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .session-row__date {
+        font-size: var(--FzXs);
+        color: var(--TextFaint);
+        flex-shrink: 0;
+    }
+
+    .session-row__pin {
+        font-size: var(--FzXs);
+        font-weight: 700;
+        color: var(--Accent);
+        flex-shrink: 0;
+    }
+</style>
+
+@code {
+    private SessionsLayoutVM _vm = default!;
+
+    protected override void OnInitialized()
+    {
+        _vm = new SessionsLayoutVM(AppState, RuntimeContext, VmLogger);
+        _vm.OnChange += HandleStateChanged;
+        AppState.OnChange += HandleStateChanged;
+    }
+
+    private void HandleStateChanged() => InvokeAsync(StateHasChanged);
+
+    private async Task CreateSessionAsync()
+    {
+        await _vm.CreateSessionAsync();
+    }
+
+    private async Task SelectSessionAsync(string sessionId)
+    {
+        await _vm.SelectSessionAsync(sessionId);
+    }
+
+    public void Dispose()
+    {
+        _vm.OnChange -= HandleStateChanged;
+        AppState.OnChange -= HandleStateChanged;
+        _vm.Dispose();
+    }
+}

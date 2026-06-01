@@ -22,6 +22,37 @@
     case "Canvas":
         <SessionCanvas />
         break;
+    case "Notes":
+        @if (AppState.ActiveVaultId is not null)
+        {
+            <VaultNotesLayout />
+        }
+        else
+        {
+            <div class="vault-empty-state">
+                <div class="vault-empty-state__icon">--</div>
+                <div class="vault-empty-state__title">No vault selected</div>
+                <div class="vault-empty-state__hint">Select a vault from the workspace panel first to view and manage notes.</div>
+            </div>
+        }
+        break;
+    case "Workflows":
+        <WorkflowsLayout />
+        break;
+    case "Sessions":
+        @if (AppState.ActiveVaultId is not null)
+        {
+            <SessionsLayout />
+        }
+        else
+        {
+            <div class="vault-empty-state">
+                <div class="vault-empty-state__icon">--</div>
+                <div class="vault-empty-state__title">No vault selected</div>
+                <div class="vault-empty-state__hint">Select a vault from the workspace panel first to view sessions.</div>
+            </div>
+        }
+        break;
     case "Vault":
         @if (AppState.ActiveVaultId is not null)
         {

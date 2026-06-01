@@ -29,6 +29,7 @@ public class ProjectNodeVM : IDisposable
     public bool IsRenaming { get; private set; }
     public string DraftName { get; set; } = string.Empty;
     public bool IsExpanded => _project.IsExpanded;
+    public bool SessionsExpanded { get; private set; }
 
     public ProjectNodeVM(
         AppState appState,
@@ -50,6 +51,23 @@ public class ProjectNodeVM : IDisposable
     public void BeginRename()  { ShowMenu = false; IsRenaming = true; DraftName = _project.Name; Notify(); }
     public void CancelRename() { IsRenaming = false; DraftName = string.Empty; Notify(); }
 
+    // ── Category expand ───────────────────────────────────────────────────────
+    public void ToggleSessionsExpand()
+    {
+        SessionsExpanded = !SessionsExpanded;
+        Notify();
+    }
+
+    // ── Category navigation ───────────────────────────────────────────────────
+    public void NavigateToNotes()
+        => _appState.NavigateToNotes(_vaultId, _project.ProjectId);
+
+    public void NavigateToWorkflows()
+        => _appState.NavigateToWorkflows(_vaultId, _project.ProjectId);
+
+    public void NavigateToSessions()
+        => _appState.NavigateToSessions(_vaultId, _project.ProjectId);
+
     // ── Business operations ───────────────────────────────────────────────────
 
     public async Task AddSessionAsync()
@@ -70,8 +88,9 @@ public class ProjectNodeVM : IDisposable
             }
 
             var session = MapToSessionState(response.Session);
+            SessionsExpanded = true;
             await _appState.CreateWorkspaceSessionAsync(_vaultId, _project.ProjectId, session);
-            _appState.SetSelectedNavigationItem("Chat");
+            _appState.SetSelectedNavigationItem("Sessions");
             Notify();
         }
         catch (Exception ex)
