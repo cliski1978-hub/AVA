@@ -262,7 +262,7 @@ public class VaultNoteEditorVM : IDisposable
 
         try
         {
-            var response    = await _ctx.Vault.CreateLinkAsync(
+            var response    = await _ctx.Vault.CreateRelationAsync(
                 ActiveNote.VaultID, ActiveNote.ID, targetNoteId, relationType);
 
             if (!response.Succeeded)
@@ -293,7 +293,7 @@ public class VaultNoteEditorVM : IDisposable
 
         try
         {
-            var response    = await _ctx.Vault.DeleteLinkAsync(ActiveNote.VaultID, linkId);
+            var response    = await _ctx.Vault.DeleteRelationAsync(ActiveNote.VaultID, linkId);
 
             if (!response.Succeeded)
             {

@@ -48,7 +48,6 @@ namespace AVA.Vault.Core.Adapters
                     Content = content,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
-                    ProjectID = null,
                     Metadata = new List<VaultMetadata>()
                 };
 

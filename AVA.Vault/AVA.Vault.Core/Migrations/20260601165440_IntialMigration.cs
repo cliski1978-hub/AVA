@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace AVA.Vault.Core.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialDatabase : Migration
+    public partial class IntialMigration : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -371,7 +371,6 @@ namespace AVA.Vault.Core.Migrations
                     Title = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime", nullable: false),
                     VaultID = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
-                    ProjectID = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: true),
                     SessionID = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: true),
                     PrimaryIdentityId = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
                     PrimaryIdentityHandle = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
@@ -386,12 +385,6 @@ namespace AVA.Vault.Core.Migrations
                         column: x => x.VaultID,
                         principalTable: "VaultHeaders",
                         principalColumn: "ID");
-                    table.ForeignKey(
-                        name: "FK_VaultNotes_VaultProjects_ProjectID",
-                        column: x => x.ProjectID,
-                        principalTable: "VaultProjects",
-                        principalColumn: "ID",
-                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_VaultNotes_VaultSessions_SessionID",
                         column: x => x.SessionID,
@@ -1390,16 +1383,6 @@ namespace AVA.Vault.Core.Migrations
                 name: "IX_VaultNoteRelations_TargetNoteID",
                 table: "VaultNoteRelations",
                 column: "TargetNoteID");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_VaultNotes_ProjectID",
-                table: "VaultNotes",
-                column: "ProjectID");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_VaultNotes_ProjectId_SortOrder",
-                table: "VaultNotes",
-                columns: new[] { "ProjectID", "SortOrder" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_VaultNotes_SessionID",

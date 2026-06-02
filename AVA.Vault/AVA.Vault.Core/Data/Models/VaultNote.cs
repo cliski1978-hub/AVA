@@ -59,9 +59,6 @@ namespace AVA.Vault.Core.Data.Models
         public string VaultID { get; set; } = string.Empty;
 
         [MaxLength(128)]
-        public string? ProjectID { get; set; }
-
-        [MaxLength(128)]
         public string? SessionID { get; set; }
 
         #endregion
@@ -85,10 +82,6 @@ namespace AVA.Vault.Core.Data.Models
 
         [InverseProperty(nameof(VaultNoteRelation.OutgoingNote))]
         public virtual ICollection<VaultNoteRelation> OutgoingRelations { get; set; } = new HashSet<VaultNoteRelation>();
-
-        [ForeignKey(nameof(ProjectID))]
-        [InverseProperty(nameof(VaultProject.Notes))]
-        public virtual VaultProject? Project { get; set; }
 
         [InverseProperty(nameof(VaultProjectNote.Note))]
         public virtual ICollection<VaultProjectNote> ProjectNotes { get; set; } = new HashSet<VaultProjectNote>();

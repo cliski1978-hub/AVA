@@ -10,7 +10,8 @@ using CliskiCore.DbAPI.Interfaces;
 namespace AVA.Vault.Core.Services.Data
 {
     /// <summary>
-    /// Deletes an existing VaultMetadata record.
+    /// Deletes a VaultMetadata record.
+    /// This does not delete the underlying VaultNote.
     /// </summary>
     public class DeleteVaultMetadataService : ApiServiceBase<DeleteVaultMetadataRequest, DeleteVaultMetadataResponse>
     {
@@ -27,30 +28,39 @@ namespace AVA.Vault.Core.Services.Data
 
             try
             {
-                var meta = Context.Set<VaultMetadata>()
-                    .FirstOrDefault(m => m.ID == request.MetadataID);
+                var metadata = Context.Set<VaultMetadata>().FirstOrDefault(m => m.ID == request.MetadataID);
 
-                if (meta == null)
+                if (metadata == null)
                 {
-                    response.UserMessage = "Metadata entry not found.";
+                    response.Code = 404;
+                    response.UserMessage = "Vault metadata not found.";
                     response.Deleted = false;
                     return response;
                 }
 
-                Context.Set<VaultMetadata>().Remove(meta);
-                Context.Log(request.RequestPartyName, LogLevel.Summary, "VaultMetadata", meta.ID, "Deleted");
+                var noteId = metadata.NoteID;
+                var key = metadata.Key;
+
+                Context.Set<VaultMetadata>().Remove(metadata);
                 Context.Flush();
 
-                _logger.Log(nameof(DeleteVaultMetadataService),
-                    $"Deleted metadata '{meta.Key}' from note {meta.NoteID}");
-
                 response.Deleted = true;
-                response.UserMessage = "Metadata deleted successfully.";
+                response.MetadataID = request.MetadataID;
+                response.NoteID = noteId;
+                response.Key = key;
+                response.UserMessage = "Vault metadata deleted successfully.";
+
+                _logger.Log(nameof(DeleteVaultMetadataService), $"Deleted VaultMetadata [{request.MetadataID}] Key [{key}] Note [{noteId}]");
+
+                Context.Log(request.RequestPartyName, LogLevel.Summary, "VaultMetadata", request.MetadataID, "Deleted");
+
+                // TODO: After note cleanup services are created, call centralized orphan evaluation here if needed.
             }
             catch (Exception ex)
             {
                 _logger.LogError(nameof(DeleteVaultMetadataService), "Error deleting VaultMetadata.", ex);
-                response.UserMessage = "An error occurred while deleting the metadata entry.";
+                response.Code = 500;
+                response.UserMessage = "An error occurred while deleting the vault metadata.";
                 response.Deleted = false;
             }
 
@@ -58,17 +68,15 @@ namespace AVA.Vault.Core.Services.Data
         }
     }
 
-    #region Models
+    #region Delete Models
 
     public class DeleteVaultMetadataRequest : CfkAuthorizedApiRequest
     {
-        [Required] public string VaultID { get; set; }
-        [Required] public string MetadataID { get; set; }
+        [Required]
+        public string MetadataID { get; set; }
 
         public override IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
-            if (string.IsNullOrWhiteSpace(VaultID))
-                yield return new ValidationResult("VaultID is required.");
             if (string.IsNullOrWhiteSpace(MetadataID))
                 yield return new ValidationResult("MetadataID is required.");
         }
@@ -77,6 +85,9 @@ namespace AVA.Vault.Core.Services.Data
     public class DeleteVaultMetadataResponse : CfkApiResponse
     {
         public bool Deleted { get; set; }
+        public string? MetadataID { get; set; }
+        public string? NoteID { get; set; }
+        public string? Key { get; set; }
     }
 
     #endregion

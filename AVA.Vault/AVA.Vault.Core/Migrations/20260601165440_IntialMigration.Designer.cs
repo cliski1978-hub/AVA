@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AVA.Vault.Core.Migrations
 {
     [DbContext(typeof(VaultDbContext))]
-    [Migration("20260528203817_InitialDatabase")]
-    partial class InitialDatabase
+    [Migration("20260601165440_IntialMigration")]
+    partial class IntialMigration
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -914,10 +914,6 @@ namespace AVA.Vault.Core.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("nvarchar(32)");
 
-                    b.Property<string>("ProjectID")
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
-
                     b.Property<string>("SessionID")
                         .HasMaxLength(128)
                         .HasColumnType("nvarchar(128)");
@@ -948,17 +944,11 @@ namespace AVA.Vault.Core.Migrations
 
                     b.HasKey("ID");
 
-                    b.HasIndex("ProjectID")
-                        .HasDatabaseName("IX_VaultNotes_ProjectID");
-
                     b.HasIndex("SessionID")
                         .HasDatabaseName("IX_VaultNotes_SessionID");
 
                     b.HasIndex("VaultID")
                         .HasDatabaseName("IX_VaultNotes_VaultID");
-
-                    b.HasIndex("ProjectID", "SortOrder")
-                        .HasDatabaseName("IX_VaultNotes_ProjectId_SortOrder");
 
                     b.ToTable("VaultNotes");
                 });
@@ -2678,11 +2668,6 @@ namespace AVA.Vault.Core.Migrations
 
             modelBuilder.Entity("AVA.Vault.Core.Data.Models.VaultNote", b =>
                 {
-                    b.HasOne("AVA.Vault.Core.Data.Models.VaultProject", "Project")
-                        .WithMany("Notes")
-                        .HasForeignKey("ProjectID")
-                        .OnDelete(DeleteBehavior.Cascade);
-
                     b.HasOne("AVA.Vault.Core.Data.Models.VaultSession", "Session")
                         .WithMany()
                         .HasForeignKey("SessionID")
@@ -2693,8 +2678,6 @@ namespace AVA.Vault.Core.Migrations
                         .HasForeignKey("VaultID")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
-
-                    b.Navigation("Project");
 
                     b.Navigation("Session");
 
@@ -3158,8 +3141,6 @@ namespace AVA.Vault.Core.Migrations
                     b.Navigation("FileRefs");
 
                     b.Navigation("Graphs");
-
-                    b.Navigation("Notes");
 
                     b.Navigation("ProjectFileRefs");
 

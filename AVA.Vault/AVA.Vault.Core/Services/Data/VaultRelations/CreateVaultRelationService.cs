@@ -15,20 +15,20 @@ namespace AVA.Vault.Core.Services.Data
     /// RelationType must be one of the values in VaultLinkRelationType.
     /// No AI-generated or graph-traversal links — user-created only.
     /// </summary>
-    public class CreateVaultLinkService : ApiServiceBase<CreateVaultLinkRequest, CreateVaultLinkResponse>
+    public class CreateVaultRelationService : ApiServiceBase<CreateVaultRelationRequest, CreateVaultRelationResponse>
     {
         private readonly VaultLogger _logger;
         private readonly IVaultIdService _ids;
 
-        public CreateVaultLinkService(IDbContext context, VaultLogger logger, IVaultIdService ids) : base(context)
+        public CreateVaultRelationService(IDbContext context, VaultLogger logger, IVaultIdService ids) : base(context)
         {
             _logger = logger;
             _ids    = ids;
         }
 
-        protected override CreateVaultLinkResponse DoWork(CreateVaultLinkRequest request)
+        protected override CreateVaultRelationResponse DoWork(CreateVaultRelationRequest request)
         {
-            var response = new CreateVaultLinkResponse();
+            var response = new CreateVaultRelationResponse();
 
             try
             {
@@ -67,7 +67,7 @@ namespace AVA.Vault.Core.Services.Data
                 Context.Set<VaultNoteRelation>().Add(relation);
                 Context.Flush();
 
-                _logger.Log(nameof(CreateVaultLinkService),
+                _logger.Log(nameof(CreateVaultRelationService),
                     $"Created VaultNoteRelation: {relation.SourceNoteID} →[{relation.RelationType}]→ {relation.TargetNoteID}");
                 Context.Log(request.RequestPartyName, LogLevel.Summary, "VaultNoteRelation", relation.ID, "Created");
 
@@ -77,7 +77,7 @@ namespace AVA.Vault.Core.Services.Data
             }
             catch (Exception ex)
             {
-                _logger.LogError(nameof(CreateVaultLinkService), "Error creating VaultLink.", ex);
+                _logger.LogError(nameof(CreateVaultRelationService), "Error creating VaultLink.", ex);
                 response.UserMessage = "An error occurred while creating the VaultLink.";
             }
 
@@ -87,7 +87,7 @@ namespace AVA.Vault.Core.Services.Data
 
     #region Models
 
-    public class CreateVaultLinkRequest : CfkAuthorizedApiRequest
+    public class CreateVaultRelationRequest : CfkAuthorizedApiRequest
     {
         [Required] public string VaultID { get; set; }
         [Required] public string SourceNoteID { get; set; }
@@ -111,7 +111,7 @@ namespace AVA.Vault.Core.Services.Data
         }
     }
 
-    public class CreateVaultLinkResponse : CfkApiResponse
+    public class CreateVaultRelationResponse : CfkApiResponse
     {
         public string?    LinkID { get; set; }
         public VaultNoteRelation? Link   { get; set; }

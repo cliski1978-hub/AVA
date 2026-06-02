@@ -77,9 +77,6 @@ public class VaultNodeVM : IDisposable
     public void NavigateToNotes()
         => _appState.NavigateToNotes(_vault.VaultId, null);
 
-    public void NavigateToWorkflows()
-        => _appState.NavigateToWorkflows(_vault.VaultId, null);
-
     public void NavigateToSessions()
         => _appState.NavigateToSessions(_vault.VaultId, null);
 

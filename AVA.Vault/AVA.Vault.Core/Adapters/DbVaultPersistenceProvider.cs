@@ -4,7 +4,7 @@ using AVA.Vault.Core.Data.Models;
 using AVA.Vault.Core.Interfaces;
 using AVA.Vault.Core.Logger;
 using AVA.Vault.Core.Services.Data;
-using AVA.Vault.Core.Services.Data.VaultProjects;
+
 
 namespace AVA.Vault.Core.Adapters
 {
@@ -131,9 +131,9 @@ namespace AVA.Vault.Core.Adapters
             return new CreateVaultSessionService(adapter, _logger)
                 .Execute(new CreateVaultSessionRequest
                 {
-                    SessionId        = sessionId,
-                    VaultId          = vaultId,
-                    ProjectId        = projectId,
+                    SessionID        = sessionId,
+                    VaultID          = vaultId,
+                    ProjectID        = projectId,
                     Name             = name,
                     RequestPartyName = "AVA.Vault"
                 });
@@ -146,8 +146,8 @@ namespace AVA.Vault.Core.Adapters
             return new UpdateVaultSessionService(adapter, _logger)
                 .Execute(new UpdateVaultSessionRequest
                 {
-                    VaultId          = vaultId,
-                    SessionId        = sessionId,
+                    VaultID          = vaultId,
+                    SessionID        = sessionId,
                     Name             = newName,
                     RequestPartyName = "AVA.Vault"
                 });
@@ -160,8 +160,8 @@ namespace AVA.Vault.Core.Adapters
             return new UpdateVaultSessionService(adapter, _logger)
                 .Execute(new UpdateVaultSessionRequest
                 {
-                    VaultId               = vaultId,
-                    SessionId             = sessionId,
+                    VaultID               = vaultId,
+                    SessionID             = sessionId,
                     AttachedModelIdsJson  = System.Text.Json.JsonSerializer.Serialize(attachedModelIds),
                     BroadcastGroupIdsJson = System.Text.Json.JsonSerializer.Serialize(broadcastGroupIds),
                     DefaultModelId        = defaultModelId,
@@ -176,8 +176,8 @@ namespace AVA.Vault.Core.Adapters
             return new DeleteVaultSessionService(adapter, _logger)
                 .Execute(new DeleteVaultSessionRequest
                 {
-                    VaultId          = vaultId,
-                    SessionId        = sessionId,
+                    VaultID          = vaultId,
+                    SessionID        = sessionId,
                     RequestPartyName = "AVA.Vault"
                 });
         }
@@ -190,7 +190,7 @@ namespace AVA.Vault.Core.Adapters
 
         // ── Note ───────────────────────────────────────────────────────────────
 
-        public async Task<CreateVaultNoteResponse> CreateNoteAsync(string vaultId, string projectId, string title, string content, string? sessionId = null, CancellationToken ct = default)
+        public async Task<CreateVaultNoteResponse> CreateNoteAsync(string vaultId, string? projectId, string title, string content, string? sessionId = null, CancellationToken ct = default)
         {
             await using var db = await _dbFactory.CreateDbContextAsync(ct);
             var adapter        = new VaultDbContextAdapter(db);
@@ -242,7 +242,6 @@ namespace AVA.Vault.Core.Adapters
             return new DeleteVaultNoteService(adapter, _logger)
                 .Execute(new DeleteVaultNoteRequest
                 {
-                    VaultID          = vaultId,
                     NoteID           = noteId,
                     RequestPartyName = "AVA.Vault"
                 });
@@ -350,12 +349,12 @@ namespace AVA.Vault.Core.Adapters
 
         // ── Link ───────────────────────────────────────────────────────────────
 
-        public async Task<CreateVaultLinkResponse> CreateLinkAsync(string vaultId, string sourceNoteId, string targetNoteId, string relationType, string? description = null, CancellationToken ct = default)
+        public async Task<CreateVaultRelationResponse> CreateRelationAsync(string vaultId, string sourceNoteId, string targetNoteId, string relationType, string? description = null, CancellationToken ct = default)
         {
             await using var db = await _dbFactory.CreateDbContextAsync(ct);
             var adapter        = new VaultDbContextAdapter(db);
-            return new CreateVaultLinkService(adapter, _logger, _ids)
-                .Execute(new CreateVaultLinkRequest
+            return new CreateVaultRelationService(adapter, _logger, _ids)
+                .Execute(new CreateVaultRelationRequest
                 {
                     VaultID          = vaultId,
                     SourceNoteID     = sourceNoteId,
@@ -366,7 +365,7 @@ namespace AVA.Vault.Core.Adapters
                 });
         }
 
-        public async Task<DeleteVaultLinkResponse> DeleteLinkAsync(string vaultId, string linkId, CancellationToken ct = default)
+        public async Task<DeleteVaultLinkResponse> DeleteRelationAsync(string vaultId, string linkId, CancellationToken ct = default)
         {
             await using var db = await _dbFactory.CreateDbContextAsync(ct);
             var adapter        = new VaultDbContextAdapter(db);

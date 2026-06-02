@@ -46,17 +46,6 @@ public static class VaultNoteMemoryMapper
             new()
             {
                 RecordID              = note.ID,
-                Key                   = "ProjectID",
-                Value                 = note.ProjectID,
-                CreatedAt             = now,
-                UpdatedAt             = now,
-                PrimaryIdentityId     = note.PrimaryIdentityId ?? string.Empty,
-                PrimaryIdentityHandle = note.PrimaryIdentityHandle ?? string.Empty,
-                PrimaryIdentityType   = note.PrimaryIdentityType ?? "system"
-            },
-            new()
-            {
-                RecordID              = note.ID,
                 Key                   = "Title",
                 Value                 = note.Title,
                 CreatedAt             = now,
@@ -72,7 +61,7 @@ public static class VaultNoteMemoryMapper
             ID                    = note.ID,
             Text                  = note.Content,
             Source                = "Vault",
-            ContextId             = note.ProjectID,
+            ContextId             = note.VaultID,
             EpisodeId             = note.VaultID,
             Tags                  = tags,
             Metadata              = metadata,

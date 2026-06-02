@@ -39,7 +39,7 @@ namespace AVA.Vault.Core.Services.Data
 
                 // Project filter
                 if (!string.IsNullOrWhiteSpace(request.ProjectID))
-                    query = query.Where(n => n.ProjectID == request.ProjectID);
+                    query = query.Where(n => n.ProjectNotes.Any(pn => pn.ProjectID == request.ProjectID));
 
                 // Session filter
                 if (!string.IsNullOrWhiteSpace(request.SessionID))

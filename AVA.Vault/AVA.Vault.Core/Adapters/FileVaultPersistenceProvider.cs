@@ -4,7 +4,7 @@ using AVA.Vault.Core.Interfaces;
 using AVA.Vault.Core.Logger;
 using AVA.Vault.Core.Services;
 using AVA.Vault.Core.Services.Data;
-using AVA.Vault.Core.Services.Data.VaultProjects;
+
 
 namespace AVA.Vault.Core.Adapters
 {
@@ -268,7 +268,7 @@ namespace AVA.Vault.Core.Adapters
 
                 return Task.FromResult(new CreateVaultSessionResponse
                 {
-                    SessionId   = session.ID,
+                    SessionID   = session.ID,
                     Session     = session,
                     UserMessage = "Session created successfully."
                 });
@@ -293,7 +293,7 @@ namespace AVA.Vault.Core.Adapters
 
                 return Task.FromResult(new UpdateVaultSessionResponse
                 {
-                    SessionId   = sessionId,
+                    SessionID   = sessionId,
                     Session     = session,
                     UserMessage = "Session renamed successfully."
                 });
@@ -319,7 +319,7 @@ namespace AVA.Vault.Core.Adapters
 
                 return Task.FromResult(new UpdateVaultSessionResponse
                 {
-                    SessionId   = sessionId,
+                    SessionID   = sessionId,
                     Session     = session,
                     UserMessage = "Session model state updated successfully."
                 });
@@ -370,7 +370,7 @@ namespace AVA.Vault.Core.Adapters
 
         // ── Note ──────────────────────────────────────────────────────────────
 
-        public Task<CreateVaultNoteResponse> CreateNoteAsync(string vaultId, string projectId, string title, string content, string? sessionId = null, CancellationToken ct = default)
+        public Task<CreateVaultNoteResponse> CreateNoteAsync(string vaultId, string? projectId, string title, string content, string? sessionId = null, CancellationToken ct = default)
         {
             try
             {
@@ -382,7 +382,6 @@ namespace AVA.Vault.Core.Adapters
                 {
                     ID        = noteId,
                     VaultID   = vaultId,
-                    ProjectID = projectId,
                     SessionID = sessionId,
                     Title     = title,
                     Content   = content,
@@ -476,6 +475,14 @@ namespace AVA.Vault.Core.Adapters
             var vaultPath = GetVaultPath(vaultId);
             var results   = new List<VaultNote>();
 
+            // Include vault-level notes when no project filter
+            if (string.IsNullOrWhiteSpace(projectId))
+            {
+                var vaultNotesDir = Path.Combine(vaultPath, "notes");
+                if (Directory.Exists(vaultNotesDir))
+                    ReadNotesFromDir(vaultNotesDir, results, sessionId, keyword, tag, createdAfter, createdBefore, updatedAfter, updatedBefore);
+            }
+
             var projectsRoot = Path.Combine(vaultPath, "projects");
             if (!Directory.Exists(projectsRoot)) return Task.FromResult<IEnumerable<VaultNote>>(results);
 
@@ -484,27 +491,7 @@ namespace AVA.Vault.Core.Adapters
                 : new[] { Path.Combine(projectsRoot, projectId) };
 
             foreach (var pDir in projectDirs)
-            {
-                var notesDir = Path.Combine(pDir, "notes");
-                if (!Directory.Exists(notesDir)) continue;
-
-                foreach (var metaFile in Directory.GetFiles(notesDir, "*.meta.json"))
-                {
-                    try
-                    {
-                        var note = ReadJson<VaultNote>(metaFile);
-                        if (sessionId     != null && note.SessionID != sessionId) continue;
-                        if (keyword       != null && !NoteMatchesKeyword(note, keyword)) continue;
-                        if (tag           != null && !(note.VaultNoteVaultTags?.Any(jt => jt.Tag.Name == tag) ?? false)) continue;
-                        if (createdAfter  != null && note.CreatedAt < createdAfter)  continue;
-                        if (createdBefore != null && note.CreatedAt > createdBefore) continue;
-                        if (updatedAfter  != null && note.UpdatedAt < updatedAfter)  continue;
-                        if (updatedBefore != null && note.UpdatedAt > updatedBefore) continue;
-                        results.Add(note);
-                    }
-                    catch { /* skip corrupt meta */ }
-                }
-            }
+                ReadNotesFromDir(Path.Combine(pDir, "notes"), results, sessionId, keyword, tag, createdAfter, createdBefore, updatedAfter, updatedBefore);
 
             IEnumerable<VaultNote> sorted = (sortBy, sortDescending) switch
             {
@@ -671,12 +658,12 @@ namespace AVA.Vault.Core.Adapters
 
         // ── Link ──────────────────────────────────────────────────────────────
 
-        public Task<CreateVaultLinkResponse> CreateLinkAsync(string vaultId, string sourceNoteId, string targetNoteId, string relationType, string? description = null, CancellationToken ct = default)
+        public Task<CreateVaultRelationResponse> CreateRelationAsync(string vaultId, string sourceNoteId, string targetNoteId, string relationType, string? description = null, CancellationToken ct = default)
         {
             try
             {
                 if (!VaultLinkRelationType.IsValid(relationType))
-                    return Task.FromResult(new CreateVaultLinkResponse { Code = 400, UserMessage = $"Invalid RelationType '{relationType}'." });
+                    return Task.FromResult(new CreateVaultRelationResponse { Code = 400, UserMessage = $"Invalid RelationType '{relationType}'." });
 
                 var relations = ReadRelations(vaultId);
                 var existing = relations.FirstOrDefault(r =>
@@ -685,7 +672,7 @@ namespace AVA.Vault.Core.Adapters
                     r.RelationType == relationType);
 
                 if (existing != null)
-                    return Task.FromResult(new CreateVaultLinkResponse { Link = existing, UserMessage = "Link already exists." });
+                    return Task.FromResult(new CreateVaultRelationResponse { Link = existing, UserMessage = "Link already exists." });
 
                 var relation = new VaultNoteRelation
                 {
@@ -703,16 +690,16 @@ namespace AVA.Vault.Core.Adapters
                 WriteRelations(vaultId, relations);
                 _logger.Log(nameof(FileVaultPersistenceProvider), $"Created file relation [{relation.ID}] {sourceNoteId} →[{relationType}]→ {targetNoteId}");
 
-                return Task.FromResult(new CreateVaultLinkResponse { Link = relation, UserMessage = "Link created successfully." });
+                return Task.FromResult(new CreateVaultRelationResponse { Link = relation, UserMessage = "Link created successfully." });
             }
             catch (Exception ex)
             {
                 _logger.LogError(nameof(FileVaultPersistenceProvider), "Error creating file link.", ex);
-                return Task.FromResult(new CreateVaultLinkResponse { Code = 400, UserMessage = ex.Message });
+                return Task.FromResult(new CreateVaultRelationResponse { Code = 400, UserMessage = ex.Message });
             }
         }
 
-        public Task<DeleteVaultLinkResponse> DeleteLinkAsync(string vaultId, string linkId, CancellationToken ct = default)
+        public Task<DeleteVaultLinkResponse> DeleteRelationAsync(string vaultId, string linkId, CancellationToken ct = default)
         {
             try
             {
@@ -788,8 +775,10 @@ namespace AVA.Vault.Core.Adapters
         private string GetSessionHeaderPath(string vaultId, string? projectId, string sessionId)
             => Path.Combine(GetSessionPath(vaultId, projectId, sessionId), "session.header.json");
 
-        private string GetNotesPath(string vaultId, string projectId)
-            => Path.Combine(GetProjectPath(vaultId, projectId), "notes");
+        private string GetNotesPath(string vaultId, string? projectId)
+            => string.IsNullOrWhiteSpace(projectId)
+                ? Path.Combine(GetVaultPath(vaultId), "notes")
+                : Path.Combine(GetProjectPath(vaultId, projectId), "notes");
 
         private VaultSession FindSession(string vaultId, string sessionId)
         {
@@ -817,6 +806,13 @@ namespace AVA.Vault.Core.Adapters
 
         private static (string? metaPath, string? mdPath) FindNoteFiles(string vaultPath, string noteId)
         {
+            // Check vault-level notes
+            var vaultNotesDir = Path.Combine(vaultPath, "notes");
+            var vaultMeta = Path.Combine(vaultNotesDir, $"{noteId}.meta.json");
+            var vaultMd   = Path.Combine(vaultNotesDir, $"{noteId}.md");
+            if (File.Exists(vaultMeta)) return (vaultMeta, vaultMd);
+
+            // Check project-level notes
             var projectsRoot = Path.Combine(vaultPath, "projects");
             if (!Directory.Exists(projectsRoot)) return (null, null);
 
@@ -828,6 +824,28 @@ namespace AVA.Vault.Core.Adapters
             }
 
             return (null, null);
+        }
+
+        private static void ReadNotesFromDir(string notesDir, List<VaultNote> results, string? sessionId, string? keyword, string? tag, DateTime? createdAfter, DateTime? createdBefore, DateTime? updatedAfter, DateTime? updatedBefore)
+        {
+            if (!Directory.Exists(notesDir)) return;
+
+            foreach (var metaFile in Directory.GetFiles(notesDir, "*.meta.json"))
+            {
+                try
+                {
+                    var note = ReadJson<VaultNote>(metaFile);
+                    if (sessionId     != null && note.SessionID != sessionId) continue;
+                    if (keyword       != null && !NoteMatchesKeyword(note, keyword)) continue;
+                    if (tag           != null && !(note.VaultNoteVaultTags?.Any(jt => jt.Tag.Name == tag) ?? false)) continue;
+                    if (createdAfter  != null && note.CreatedAt < createdAfter)  continue;
+                    if (createdBefore != null && note.CreatedAt > createdBefore) continue;
+                    if (updatedAfter  != null && note.UpdatedAt < updatedAfter)  continue;
+                    if (updatedBefore != null && note.UpdatedAt > updatedBefore) continue;
+                    results.Add(note);
+                }
+                catch { /* skip corrupt meta */ }
+            }
         }
 
         private static bool NoteMatchesKeyword(VaultNote note, string keyword)

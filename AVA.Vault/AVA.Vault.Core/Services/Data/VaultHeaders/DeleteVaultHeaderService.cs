@@ -45,7 +45,7 @@ namespace AVA.Vault.Core.Services.Data
                 var projectIds = projects.Select(p => p.ID).ToList();
 
                 var notes = Context.Set<VaultNote>()
-                    .Where(n => n.VaultID == vault.ID || projectIds.Contains(n.ProjectID))
+                    .Where(n => n.VaultID == vault.ID)
                     .ToList();
 
                 var noteIds = notes.Select(n => n.ID).ToList();

@@ -99,7 +99,7 @@ public class VaultSearchVM : IDisposable
     {
         var vaultId   = _appState.ActiveVaultId;
         var projectId = _appState.ActiveProjectId;
-        if (string.IsNullOrWhiteSpace(vaultId) || string.IsNullOrWhiteSpace(projectId)) return;
+        if (string.IsNullOrWhiteSpace(vaultId)) return;
 
         const string source = nameof(CreateNoteAsync);
         _ctx.Errors.ClearSource(source);

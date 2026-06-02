@@ -183,7 +183,13 @@
         AppState.OnChange += HandleAppStateChanged;
     }
 
-    private string GetSessionName() => AppState.CurrentSession?.Name ?? "New Session";
+    private string GetSessionName()
+    {
+        var page = AppState.SelectedNavigationItem;
+        if (page is "Notes" or "Vault" or "Workflows" or "Sessions")
+            return page;
+        return AppState.CurrentSession?.Name ?? "New Session";
+    }
 
     private string GetVaultPath()
     {

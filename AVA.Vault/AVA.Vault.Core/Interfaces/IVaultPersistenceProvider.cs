@@ -1,6 +1,6 @@
 using AVA.Vault.Core.Data.Models;
 using AVA.Vault.Core.Services.Data;
-using AVA.Vault.Core.Services.Data.VaultProjects;
+
 
 namespace AVA.Vault.Core.Interfaces
 {
@@ -32,7 +32,7 @@ namespace AVA.Vault.Core.Interfaces
         Task<IEnumerable<VaultSession>>   ListSessionsAsync(string vaultId, CancellationToken ct = default);
 
         // ── Note ───────────────────────────────────────────────────────────────
-        Task<CreateVaultNoteResponse>    CreateNoteAsync(string vaultId, string projectId, string title, string content, string? sessionId = null, CancellationToken ct = default);
+        Task<CreateVaultNoteResponse>    CreateNoteAsync(string vaultId, string? projectId, string title, string content, string? sessionId = null, CancellationToken ct = default);
         Task<VaultNote?>                 GetNoteAsync(string vaultId, string noteId, CancellationToken ct = default);
         Task<UpdateVaultNoteResponse>    UpdateNoteAsync(string vaultId, string noteId, string? title, string? content, CancellationToken ct = default);
         Task<DeleteVaultNoteResponse>    DeleteNoteAsync(string vaultId, string noteId, CancellationToken ct = default);
@@ -47,8 +47,8 @@ namespace AVA.Vault.Core.Interfaces
         Task<RemoveTagFromNoteResponse>  RemoveTagFromNoteAsync(string vaultId, string noteId, string tagId, CancellationToken ct = default);
 
         // ── Link ───────────────────────────────────────────────────────────────
-        Task<CreateVaultLinkResponse>           CreateLinkAsync(string vaultId, string sourceNoteId, string targetNoteId, string relationType, string? description = null, CancellationToken ct = default);
-        Task<DeleteVaultLinkResponse>           DeleteLinkAsync(string vaultId, string linkId, CancellationToken ct = default);
+        Task<CreateVaultRelationResponse>           CreateRelationAsync(string vaultId, string sourceNoteId, string targetNoteId, string relationType, string? description = null, CancellationToken ct = default);
+        Task<DeleteVaultLinkResponse>           DeleteRelationAsync(string vaultId, string linkId, CancellationToken ct = default);
         Task<IEnumerable<RelatedNoteResult>>    GetRelatedNotesAsync(string vaultId, string noteId, string? relationType = null, CancellationToken ct = default);
     }
 }

@@ -86,15 +86,7 @@ namespace AVA.Vault.Core.Data.Entities
             modelBuilder.Entity<VaultNote>(entity =>
             {
                 entity.HasIndex(n => n.VaultID).HasDatabaseName("IX_VaultNotes_VaultID");
-                entity.HasIndex(n => n.ProjectID).HasDatabaseName("IX_VaultNotes_ProjectID");
                 entity.HasIndex(n => n.SessionID).HasDatabaseName("IX_VaultNotes_SessionID");
-                entity.HasIndex(n => new { n.ProjectID, n.SortOrder }).HasDatabaseName("IX_VaultNotes_ProjectId_SortOrder");
-
-                entity
-                    .HasOne(n => n.Project)
-                    .WithMany(p => p.Notes)
-                    .HasForeignKey(n => n.ProjectID)
-                    .OnDelete(DeleteBehavior.Cascade);
 
                 entity
                     .HasOne(n => n.Session)

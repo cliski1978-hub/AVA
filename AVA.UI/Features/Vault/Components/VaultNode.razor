@@ -110,12 +110,6 @@
                 <span class="category-label">Notes</span>
             </div>
 
-            @* Category: Workflows *@
-            <div class="category category-workflows" @onclick="NavigateToWorkflows">
-                <span class="category-icon">W</span>
-                <span class="category-label">Workflows</span>
-            </div>
-
             @* Category: Sessions (expandable) *@
             <div class="category category-sessions">
                 <button class="category-chevron"
@@ -411,10 +405,6 @@
         color: #a855f7;
     }
 
-    .category-workflows {
-        color: #22c55e;
-    }
-
     .category-sessions {
         color: #16a34a;
     }
@@ -473,11 +463,6 @@
     private void NavigateToNotes()
     {
         _vm.NavigateToNotes();
-    }
-
-    private void NavigateToWorkflows()
-    {
-        _vm.NavigateToWorkflows();
     }
 
     private void NavigateToSessions()

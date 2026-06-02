@@ -45,7 +45,6 @@ namespace VaultTests.Parity
             Assert.That(note, Is.Not.Null);
             Assert.That(note.ID,        Is.Not.Empty);
             Assert.That(note.VaultID,   Is.EqualTo(VaultId));
-            Assert.That(note.ProjectID, Is.EqualTo(ProjectId));
             Assert.That(note.Title,     Is.EqualTo("My Note"));
             Assert.That(note.Content,   Is.EqualTo("Hello world"));
             Assert.That(note.CreatedAt, Is.GreaterThan(DateTime.UtcNow.AddSeconds(-5)));

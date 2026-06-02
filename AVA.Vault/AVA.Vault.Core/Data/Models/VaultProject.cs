@@ -68,9 +68,6 @@ namespace AVA.Vault.Core.Data.Models
         [InverseProperty(nameof(VaultGraph.Project))]
         public virtual ICollection<VaultGraph> Graphs { get; set; } = new HashSet<VaultGraph>();
 
-        [InverseProperty(nameof(VaultNote.Project))]
-        public virtual ICollection<VaultNote> Notes { get; set; } = new HashSet<VaultNote>();
-
         [InverseProperty(nameof(VaultSession.Project))]
         public virtual ICollection<VaultSession> Sessions { get; set; } = new HashSet<VaultSession>();
 
