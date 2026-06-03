@@ -10,9 +10,8 @@ using CliskiCore.DbAPI.Interfaces;
 namespace AVA.Vault.Core.Services.Data
 {
     /// <summary>
-    /// Updates an existing VaultNote.
-    /// VaultID is the required ownership/root container.
-    /// SessionID is optional and should not define normal note uniqueness.
+    /// Updates editable fields on an existing VaultNote.
+    /// This service does not move the note between vaults and does not attach/detach it from sessions.
     /// </summary>
     public class UpdateVaultNoteService : ApiServiceBase<UpdateVaultNoteRequest, UpdateVaultNoteResponse>
     {
@@ -38,43 +37,9 @@ namespace AVA.Vault.Core.Services.Data
                     return response;
                 }
 
-                var vaultID = string.IsNullOrWhiteSpace(request.VaultID) ? note.VaultID : request.VaultID;
-                var sessionID = request.SessionID;
-
-                if (!string.IsNullOrWhiteSpace(request.VaultID) && request.VaultID != note.VaultID)
-                {
-                    var vaultExists = Context.Set<VaultHeader>().Any(v => v.ID == request.VaultID);
-
-                    if (!vaultExists)
-                    {
-                        response.Code = 404;
-                        response.UserMessage = $"VaultHeader '{request.VaultID}' not found.";
-                        return response;
-                    }
-                }
-
-                if (request.SessionID != null && request.SessionID != note.SessionID)
-                {
-                    if (!string.IsNullOrWhiteSpace(request.SessionID))
-                    {
-                        var sessionExists = Context.Set<VaultSession>().Any(s => s.ID == request.SessionID);
-
-                        if (!sessionExists)
-                        {
-                            response.Code = 404;
-                            response.UserMessage = $"VaultSession '{request.SessionID}' not found.";
-                            return response;
-                        }
-                    }
-                }
-                else
-                {
-                    sessionID = note.SessionID;
-                }
-
                 if (!string.IsNullOrWhiteSpace(request.Title))
                 {
-                    var duplicateTitleExists = Context.Set<VaultNote>().Any(n => n.ID != note.ID && n.VaultID == vaultID && n.Title.ToLower() == request.Title.ToLower());
+                    var duplicateTitleExists = Context.Set<VaultNote>().Any(n => n.ID != note.ID && n.VaultID == note.VaultID && n.Title.ToLower() == request.Title.ToLower());
 
                     if (duplicateTitleExists)
                     {
@@ -85,9 +50,6 @@ namespace AVA.Vault.Core.Services.Data
 
                     note.Title = request.Title;
                 }
-
-                note.VaultID = vaultID;
-                note.SessionID = sessionID;
 
                 if (request.Content != null)
                     note.Content = request.Content;
@@ -180,12 +142,6 @@ namespace AVA.Vault.Core.Services.Data
 
         [MaxLength(256)]
         public string? Title { get; set; }
-
-        [MaxLength(128)]
-        public string? VaultID { get; set; }
-
-        [MaxLength(128)]
-        public string? SessionID { get; set; }
 
         [MaxLength(128)]
         public string? PrimaryIdentityId { get; set; }

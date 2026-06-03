@@ -36,7 +36,7 @@ namespace AVA.Vault.Core.Services.Data
                     return response;
                 }
 
-                var exists = Context.Set<VaultWorkflow>().Any(w => w.ID == request.WorkflowID || (w.ProjectID == request.ProjectID && w.Name.ToLower() == request.Name.ToLower()));
+                var exists = Context.Set<VaultWorkflow>().Any(w => w.ProjectID == request.ProjectID && w.Name.ToLower() == request.Name.ToLower());
 
                 if (exists)
                 {
@@ -47,7 +47,7 @@ namespace AVA.Vault.Core.Services.Data
 
                 var workflow = new VaultWorkflow
                 {
-                    ID = string.IsNullOrWhiteSpace(request.WorkflowID) ? Guid.NewGuid().ToString() : request.WorkflowID,
+                    ID = Guid.NewGuid().ToString(),
                     Name = request.Name,
                     Description = request.Description,
                     WorkflowType = string.IsNullOrWhiteSpace(request.WorkflowType) ? "General" : request.WorkflowType,
@@ -89,7 +89,6 @@ namespace AVA.Vault.Core.Services.Data
 
     public class CreateVaultWorkflowRequest : CfkAuthorizedApiRequest
     {
-        public string? WorkflowID { get; set; }
 
         [Required]
         [MaxLength(256)]
@@ -108,6 +107,11 @@ namespace AVA.Vault.Core.Services.Data
         [Required]
         [MaxLength(128)]
         public string ProjectID { get; set; }
+
+
+        [Required]
+        [MaxLength(128)]
+        public string VaultID { get; set; }
 
         [Required]
         [MaxLength(128)]

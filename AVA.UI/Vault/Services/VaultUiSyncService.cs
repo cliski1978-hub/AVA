@@ -33,11 +33,11 @@ public class VaultUiSyncService : IVaultUiSyncService
         VaultLogger vaultLogger,
         ILogger<VaultUiSyncService> logger)
     {
-        _dbFactory    = dbFactory;
-        _dbProvider   = dbProvider;
-        _memoryStore  = memoryStore;
-        _vaultLogger  = vaultLogger;
-        _logger       = logger;
+        _dbFactory = dbFactory;
+        _dbProvider = dbProvider;
+        _memoryStore = memoryStore;
+        _vaultLogger = vaultLogger;
+        _logger = logger;
     }
 
     // ── Infrastructure ────────────────────────────────────────────────────────
@@ -68,9 +68,9 @@ public class VaultUiSyncService : IVaultUiSyncService
 
                 var vaultState = new VaultState
                 {
-                    VaultId     = header.ID,
-                    Name        = header.DisplayName,
-                    IsExpanded  = true
+                    VaultId = header.ID,
+                    Name = header.DisplayName,
+                    IsExpanded = true
                 };
 
                 var projectIndex = new Dictionary<string, ProjectState>();
@@ -78,8 +78,8 @@ public class VaultUiSyncService : IVaultUiSyncService
                 {
                     var ps = new ProjectState
                     {
-                        ProjectId  = p.ID,
-                        Name       = p.Name,
+                        ProjectId = p.ID,
+                        Name = p.Name,
                         IsExpanded = p.IsExpanded
                     };
                     projectIndex[p.ID] = ps;
@@ -110,6 +110,15 @@ public class VaultUiSyncService : IVaultUiSyncService
 
         return result;
     }
+
+    private static SessionState MapToSessionState(AVA.Vault.Core.Data.Models.VaultSession s) => new()
+    {
+        SessionId    = s.ID,
+        Name         = s.Name,
+        CreatedAt    = s.CreatedAt,
+        LastActiveAt = s.LastActiveAt,
+        IsPinned     = s.IsPinned
+    };
 
     // ── Vault ─────────────────────────────────────────────────────────────────
 
@@ -150,10 +159,10 @@ public class VaultUiSyncService : IVaultUiSyncService
     // ── Note ──────────────────────────────────────────────────────────────────
 
     public Task<CreateVaultNoteResponse> CreateNoteAsync(string vaultId, string? projectId, string title, string content, string? sessionId = null)
-        => _dbProvider.CreateNoteAsync(vaultId, projectId, title, content, sessionId);
+        => _dbProvider.CreateVaultNoteAsync(vaultId, projectId, title, content, sessionId);
 
     public Task<VaultNote?> GetNoteAsync(string vaultId, string noteId)
-        => _dbProvider.GetNoteAsync(vaultId, noteId);
+        => _dbProvider.GetVaultNoteAsync(vaultId, noteId);
 
     public Task<UpdateVaultNoteResponse> UpdateNoteAsync(string vaultId, string noteId, string? title, string? content)
         => _dbProvider.UpdateNoteAsync(vaultId, noteId, title, content);
@@ -199,17 +208,17 @@ public class VaultUiSyncService : IVaultUiSyncService
 
     public async Task<List<VaultNote>> SearchNotesAsync(
         string vaultId,
-        string? projectId      = null,
-        string? sessionId      = null,
-        string? keyword        = null,
-        string? tag            = null,
-        string  sortBy         = "Updated",
-        bool    sortDescending = true,
-        DateTime? createdAfter  = null,
+        string? projectId = null,
+        string? sessionId = null,
+        string? keyword = null,
+        string? tag = null,
+        string sortBy = "Updated",
+        bool sortDescending = true,
+        DateTime? createdAfter = null,
         DateTime? createdBefore = null,
-        DateTime? updatedAfter  = null,
+        DateTime? updatedAfter = null,
         DateTime? updatedBefore = null,
-        CancellationToken ct    = default)
+        CancellationToken ct = default)
     {
         try
         {
@@ -243,1138 +252,261 @@ public class VaultUiSyncService : IVaultUiSyncService
         }
     }
 
+    #region New
+
     // ── Workflow ──────────────────────────────────────────────────────────────
 
-    public async Task<CreateVaultWorkflowResponse> CreateWorkflowAsync(string vaultId, string? projectId, string name, string? workflowId = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new CreateVaultWorkflowService(adapter, _vaultLogger)
-            .Execute(new CreateVaultWorkflowRequest
-            {
-                WorkflowID           = workflowId,
-                Name                 = name,
-                ProjectID            = projectId,
-                Description          = null,
-                Status               = null,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<CreateVaultWorkflowResponse> CreateWorkflowAsync(string vaultId, string? projectId, string name)
+        => _dbProvider.CreateWorkflowAsync(vaultId, projectId, name);
 
-    public async Task<UpdateVaultWorkflowResponse> UpdateWorkflowAsync(string workflowId, string? name, string? description = null, string? status = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new UpdateVaultWorkflowService(adapter, _vaultLogger)
-            .Execute(new UpdateVaultWorkflowRequest
-            {
-                WorkflowID           = workflowId,
-                Name                 = name,
-                Description          = description,
-                Status               = status,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<UpdateVaultWorkflowResponse> UpdateWorkflowAsync(string workflowId, string? name, string? description = null, string? status = null, int? sortOrder = null)
+        => _dbProvider.UpdateWorkflowAsync(workflowId, name, description, status, sortOrder);
 
-    public async Task<DeleteVaultWorkflowResponse> DeleteWorkflowAsync(string workflowId)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new DeleteVaultWorkflowService(adapter, _vaultLogger)
-            .Execute(new DeleteVaultWorkflowRequest
-            {
-                WorkflowID           = workflowId,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<DeleteVaultWorkflowResponse> DeleteWorkflowAsync(string workflowId)
+        => _dbProvider.DeleteWorkflowAsync(workflowId);
 
     // ── Workflow Node ─────────────────────────────────────────────────────────
 
-    public async Task<CreateVaultWorkflowNodeResponse> CreateWorkflowNodeAsync(string workflowId, string name, string? workflowNodeId = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new CreateVaultWorkflowNodeService(adapter, _vaultLogger)
-            .Execute(new CreateVaultWorkflowNodeRequest
-            {
-                WorkflowNodeID       = workflowNodeId,
-                WorkflowID           = workflowId,
-                Name                 = name,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<CreateVaultWorkflowNodeResponse> CreateWorkflowNodeAsync(string workflowId, string name, string? workflowNodeId = null, string? description = null, string? instructions = null, string? metadataJson = null, string? nodeType = null, int? nodeOrder = null, string? status = null)
+        => _dbProvider.CreateWorkflowNodeAsync(workflowId, name, workflowNodeId, description, instructions, metadataJson, nodeType, nodeOrder, status);
 
-    public async Task<UpdateVaultWorkflowNodeResponse> UpdateWorkflowNodeAsync(string workflowNodeId, string? name = null, string? description = null, string? instructions = null, string? nodeType = null, int? nodeOrder = null, string? status = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new UpdateVaultWorkflowNodeService(adapter, _vaultLogger)
-            .Execute(new UpdateVaultWorkflowNodeRequest
-            {
-                WorkflowNodeID       = workflowNodeId,
-                Name                 = name,
-                Description          = description,
-                Instructions         = instructions,
-                NodeType             = nodeType,
-                NodeOrder            = nodeOrder ?? 0,
-                Status               = status,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<UpdateVaultWorkflowNodeResponse> UpdateWorkflowNodeAsync(string workflowNodeId, string? name = null, string? description = null, string? instructions = null, string? nodeType = null, int? nodeOrder = null, string? status = null)
+        => _dbProvider.UpdateWorkflowNodeAsync(workflowNodeId, name, description, instructions, nodeType, nodeOrder, status);
 
-    public async Task<DeleteVaultWorkflowNodeResponse> DeleteWorkflowNodeAsync(string workflowNodeId)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new DeleteVaultWorkflowNodeService(adapter, _vaultLogger)
-            .Execute(new DeleteVaultWorkflowNodeRequest
-            {
-                WorkflowNodeID       = workflowNodeId,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<DeleteVaultWorkflowNodeResponse> DeleteWorkflowNodeAsync(string workflowNodeId)
+        => _dbProvider.DeleteWorkflowNodeAsync(workflowNodeId);
 
     // ── Workflow Line ─────────────────────────────────────────────────────────
 
-    public async Task<CreateVaultWorkflowLineResponse> CreateWorkflowLineAsync(string workflowId, string sourceWorkflowNodeId, string targetWorkflowNodeId, string name, string? workflowLineId = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new CreateVaultWorkflowLineService(adapter, _vaultLogger)
-            .Execute(new CreateVaultWorkflowLineRequest
-            {
-                WorkflowLineID       = workflowLineId,
-                WorkflowID           = workflowId,
-                SourceWorkflowNodeID = sourceWorkflowNodeId,
-                TargetWorkflowNodeID = targetWorkflowNodeId,
-                Name                 = name,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<CreateVaultWorkflowLineResponse> CreateWorkflowLineAsync(string workflowId, string sourceWorkflowNodeId, string targetWorkflowNodeId, string name, string? workflowLineId = null, string? description = null, string? conditionJson = null, bool? isDefaultLine = null, string? lineType = null, int? lineOrder = null)
+        => _dbProvider.CreateWorkflowLineAsync(workflowId, sourceWorkflowNodeId, targetWorkflowNodeId, name, workflowLineId, description, conditionJson, isDefaultLine, lineType, lineOrder);
 
-    public async Task<UpdateVaultWorkflowLineResponse> UpdateWorkflowLineAsync(string workflowLineId, string? name = null, string? description = null, string? conditionJson = null, bool? isDefaultLine = null, string? lineType = null, int? lineOrder = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new UpdateVaultWorkflowLineService(adapter, _vaultLogger)
-            .Execute(new UpdateVaultWorkflowLineRequest
-            {
-                WorkflowLineID       = workflowLineId,
-                Name                 = name,
-                Description          = description,
-                ConditionJson        = conditionJson,
-                IsDefaultLine        = isDefaultLine ?? false,
-                LineType             = lineType,
-                LineOrder            = lineOrder ?? 0,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<UpdateVaultWorkflowLineResponse> UpdateWorkflowLineAsync(string workflowLineId, string? name = null, string? description = null, string? conditionJson = null, bool? isDefaultLine = null, string? lineType = null, int? lineOrder = null)
+        => _dbProvider.UpdateWorkflowLineAsync(workflowLineId, name, description, conditionJson, isDefaultLine, lineType, lineOrder);
 
-    public async Task<DeleteVaultWorkflowLineResponse> DeleteWorkflowLineAsync(string workflowLineId)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new DeleteVaultWorkflowLineService(adapter, _vaultLogger)
-            .Execute(new DeleteVaultWorkflowLineRequest
-            {
-                WorkflowLineID       = workflowLineId,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<DeleteVaultWorkflowLineResponse> DeleteWorkflowLineAsync(string workflowLineId)
+        => _dbProvider.DeleteWorkflowLineAsync(workflowLineId);
 
     // ── Workflow Line Step ────────────────────────────────────────────────────
 
-    public async Task<CreateVaultWorkflowLineStepResponse> CreateWorkflowLineStepAsync(string workflowLineId, string name, string? workflowLineStepId = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new CreateVaultWorkflowLineStepService(adapter, _vaultLogger)
-            .Execute(new CreateVaultWorkflowLineStepRequest
-            {
-                WorkflowLineStepID   = workflowLineStepId,
-                WorkflowLineID       = workflowLineId,
-                Name                 = name,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<CreateVaultWorkflowLineStepResponse> CreateWorkflowLineStepAsync(string workflowLineId, string name, string? workflowLineStepId = null, string? description = null, string? instructions = null, bool? isRequired = null, int? stepOrder = null, string? stepType = null)
+        => _dbProvider.CreateWorkflowLineStepAsync(workflowLineId, name, workflowLineStepId, description, instructions, isRequired, stepOrder, stepType);
 
-    public async Task<UpdateVaultWorkflowLineStepResponse> UpdateWorkflowLineStepAsync(string workflowLineStepId, string? name = null, string? description = null, string? instructions = null, bool? isRequired = null, int? stepOrder = null, string? stepType = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new UpdateVaultWorkflowLineStepService(adapter, _vaultLogger)
-            .Execute(new UpdateVaultWorkflowLineStepRequest
-            {
-                WorkflowLineStepID   = workflowLineStepId,
-                Name                 = name,
-                Description          = description,
-                Instructions         = instructions,
-                IsRequired           = isRequired ?? false,
-                StepOrder            = stepOrder ?? 0,
-                StepType             = stepType,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<UpdateVaultWorkflowLineStepResponse> UpdateWorkflowLineStepAsync(string workflowLineStepId, string? name = null, string? description = null, string? instructions = null, bool? isRequired = null, int? stepOrder = null, string? stepType = null)
+        => _dbProvider.UpdateWorkflowLineStepAsync(workflowLineStepId, name, description, instructions, isRequired, stepOrder, stepType);
 
-    public async Task<DeleteVaultWorkflowLineStepResponse> DeleteWorkflowLineStepAsync(string workflowLineStepId)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new DeleteVaultWorkflowLineStepService(adapter, _vaultLogger)
-            .Execute(new DeleteVaultWorkflowLineStepRequest
-            {
-                WorkflowLineStepID   = workflowLineStepId,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<DeleteVaultWorkflowLineStepResponse> DeleteWorkflowLineStepAsync(string workflowLineStepId)
+        => _dbProvider.DeleteWorkflowLineStepAsync(workflowLineStepId);
 
     // ── Workflow Note Links ───────────────────────────────────────────────────
 
-    public async Task<CreateVaultWorkflowNoteResponse> CreateWorkflowNoteAsync(string workflowId, string noteId, string? workflowNoteId = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new CreateVaultWorkflowNoteService(adapter, _vaultLogger)
-            .Execute(new CreateVaultWorkflowNoteRequest
-            {
-                WorkflowNoteID       = workflowNoteId,
-                WorkflowID           = workflowId,
-                NoteID               = noteId,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<CreateVaultWorkflowNoteResponse> CreateWorkflowNoteAsync(string workflowId, string noteId, string? workflowNoteId = null, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
+        => _dbProvider.CreateWorkflowNoteAsync(workflowId, noteId, workflowNoteId, instructions, isRequired, sortOrder, usageRole);
 
-    public async Task<UpdateVaultWorkflowNoteResponse> UpdateWorkflowNoteAsync(string workflowNoteId, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new UpdateVaultWorkflowNoteService(adapter, _vaultLogger)
-            .Execute(new UpdateVaultWorkflowNoteRequest
-            {
-                WorkflowNoteID       = workflowNoteId,
-                Instructions         = instructions,
-                IsRequired           = isRequired ?? false,
-                SortOrder            = sortOrder ?? 0,
-                UsageRole            = usageRole,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<UpdateVaultWorkflowNoteResponse> UpdateWorkflowNoteAsync(string workflowNoteId, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
+        => _dbProvider.UpdateWorkflowNoteAsync(workflowNoteId, usageRole, instructions, isRequired, sortOrder);
 
-    public async Task<DeleteVaultWorkflowNoteResponse> DeleteWorkflowNoteAsync(string workflowNoteId)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new DeleteVaultWorkflowNoteService(adapter, _vaultLogger)
-            .Execute(new DeleteVaultWorkflowNoteRequest
-            {
-                WorkflowNoteID       = workflowNoteId,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<DeleteVaultWorkflowNoteResponse> DeleteWorkflowNoteAsync(string workflowNoteId)
+        => _dbProvider.DeleteWorkflowNoteAsync(workflowNoteId);
 
-    public async Task<CreateVaultWorkflowNodeNoteResponse> CreateWorkflowNodeNoteAsync(string workflowNodeId, string noteId, string? workflowNodeNoteId = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new CreateVaultWorkflowNodeNoteService(adapter, _vaultLogger)
-            .Execute(new CreateVaultWorkflowNodeNoteRequest
-            {
-                WorkflowNodeNoteID   = workflowNodeNoteId,
-                WorkflowNodeID       = workflowNodeId,
-                NoteID               = noteId,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<CreateVaultWorkflowNodeNoteResponse> CreateWorkflowNodeNoteAsync(string workflowNodeId, string noteId, string? workflowNodeNoteId = null, string? instructions = null, bool? isRequired = null, int? noteOrder = null, string? usageRole = null)
+        => _dbProvider.CreateWorkflowNodeNoteAsync(workflowNodeId, noteId, workflowNodeNoteId, instructions, isRequired, noteOrder, usageRole);
 
-    public async Task<UpdateVaultWorkflowNodeNoteResponse> UpdateWorkflowNodeNoteAsync(string workflowNodeNoteId, string? instructions = null, bool? isRequired = null, int? noteOrder = null, string? usageRole = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new UpdateVaultWorkflowNodeNoteService(adapter, _vaultLogger)
-            .Execute(new UpdateVaultWorkflowNodeNoteRequest
-            {
-                WorkflowNodeNoteID   = workflowNodeNoteId,
-                Instructions         = instructions,
-                IsRequired           = isRequired ?? false,
-                NoteOrder            = noteOrder ?? 0,
-                UsageRole            = usageRole,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<UpdateVaultWorkflowNodeNoteResponse> UpdateWorkflowNodeNoteAsync(string workflowNodeNoteId, string? instructions = null, bool? isRequired = null, int? noteOrder = null, string? usageRole = null)
+        => _dbProvider.UpdateWorkflowNodeNoteAsync(workflowNodeNoteId, usageRole, instructions, isRequired, noteOrder);
 
-    public async Task<DeleteVaultWorkflowNodeNoteResponse> DeleteWorkflowNodeNoteAsync(string workflowNodeNoteId)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new DeleteVaultWorkflowNodeNoteService(adapter, _vaultLogger)
-            .Execute(new DeleteVaultWorkflowNodeNoteRequest
-            {
-                WorkflowNodeNoteID   = workflowNodeNoteId,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<DeleteVaultWorkflowNodeNoteResponse> DeleteWorkflowNodeNoteAsync(string workflowNodeNoteId)
+        => _dbProvider.DeleteWorkflowNodeNoteAsync(workflowNodeNoteId);
 
-    public async Task<CreateVaultWorkflowLineNoteResponse> CreateWorkflowLineNoteAsync(string workflowLineId, string noteId, string? workflowLineNoteId = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new CreateVaultWorkflowLineNoteService(adapter, _vaultLogger)
-            .Execute(new CreateVaultWorkflowLineNoteRequest
-            {
-                WorkflowLineNoteID   = workflowLineNoteId,
-                WorkflowLineID       = workflowLineId,
-                NoteID               = noteId,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<CreateVaultWorkflowLineNoteResponse> CreateWorkflowLineNoteAsync(string workflowLineId, string noteId, string? workflowLineNoteId = null, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
+        => _dbProvider.CreateWorkflowLineNoteAsync(workflowLineId, noteId, workflowLineNoteId, instructions, isRequired, sortOrder, usageRole);
 
-    public async Task<UpdateVaultWorkflowLineNoteResponse> UpdateWorkflowLineNoteAsync(string workflowLineNoteId, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new UpdateVaultWorkflowLineNoteService(adapter, _vaultLogger)
-            .Execute(new UpdateVaultWorkflowLineNoteRequest
-            {
-                WorkflowLineNoteID   = workflowLineNoteId,
-                Instructions         = instructions,
-                IsRequired           = isRequired ?? false,
-                SortOrder            = sortOrder ?? 0,
-                UsageRole            = usageRole,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<UpdateVaultWorkflowLineNoteResponse> UpdateWorkflowLineNoteAsync(string workflowLineNoteId, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
+        => _dbProvider.UpdateWorkflowLineNoteAsync(workflowLineNoteId, usageRole, instructions, isRequired, sortOrder);
 
-    public async Task<DeleteVaultWorkflowLineNoteResponse> DeleteWorkflowLineNoteAsync(string workflowLineNoteId)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new DeleteVaultWorkflowLineNoteService(adapter, _vaultLogger)
-            .Execute(new DeleteVaultWorkflowLineNoteRequest
-            {
-                WorkflowLineNoteID   = workflowLineNoteId,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<DeleteVaultWorkflowLineNoteResponse> DeleteWorkflowLineNoteAsync(string workflowLineNoteId)
+        => _dbProvider.DeleteWorkflowLineNoteAsync(workflowLineNoteId);
 
-    public async Task<CreateVaultWorkflowLineStepNoteResponse> CreateWorkflowLineStepNoteAsync(string workflowLineStepId, string noteId, string? workflowLineStepNoteId = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new CreateVaultWorkflowLineStepNoteService(adapter, _vaultLogger)
-            .Execute(new CreateVaultWorkflowLineStepNoteRequest
-            {
-                WorkflowLineStepNoteID = workflowLineStepNoteId,
-                WorkflowLineStepID     = workflowLineStepId,
-                NoteID                 = noteId,
-                RequestPartyName       = "AVA.Vault"
-            });
-    }
+    public Task<CreateVaultWorkflowLineStepNoteResponse> CreateWorkflowLineStepNoteAsync(string workflowLineStepId, string noteId, string? workflowLineStepNoteId = null, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
+        => _dbProvider.CreateWorkflowLineStepNoteAsync(workflowLineStepId, noteId, workflowLineStepNoteId, instructions, isRequired, sortOrder, usageRole);
 
-    public async Task<UpdateVaultWorkflowLineStepNoteResponse> UpdateWorkflowLineStepNoteAsync(string workflowLineStepNoteId, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new UpdateVaultWorkflowLineStepNoteService(adapter, _vaultLogger)
-            .Execute(new UpdateVaultWorkflowLineStepNoteRequest
-            {
-                WorkflowLineStepNoteID = workflowLineStepNoteId,
-                Instructions           = instructions,
-                IsRequired             = isRequired ?? false,
-                SortOrder              = sortOrder ?? 0,
-                UsageRole              = usageRole,
-                RequestPartyName       = "AVA.Vault"
-            });
-    }
+    public Task<UpdateVaultWorkflowLineStepNoteResponse> UpdateWorkflowLineStepNoteAsync(string workflowLineStepNoteId, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
+        => _dbProvider.UpdateWorkflowLineStepNoteAsync(workflowLineStepNoteId, usageRole, instructions, isRequired, sortOrder);
 
-    public async Task<DeleteVaultWorkflowLineStepNoteResponse> DeleteWorkflowLineStepNoteAsync(string workflowLineStepNoteId)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new DeleteVaultWorkflowLineStepNoteService(adapter, _vaultLogger)
-            .Execute(new DeleteVaultWorkflowLineStepNoteRequest
-            {
-                WorkflowLineStepNoteID = workflowLineStepNoteId,
-                RequestPartyName       = "AVA.Vault"
-            });
-    }
+    public Task<DeleteVaultWorkflowLineStepNoteResponse> DeleteWorkflowLineStepNoteAsync(string workflowLineStepNoteId)
+        => _dbProvider.DeleteWorkflowLineStepNoteAsync(workflowLineStepNoteId);
 
     // ── Workflow FileRef Links ────────────────────────────────────────────────
 
-    public async Task<CreateVaultWorkflowFileRefResponse> CreateWorkflowFileRefAsync(string workflowId, string fileRefId, string? workflowFileRefId = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new CreateVaultWorkflowFileRefService(adapter, _vaultLogger)
-            .Execute(new CreateVaultWorkflowFileRefRequest
-            {
-                WorkflowFileRefID    = workflowFileRefId,
-                WorkflowID           = workflowId,
-                FileRefID            = fileRefId,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<CreateVaultWorkflowFileRefResponse> CreateWorkflowFileRefAsync(string workflowId, string fileRefId, string? workflowFileRefId = null, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
+        => _dbProvider.CreateWorkflowFileRefAsync(workflowId, fileRefId, workflowFileRefId, instructions, isRequired, sortOrder, usageRole);
 
-    public async Task<UpdateVaultWorkflowFileRefResponse> UpdateWorkflowFileRefAsync(string workflowFileRefId, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new UpdateVaultWorkflowFileRefService(adapter, _vaultLogger)
-            .Execute(new UpdateVaultWorkflowFileRefRequest
-            {
-                WorkflowFileRefID    = workflowFileRefId,
-                Instructions         = instructions,
-                IsRequired           = isRequired ?? false,
-                SortOrder            = sortOrder ?? 0,
-                UsageRole            = usageRole,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<UpdateVaultWorkflowFileRefResponse> UpdateWorkflowFileRefAsync(string workflowFileRefId, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
+        => _dbProvider.UpdateWorkflowFileRefAsync(workflowFileRefId, usageRole, instructions, isRequired, sortOrder);
 
-    public async Task<DeleteVaultWorkflowFileRefResponse> DeleteWorkflowFileRefAsync(string workflowFileRefId)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new DeleteVaultWorkflowFileRefService(adapter, _vaultLogger)
-            .Execute(new DeleteVaultWorkflowFileRefRequest
-            {
-                WorkflowFileRefID    = workflowFileRefId,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<DeleteVaultWorkflowFileRefResponse> DeleteWorkflowFileRefAsync(string workflowFileRefId)
+        => _dbProvider.DeleteWorkflowFileRefAsync(workflowFileRefId);
 
-    public async Task<CreateVaultWorkflowNodeFileRefResponse> CreateWorkflowNodeFileRefAsync(string workflowNodeId, string fileRefId, string? workflowNodeFileRefId = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new CreateVaultWorkflowNodeFileRefService(adapter, _vaultLogger)
-            .Execute(new CreateVaultWorkflowNodeFileRefRequest
-            {
-                WorkflowNodeFileRefID = workflowNodeFileRefId,
-                WorkflowNodeID        = workflowNodeId,
-                FileRefID             = fileRefId,
-                RequestPartyName      = "AVA.Vault"
-            });
-    }
+    public Task<CreateVaultWorkflowNodeFileRefResponse> CreateWorkflowNodeFileRefAsync(string workflowNodeId, string fileRefId, string? workflowNodeFileRefId = null, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
+        => _dbProvider.CreateWorkflowNodeFileRefAsync(workflowNodeId, fileRefId, workflowNodeFileRefId, instructions, isRequired, sortOrder, usageRole);
 
-    public async Task<UpdateVaultWorkflowNodeFileRefResponse> UpdateWorkflowNodeFileRefAsync(string workflowNodeFileRefId, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new UpdateVaultWorkflowNodeFileRefService(adapter, _vaultLogger)
-            .Execute(new UpdateVaultWorkflowNodeFileRefRequest
-            {
-                WorkflowNodeFileRefID = workflowNodeFileRefId,
-                Instructions          = instructions,
-                IsRequired            = isRequired ?? false,
-                SortOrder             = sortOrder ?? 0,
-                UsageRole             = usageRole,
-                RequestPartyName      = "AVA.Vault"
-            });
-    }
+    public Task<UpdateVaultWorkflowNodeFileRefResponse> UpdateWorkflowNodeFileRefAsync(string workflowNodeFileRefId, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
+        => _dbProvider.UpdateWorkflowNodeFileRefAsync(workflowNodeFileRefId, usageRole, instructions, isRequired, sortOrder);
 
-    public async Task<DeleteVaultWorkflowNodeFileRefResponse> DeleteWorkflowNodeFileRefAsync(string workflowNodeFileRefId)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new DeleteVaultWorkflowNodeFileRefService(adapter, _vaultLogger)
-            .Execute(new DeleteVaultWorkflowNodeFileRefRequest
-            {
-                WorkflowNodeFileRefID = workflowNodeFileRefId,
-                RequestPartyName      = "AVA.Vault"
-            });
-    }
+    public Task<DeleteVaultWorkflowNodeFileRefResponse> DeleteWorkflowNodeFileRefAsync(string workflowNodeFileRefId)
+        => _dbProvider.DeleteWorkflowNodeFileRefAsync(workflowNodeFileRefId);
 
-    public async Task<CreateVaultWorkflowLineFileRefResponse> CreateWorkflowLineFileRefAsync(string workflowLineId, string fileRefId, string? workflowLineFileRefId = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new CreateVaultWorkflowLineFileRefService(adapter, _vaultLogger)
-            .Execute(new CreateVaultWorkflowLineFileRefRequest
-            {
-                WorkflowLineFileRefID = workflowLineFileRefId,
-                WorkflowLineID        = workflowLineId,
-                FileRefID             = fileRefId,
-                RequestPartyName      = "AVA.Vault"
-            });
-    }
+    public Task<CreateVaultWorkflowLineFileRefResponse> CreateWorkflowLineFileRefAsync(string workflowLineId, string fileRefId, string? workflowLineFileRefId = null, string? instructions = null, bool? isRequired = null, int? fileOrder = null, string? usageRole = null)
+        => _dbProvider.CreateWorkflowLineFileRefAsync(workflowLineId, fileRefId, workflowLineFileRefId, instructions, isRequired, fileOrder, usageRole);
 
-    public async Task<UpdateVaultWorkflowLineFileRefResponse> UpdateWorkflowLineFileRefAsync(string workflowLineFileRefId, string? instructions = null, bool? isRequired = null, int? fileOrder = null, string? usageRole = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new UpdateVaultWorkflowLineFileRefService(adapter, _vaultLogger)
-            .Execute(new UpdateVaultWorkflowLineFileRefRequest
-            {
-                WorkflowLineFileRefID = workflowLineFileRefId,
-                Instructions          = instructions,
-                IsRequired            = isRequired ?? false,
-                FileOrder             = fileOrder ?? 0,
-                UsageRole             = usageRole,
-                RequestPartyName      = "AVA.Vault"
-            });
-    }
+    public Task<UpdateVaultWorkflowLineFileRefResponse> UpdateWorkflowLineFileRefAsync(string workflowLineFileRefId, string? instructions = null, bool? isRequired = null, int? fileOrder = null, string? usageRole = null)
+        => _dbProvider.UpdateWorkflowLineFileRefAsync(workflowLineFileRefId, usageRole, instructions, isRequired, fileOrder);
 
-    public async Task<DeleteVaultWorkflowLineFileRefResponse> DeleteWorkflowLineFileRefAsync(string workflowLineFileRefId)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new DeleteVaultWorkflowLineFileRefService(adapter, _vaultLogger)
-            .Execute(new DeleteVaultWorkflowLineFileRefRequest
-            {
-                WorkflowLineFileRefID = workflowLineFileRefId,
-                RequestPartyName      = "AVA.Vault"
-            });
-    }
+    public Task<DeleteVaultWorkflowLineFileRefResponse> DeleteWorkflowLineFileRefAsync(string workflowLineFileRefId)
+        => _dbProvider.DeleteWorkflowLineFileRefAsync(workflowLineFileRefId);
 
-    public async Task<CreateVaultWorkflowLineStepFileRefResponse> CreateWorkflowLineStepFileRefAsync(string workflowLineStepId, string fileRefId, string? workflowLineStepFileRefId = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new CreateVaultWorkflowLineStepFileRefService(adapter, _vaultLogger)
-            .Execute(new CreateVaultWorkflowLineStepFileRefRequest
-            {
-                WorkflowLineStepFileRefID = workflowLineStepFileRefId,
-                WorkflowLineStepID        = workflowLineStepId,
-                FileRefID                 = fileRefId,
-                RequestPartyName          = "AVA.Vault"
-            });
-    }
+    public Task<CreateVaultWorkflowLineStepFileRefResponse> CreateWorkflowLineStepFileRefAsync(string workflowLineStepId, string fileRefId, string? workflowLineStepFileRefId = null, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
+        => _dbProvider.CreateWorkflowLineStepFileRefAsync(workflowLineStepId, fileRefId, workflowLineStepFileRefId, instructions, isRequired, sortOrder, usageRole);
 
-    public async Task<UpdateVaultWorkflowLineStepFileRefResponse> UpdateWorkflowLineStepFileRefAsync(string workflowLineStepFileRefId, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new UpdateVaultWorkflowLineStepFileRefService(adapter, _vaultLogger)
-            .Execute(new UpdateVaultWorkflowLineStepFileRefRequest
-            {
-                WorkflowLineStepFileRefID = workflowLineStepFileRefId,
-                Instructions              = instructions,
-                IsRequired                = isRequired ?? false,
-                SortOrder                 = sortOrder ?? 0,
-                UsageRole                 = usageRole,
-                RequestPartyName          = "AVA.Vault"
-            });
-    }
+    public Task<UpdateVaultWorkflowLineStepFileRefResponse> UpdateWorkflowLineStepFileRefAsync(string workflowLineStepFileRefId, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
+        => _dbProvider.UpdateWorkflowLineStepFileRefAsync(workflowLineStepFileRefId, usageRole, instructions, isRequired, sortOrder);
 
-    public async Task<DeleteVaultWorkflowLineStepFileRefResponse> DeleteWorkflowLineStepFileRefAsync(string workflowLineStepFileRefId)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new DeleteVaultWorkflowLineStepFileRefService(adapter, _vaultLogger)
-            .Execute(new DeleteVaultWorkflowLineStepFileRefRequest
-            {
-                WorkflowLineStepFileRefID = workflowLineStepFileRefId,
-                RequestPartyName          = "AVA.Vault"
-            });
-    }
+    public Task<DeleteVaultWorkflowLineStepFileRefResponse> DeleteWorkflowLineStepFileRefAsync(string workflowLineStepFileRefId)
+        => _dbProvider.DeleteWorkflowLineStepFileRefAsync(workflowLineStepFileRefId);
 
     // ── Vault / Project / Session Note Links ─────────────────────────────────
 
-    public async Task<CreateVaultHeaderNoteResponse> CreateVaultHeaderNoteAsync(string vaultId, string noteId, string? headerNoteId = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new CreateVaultHeaderNoteService(adapter, _vaultLogger)
-            .Execute(new CreateVaultHeaderNoteRequest
-            {
-                HeaderNoteID         = headerNoteId,
-                VaultID              = vaultId,
-                NoteID               = noteId,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<CreateVaultHeaderNoteResponse> CreateVaultHeaderNoteAsync(string vaultId, string noteId, string? headerNoteId = null, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
+        => _dbProvider.CreateVaultHeaderNoteAsync(vaultId, noteId, headerNoteId, instructions, isRequired, sortOrder, usageRole);
 
-    public async Task<UpdateVaultHeaderNoteResponse> UpdateVaultHeaderNoteAsync(string headerNoteId, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new UpdateVaultHeaderNoteService(adapter, _vaultLogger)
-            .Execute(new UpdateVaultHeaderNoteRequest
-            {
-                HeaderNoteID         = headerNoteId,
-                Instructions         = instructions,
-                IsRequired           = isRequired ?? false,
-                SortOrder            = sortOrder ?? 0,
-                UsageRole            = usageRole,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<UpdateVaultHeaderNoteResponse> UpdateVaultHeaderNoteAsync(string headerNoteId, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
+        => _dbProvider.UpdateVaultHeaderNoteAsync(headerNoteId, usageRole, instructions, isRequired, sortOrder);
 
-    public async Task<DeleteVaultHeaderNoteResponse> DeleteVaultHeaderNoteAsync(string headerNoteId)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new DeleteVaultHeaderNoteService(adapter, _vaultLogger)
-            .Execute(new DeleteVaultHeaderNoteRequest
-            {
-                HeaderNoteID         = headerNoteId,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<DeleteVaultHeaderNoteResponse> DeleteVaultHeaderNoteAsync(string headerNoteId)
+        => _dbProvider.DeleteVaultHeaderNoteAsync(headerNoteId);
 
-    public async Task<CreateVaultProjectNoteResponse> CreateVaultProjectNoteAsync(string projectId, string noteId, string? projectNoteId = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new CreateVaultProjectNoteService(adapter, _vaultLogger)
-            .Execute(new CreateVaultProjectNoteRequest
-            {
-                ProjectNoteID        = projectNoteId,
-                ProjectID            = projectId,
-                NoteID               = noteId,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<CreateVaultProjectNoteResponse> CreateVaultProjectNoteAsync(string projectId, string noteId, string? projectNoteId = null, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
+        => _dbProvider.CreateVaultProjectNoteAsync(projectId, noteId, projectNoteId, instructions, isRequired, sortOrder, usageRole);
 
-    public async Task<UpdateVaultProjectNoteResponse> UpdateVaultProjectNoteAsync(string projectNoteId, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new UpdateVaultProjectNoteService(adapter, _vaultLogger)
-            .Execute(new UpdateVaultProjectNoteRequest
-            {
-                ProjectNoteID        = projectNoteId,
-                Instructions         = instructions,
-                IsRequired           = isRequired ?? false,
-                SortOrder            = sortOrder ?? 0,
-                UsageRole            = usageRole,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<UpdateVaultProjectNoteResponse> UpdateVaultProjectNoteAsync(string projectNoteId, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
+        => _dbProvider.UpdateVaultProjectNoteAsync(projectNoteId, usageRole, instructions, isRequired, sortOrder);
 
-    public async Task<DeleteVaultProjectNoteResponse> DeleteVaultProjectNoteAsync(string projectNoteId)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new DeleteVaultProjectNoteService(adapter, _vaultLogger)
-            .Execute(new DeleteVaultProjectNoteRequest
-            {
-                ProjectNoteID        = projectNoteId,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<DeleteVaultProjectNoteResponse> DeleteVaultProjectNoteAsync(string projectNoteId)
+        => _dbProvider.DeleteVaultProjectNoteAsync(projectNoteId);
 
-    public async Task<CreateVaultSessionNoteResponse> CreateVaultSessionNoteAsync(string sessionId, string noteId, string? sessionNoteId = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new CreateVaultSessionNoteService(adapter, _vaultLogger)
-            .Execute(new CreateVaultSessionNoteRequest
-            {
-                SessionNoteID        = sessionNoteId,
-                SessionID            = sessionId,
-                NoteID               = noteId,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<CreateVaultSessionNoteResponse> CreateVaultSessionNoteAsync(string sessionId, string noteId, string? sessionNoteId = null, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
+        => _dbProvider.CreateVaultSessionNoteAsync(sessionId, noteId, sessionNoteId, instructions, isRequired, sortOrder, usageRole);
 
-    public async Task<UpdateVaultSessionNoteResponse> UpdateVaultSessionNoteAsync(string sessionNoteId, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new UpdateVaultSessionNoteService(adapter, _vaultLogger)
-            .Execute(new UpdateVaultSessionNoteRequest
-            {
-                SessionNoteID        = sessionNoteId,
-                Instructions         = instructions,
-                IsRequired           = isRequired ?? false,
-                SortOrder            = sortOrder ?? 0,
-                UsageRole            = usageRole,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<UpdateVaultSessionNoteResponse> UpdateVaultSessionNoteAsync(string sessionNoteId, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
+        => _dbProvider.UpdateVaultSessionNoteAsync(sessionNoteId, usageRole, instructions, isRequired, sortOrder);
 
-    public async Task<DeleteVaultSessionNoteResponse> DeleteVaultSessionNoteAsync(string sessionNoteId)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new DeleteVaultSessionNoteService(adapter, _vaultLogger)
-            .Execute(new DeleteVaultSessionNoteRequest
-            {
-                SessionNoteID        = sessionNoteId,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<DeleteVaultSessionNoteResponse> DeleteVaultSessionNoteAsync(string sessionNoteId)
+        => _dbProvider.DeleteVaultSessionNoteAsync(sessionNoteId);
 
     // ── Vault / Project / Session FileRef Links ──────────────────────────────
 
-    public async Task<CreateVaultHeaderFileRefResponse> CreateVaultHeaderFileRefAsync(string vaultId, string fileRefId, string? headerFileRefId = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new CreateVaultHeaderFileRefService(adapter, _vaultLogger)
-            .Execute(new CreateVaultHeaderFileRefRequest
-            {
-                HeaderFileRefID      = headerFileRefId,
-                VaultID              = vaultId,
-                FileRefID            = fileRefId,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<CreateVaultHeaderFileRefResponse> CreateVaultHeaderFileRefAsync(string vaultId, string fileRefId, string? headerFileRefId = null, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
+        => _dbProvider.CreateVaultHeaderFileRefAsync(vaultId, fileRefId, headerFileRefId, instructions, isRequired, sortOrder, usageRole);
 
-    public async Task<UpdateVaultHeaderFileRefResponse> UpdateVaultHeaderFileRefAsync(string headerFileRefId, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new UpdateVaultHeaderFileRefService(adapter, _vaultLogger)
-            .Execute(new UpdateVaultHeaderFileRefRequest
-            {
-                HeaderFileRefID      = headerFileRefId,
-                Instructions         = instructions,
-                IsRequired           = isRequired ?? false,
-                SortOrder            = sortOrder ?? 0,
-                UsageRole            = usageRole,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<UpdateVaultHeaderFileRefResponse> UpdateVaultHeaderFileRefAsync(string headerFileRefId, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
+        => _dbProvider.UpdateVaultHeaderFileRefAsync(headerFileRefId, usageRole, instructions, isRequired, sortOrder);
 
-    public async Task<DeleteVaultHeaderFileRefResponse> DeleteVaultHeaderFileRefAsync(string headerFileRefId)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new DeleteVaultHeaderFileRefService(adapter, _vaultLogger)
-            .Execute(new DeleteVaultHeaderFileRefRequest
-            {
-                HeaderFileRefID      = headerFileRefId,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<DeleteVaultHeaderFileRefResponse> DeleteVaultHeaderFileRefAsync(string headerFileRefId)
+        => _dbProvider.DeleteVaultHeaderFileRefAsync(headerFileRefId);
 
-    public async Task<CreateVaultProjectFileRefResponse> CreateVaultProjectFileRefAsync(string projectId, string fileRefId, string? projectFileRefId = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new CreateVaultProjectFileRefService(adapter, _vaultLogger)
-            .Execute(new CreateVaultProjectFileRefRequest
-            {
-                ProjectFileRefID     = projectFileRefId,
-                ProjectID            = projectId,
-                FileRefID            = fileRefId,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<CreateVaultProjectFileRefResponse> CreateVaultProjectFileRefAsync(string projectId, string fileRefId, string? projectFileRefId = null, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
+        => _dbProvider.CreateVaultProjectFileRefAsync(projectId, fileRefId, projectFileRefId, instructions, isRequired, sortOrder, usageRole);
 
-    public async Task<UpdateVaultProjectFileRefResponse> UpdateVaultProjectFileRefAsync(string projectFileRefId, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new UpdateVaultProjectFileRefService(adapter, _vaultLogger)
-            .Execute(new UpdateVaultProjectFileRefRequest
-            {
-                ProjectFileRefID     = projectFileRefId,
-                Instructions         = instructions,
-                IsRequired           = isRequired ?? false,
-                SortOrder            = sortOrder ?? 0,
-                UsageRole            = usageRole,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<UpdateVaultProjectFileRefResponse> UpdateVaultProjectFileRefAsync(string projectFileRefId, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
+        => _dbProvider.UpdateVaultProjectFileRefAsync(projectFileRefId, usageRole, instructions, isRequired, sortOrder);
 
-    public async Task<DeleteVaultProjectFileRefResponse> DeleteVaultProjectFileRefAsync(string projectFileRefId)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new DeleteVaultProjectFileRefService(adapter, _vaultLogger)
-            .Execute(new DeleteVaultProjectFileRefRequest
-            {
-                ProjectFileRefID     = projectFileRefId,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<DeleteVaultProjectFileRefResponse> DeleteVaultProjectFileRefAsync(string projectFileRefId)
+        => _dbProvider.DeleteVaultProjectFileRefAsync(projectFileRefId);
 
-    public async Task<CreateVaultSessionFileRefResponse> CreateVaultSessionFileRefAsync(string sessionId, string fileRefId, string? sessionFileRefId = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new CreateVaultSessionFileRefService(adapter, _vaultLogger)
-            .Execute(new CreateVaultSessionFileRefRequest
-            {
-                SessionFileRefID     = sessionFileRefId,
-                SessionID            = sessionId,
-                FileRefID            = fileRefId,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<CreateVaultSessionFileRefResponse> CreateVaultSessionFileRefAsync(string sessionId, string fileRefId, string? sessionFileRefId = null, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
+        => _dbProvider.CreateVaultSessionFileRefAsync(sessionId, fileRefId, sessionFileRefId, instructions, isRequired, sortOrder, usageRole);
 
-    public async Task<UpdateVaultSessionFileRefResponse> UpdateVaultSessionFileRefAsync(string sessionFileRefId, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new UpdateVaultSessionFileRefService(adapter, _vaultLogger)
-            .Execute(new UpdateVaultSessionFileRefRequest
-            {
-                SessionFileRefID     = sessionFileRefId,
-                Instructions         = instructions,
-                IsRequired           = isRequired ?? false,
-                SortOrder            = sortOrder ?? 0,
-                UsageRole            = usageRole,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<UpdateVaultSessionFileRefResponse> UpdateVaultSessionFileRefAsync(string sessionFileRefId, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
+        => _dbProvider.UpdateVaultSessionFileRefAsync(sessionFileRefId, usageRole, instructions, isRequired, sortOrder);
 
-    public async Task<DeleteVaultSessionFileRefResponse> DeleteVaultSessionFileRefAsync(string sessionFileRefId)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new DeleteVaultSessionFileRefService(adapter, _vaultLogger)
-            .Execute(new DeleteVaultSessionFileRefRequest
-            {
-                SessionFileRefID     = sessionFileRefId,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<DeleteVaultSessionFileRefResponse> DeleteVaultSessionFileRefAsync(string sessionFileRefId)
+        => _dbProvider.DeleteVaultSessionFileRefAsync(sessionFileRefId);
 
     // ── FileRefs ──────────────────────────────────────────────────────────────
 
-    public async Task<CreateVaultFileRefResponse> CreateFileRefAsync(string vaultId, string name, string path, string? fileRefId = null, string? projectId = null, string? sessionId = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new CreateVaultFileRefService(adapter, _vaultLogger)
-            .Execute(new CreateVaultFileRefRequest
-            {
-                FileRefID            = fileRefId,
-                VaultID              = vaultId,
-                Name                 = name,
-                Path                 = path,
-                ProjectID            = projectId,
-                SessionID            = sessionId,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<CreateVaultFileRefResponse> CreateFileRefAsync(string vaultId, string name, string path, string? fileRefId = null, string? projectId = null, string? sessionId = null, long? fileSizeBytes = null, string? contentHash = null, string? mimeType = null, int? fileOrder = null)
+        => _dbProvider.CreateFileRefAsync(vaultId, name, path, fileRefId, projectId, sessionId, fileSizeBytes, contentHash, mimeType, fileOrder);
 
-    public async Task<UpdateVaultFileRefResponse> UpdateFileRefAsync(string fileRefId, string? name = null, string? path = null, string? mimeType = null, string? contentHash = null, long? fileSizeBytes = null, int? fileOrder = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new UpdateVaultFileRefService(adapter, _vaultLogger)
-            .Execute(new UpdateVaultFileRefRequest
-            {
-                FileRefID            = fileRefId,
-                Name                 = name,
-                Path                 = path,
-                MimeType             = mimeType,
-                ContentHash          = contentHash,
-                FileSizeBytes        = fileSizeBytes,
-                FileOrder            = fileOrder ?? 0,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<UpdateVaultFileRefResponse> UpdateFileRefAsync(string fileRefId, string? name = null, string? path = null, string? mimeType = null, string? contentHash = null, long? fileSizeBytes = null, int? fileOrder = null, string? vaultId = null, string? projectId = null, string? sessionId = null)
+        => _dbProvider.UpdateFileRefAsync(fileRefId, name, path, mimeType, contentHash, fileSizeBytes, fileOrder, vaultId, projectId, sessionId);
 
-    public async Task<DeleteVaultFileRefResponse> DeleteFileRefAsync(string fileRefId)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new DeleteVaultFileRefService(adapter, _vaultLogger)
-            .Execute(new DeleteVaultFileRefRequest
-            {
-                FileRefID            = fileRefId,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<DeleteVaultFileRefResponse> DeleteFileRefAsync(string fileRefId)
+        => _dbProvider.DeleteFileRefAsync(fileRefId);
 
     // ── FileRef Note Links ────────────────────────────────────────────────────
 
-    public async Task<CreateVaultFileRefNoteResponse> CreateFileRefNoteAsync(string fileRefId, string noteId, string? fileRefNoteId = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new CreateVaultFileRefNoteService(adapter, _vaultLogger)
-            .Execute(new CreateVaultFileRefNoteRequest
-            {
-                FileRefNoteID        = fileRefNoteId,
-                FileRefID            = fileRefId,
-                NoteID               = noteId,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<CreateVaultFileRefNoteResponse> CreateFileRefNoteAsync(string fileRefId, string noteId, string? fileRefNoteId = null, string? instructions = null, bool? isRequired = null, int? noteOrder = null, string? usageRole = null)
+        => _dbProvider.CreateFileRefNoteAsync(fileRefId, noteId, fileRefNoteId, instructions, isRequired, noteOrder, usageRole);
 
-    public async Task<UpdateVaultFileRefNoteResponse> UpdateFileRefNoteAsync(string fileRefNoteId, string? instructions = null, bool? isRequired = null, int? noteOrder = null, string? usageRole = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new UpdateVaultFileRefNoteService(adapter, _vaultLogger)
-            .Execute(new UpdateVaultFileRefNoteRequest
-            {
-                FileRefNoteID        = fileRefNoteId,
-                Instructions         = instructions,
-                IsRequired           = isRequired ?? false,
-                NoteOrder            = noteOrder ?? 0,
-                UsageRole            = usageRole,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<UpdateVaultFileRefNoteResponse> UpdateFileRefNoteAsync(string fileRefNoteId, string? instructions = null, bool? isRequired = null, int? noteOrder = null, string? usageRole = null)
+        => _dbProvider.UpdateFileRefNoteAsync(fileRefNoteId, usageRole, instructions, isRequired, noteOrder);
 
-    public async Task<DeleteVaultFileRefNoteResponse> DeleteFileRefNoteAsync(string fileRefNoteId)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new DeleteVaultFileRefNoteService(adapter, _vaultLogger)
-            .Execute(new DeleteVaultFileRefNoteRequest
-            {
-                FileRefNoteID        = fileRefNoteId,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<DeleteVaultFileRefNoteResponse> DeleteFileRefNoteAsync(string fileRefNoteId)
+        => _dbProvider.DeleteFileRefNoteAsync(fileRefNoteId);
 
     // ── Note FileRef Links ────────────────────────────────────────────────────
 
-    public async Task<CreateVaultNoteFileRefResponse> CreateNoteFileRefAsync(string noteId, string fileRefId, string? noteFileRefId = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new CreateVaultNoteFileRefService(adapter, _vaultLogger)
-            .Execute(new CreateVaultNoteFileRefRequest
-            {
-                NoteFileRefID        = noteFileRefId,
-                NoteID               = noteId,
-                FileRefID            = fileRefId,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<CreateVaultNoteFileRefResponse> CreateNoteFileRefAsync(string noteId, string fileRefId, string? noteFileRefId = null, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
+        => _dbProvider.CreateNoteFileRefAsync(noteId, fileRefId, noteFileRefId, instructions, isRequired, sortOrder, usageRole);
 
-    public async Task<UpdateVaultNoteFileRefResponse> UpdateNoteFileRefAsync(string noteFileRefId, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new UpdateVaultNoteFileRefService(adapter, _vaultLogger)
-            .Execute(new UpdateVaultNoteFileRefRequest
-            {
-                NoteFileRefID        = noteFileRefId,
-                Instructions         = instructions,
-                IsRequired           = isRequired ?? false,
-                SortOrder            = sortOrder ?? 0,
-                UsageRole            = usageRole,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<UpdateVaultNoteFileRefResponse> UpdateNoteFileRefAsync(string noteFileRefId, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null)
+        => _dbProvider.UpdateNoteFileRefAsync(noteFileRefId, usageRole, instructions, isRequired, sortOrder);
 
-    public async Task<DeleteVaultNoteFileRefResponse> DeleteNoteFileRefAsync(string noteFileRefId)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new DeleteVaultNoteFileRefService(adapter, _vaultLogger)
-            .Execute(new DeleteVaultNoteFileRefRequest
-            {
-                NoteFileRefID        = noteFileRefId,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<DeleteVaultNoteFileRefResponse> DeleteNoteFileRefAsync(string noteFileRefId)
+        => _dbProvider.DeleteNoteFileRefAsync(noteFileRefId);
 
     // ── FileRef Relations ─────────────────────────────────────────────────────
 
-    public async Task<CreateVaultFileRefRelationResponse> CreateFileRefRelationAsync(string sourceFileRefId, string targetFileRefId, string relationType, string? description = null, string? fileRefRelationId = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new CreateVaultFileRefRelationService(adapter, _vaultLogger)
-            .Execute(new CreateVaultFileRefRelationRequest
-            {
-                FileRefRelationID    = fileRefRelationId,
-                SourceFileRefID      = sourceFileRefId,
-                TargetFileRefID      = targetFileRefId,
-                RelationType         = relationType,
-                Description          = description,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<CreateVaultFileRefRelationResponse> CreateFileRefRelationAsync(string sourceFileRefId, string targetFileRefId, string relationType, string? description = null, string? fileRefRelationId = null, int? sortOrder = null, float? weight = null)
+        => _dbProvider.CreateFileRefRelationAsync(sourceFileRefId, targetFileRefId, relationType, description, fileRefRelationId, sortOrder, weight);
 
-    public async Task<UpdateVaultFileRefRelationResponse> UpdateFileRefRelationAsync(string fileRefRelationId, string? relationType = null, string? description = null, int? sortOrder = null, float? weight = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new UpdateVaultFileRefRelationService(adapter, _vaultLogger)
-            .Execute(new UpdateVaultFileRefRelationRequest
-            {
-                FileRefRelationID    = fileRefRelationId,
-                RelationType         = relationType,
-                Description          = description,
-                SortOrder            = sortOrder ?? 0,
-                Weight               = weight ?? 0,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<UpdateVaultFileRefRelationResponse> UpdateFileRefRelationAsync(string fileRefRelationId, string? relationType = null, string? description = null, int? sortOrder = null, float? weight = null)
+        => _dbProvider.UpdateFileRefRelationAsync(fileRefRelationId, relationType: relationType, description: description, sortOrder: sortOrder, weight: weight);
 
-    public async Task<DeleteVaultFileRefRelationResponse> DeleteFileRefRelationAsync(string fileRefRelationId)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new DeleteVaultFileRefRelationService(adapter, _vaultLogger)
-            .Execute(new DeleteVaultFileRefRelationRequest
-            {
-                FileRefRelationID    = fileRefRelationId,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<DeleteVaultFileRefRelationResponse> DeleteFileRefRelationAsync(string fileRefRelationId)
+        => _dbProvider.DeleteFileRefRelationAsync(fileRefRelationId);
 
     // ── Note Relations / Metadata / Tags ──────────────────────────────────────
 
-    public async Task<CreateVaultNoteRelationResponse> CreateNoteRelationAsync(string sourceNoteId, string targetNoteId, string relationType, string? description = null, string? noteRelationId = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new CreateVaultNoteRelationService(adapter, _vaultLogger)
-            .Execute(new CreateVaultNoteRelationRequest
-            {
-                NoteRelationID       = noteRelationId,
-                SourceNoteID         = sourceNoteId,
-                TargetNoteID         = targetNoteId,
-                RelationType         = relationType,
-                Description          = description,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<CreateVaultNoteRelationResponse> CreateNoteRelationAsync(string sourceNoteId, string targetNoteId, string relationType, string? description = null, string? noteRelationId = null, int? sortOrder = null, float? weight = null)
+        => _dbProvider.CreateNoteRelationAsync(sourceNoteId, targetNoteId, relationType, description, noteRelationId, sortOrder, weight);
 
-    public async Task<UpdateVaultNoteRelationResponse> UpdateNoteRelationAsync(string noteRelationId, string? relationType = null, string? description = null, int? sortOrder = null, float? weight = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new UpdateVaultNoteRelationService(adapter, _vaultLogger)
-            .Execute(new UpdateVaultNoteRelationRequest
-            {
-                NoteRelationID       = noteRelationId,
-                RelationType         = relationType,
-                Description          = description,
-                SortOrder            = sortOrder ?? 0,
-                Weight               = weight ?? 0,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<UpdateVaultNoteRelationResponse> UpdateNoteRelationAsync(string noteRelationId, string? relationType = null, string? description = null, int? sortOrder = null, float? weight = null)
+        => _dbProvider.UpdateNoteRelationAsync(noteRelationId, relationType: relationType, description: description, sortOrder: sortOrder, weight: weight);
 
-    public async Task<DeleteVaultNoteRelationResponse> DeleteNoteRelationAsync(string noteRelationId)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new DeleteVaultNoteRelationService(adapter, _vaultLogger)
-            .Execute(new DeleteVaultNoteRelationRequest
-            {
-                NoteRelationID       = noteRelationId,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<DeleteVaultNoteRelationResponse> DeleteNoteRelationAsync(string noteRelationId)
+        => _dbProvider.DeleteNoteRelationAsync(noteRelationId);
 
-    public async Task<CreateVaultNoteVaultTagResponse> CreateNoteVaultTagAsync(string noteId, string tagId, string? noteVaultTagId = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new CreateVaultNoteVaultTagService(adapter, _vaultLogger)
-            .Execute(new CreateVaultNoteVaultTagRequest
-            {
-                NoteVaultTagID       = noteVaultTagId,
-                NoteID               = noteId,
-                TagID                = tagId,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<CreateVaultNoteVaultTagResponse> CreateNoteVaultTagAsync(string noteId, string tagId, string? noteVaultTagId = null, int? sortOrder = null)
+        => _dbProvider.CreateNoteVaultTagAsync(noteId, tagId, noteVaultTagId, sortOrder);
 
-    public async Task<UpdateVaultNoteVaultTagResponse> UpdateNoteVaultTagAsync(string noteVaultTagId, int? sortOrder = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new UpdateVaultNoteVaultTagService(adapter, _vaultLogger)
-            .Execute(new UpdateVaultNoteVaultTagRequest
-            {
-                NoteVaultTagID       = noteVaultTagId,
-                SortOrder            = sortOrder ?? 0,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<UpdateVaultNoteVaultTagResponse> UpdateNoteVaultTagAsync(string noteVaultTagId, int? sortOrder = null)
+        => _dbProvider.UpdateNoteVaultTagAsync(noteVaultTagId, sortOrder: sortOrder);
 
-    public async Task<DeleteVaultNoteVaultTagResponse> DeleteNoteVaultTagAsync(string noteVaultTagId)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new DeleteVaultNoteVaultTagService(adapter, _vaultLogger)
-            .Execute(new DeleteVaultNoteVaultTagRequest
-            {
-                NoteVaultTagID       = noteVaultTagId,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<DeleteVaultNoteVaultTagResponse> DeleteNoteVaultTagAsync(string noteVaultTagId)
+        => _dbProvider.DeleteNoteVaultTagAsync(noteVaultTagId);
 
-    public async Task<UpdateVaultTagResponse> UpdateTagAsync(string tagId, string? name = null, string? description = null, string? colorHex = null, int? sortOrder = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        var tag = adapter.Set<VaultTag>().FirstOrDefault(t => t.ID == tagId);
-        return new UpdateVaultTagService(adapter, _vaultLogger)
-            .Execute(new UpdateVaultTagRequest
-            {
-                VaultID              = tag?.ProjectID ?? string.Empty,
-                TagID                = tagId,
-                Name                 = name,
-                Color                = colorHex,
-                Description          = description,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<UpdateVaultTagResponse> UpdateTagAsync(string tagId, string? name = null, string? description = null, string? colorHex = null, int? sortOrder = null, string? vaultId = null)
+        => _dbProvider.UpdateTagAsync(tagId, name, description, colorHex, sortOrder, vaultId);
 
-    public async Task<CreateVaultMetadataResponse> CreateMetadataAsync(string noteId, string key, string? value = null, string? metadataId = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new CreateVaultMetadataService(adapter, _vaultLogger)
-            .Execute(new CreateVaultMetadataRequest
-            {
-                MetadataID           = metadataId,
-                NoteID               = noteId,
-                Key                  = key,
-                Value                = value,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<CreateVaultMetadataResponse> CreateMetadataAsync(string noteId, string key, string? value = null, string? metadataId = null)
+        => _dbProvider.CreateMetadataAsync(noteId, key, value, metadataId);
 
-    public async Task<UpdateVaultMetadataResponse> UpdateMetadataAsync(string metadataId, string? key = null, string? value = null)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new UpdateVaultMetadataService(adapter, _vaultLogger)
-            .Execute(new UpdateVaultMetadataRequest
-            {
-                MetadataID           = metadataId,
-                Key                  = key,
-                Value                = value,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<UpdateVaultMetadataResponse> UpdateMetadataAsync(string metadataId, string? key = null, string? value = null)
+        => _dbProvider.UpdateMetadataAsync(metadataId, key: key, value: value);
 
-    public async Task<DeleteVaultMetadataResponse> DeleteMetadataAsync(string metadataId)
-    {
-        await using var db = await _dbFactory.CreateDbContextAsync();
-        var adapter = new VaultDbContextAdapter(db);
-        return new DeleteVaultMetadataService(adapter, _vaultLogger)
-            .Execute(new DeleteVaultMetadataRequest
-            {
-                MetadataID           = metadataId,
-                RequestPartyName     = "AVA.Vault"
-            });
-    }
+    public Task<DeleteVaultMetadataResponse> DeleteMetadataAsync(string metadataId)
+        => _dbProvider.DeleteMetadataAsync(metadataId);
 
-    // ── Mapping ───────────────────────────────────────────────────────────────
-
-    private static SessionState MapToSessionState(VaultSession s) => new SessionState
-    {
-        SessionId         = s.ID,
-        Name              = s.Name,
-        CreatedAt         = s.CreatedAt,
-        LastActiveAt      = s.LastActiveAt,
-        IsPinned          = s.IsPinned,
-        AttachedModelIds  = DeserializeIds(s.AttachedModelIdsJson),
-        BroadcastGroupIds = DeserializeIds(s.BroadcastGroupIdsJson),
-        DefaultModelId    = s.DefaultModelId,
-        IsTemplate        = s.IsTemplate,
-        TemplateName      = s.TemplateName,
-        SpawnCount        = s.SpawnCount
-    };
-
-    private static List<string> DeserializeIds(string? json)
-    {
-        if (string.IsNullOrWhiteSpace(json))
-        {
-            return new();
-        }
-
-        try { return System.Text.Json.JsonSerializer.Deserialize<List<string>>(json) ?? new(); }
-        catch { return new(); }
-    }
+    #endregion
 }

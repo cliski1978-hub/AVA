@@ -370,7 +370,7 @@ namespace AVA.Vault.Core.Adapters
 
         // ── Note ──────────────────────────────────────────────────────────────
 
-        public Task<CreateVaultNoteResponse> CreateNoteAsync(string vaultId, string? projectId, string title, string content, string? sessionId = null, CancellationToken ct = default)
+        public Task<CreateVaultNoteResponse> CreateVaultNoteAsync(string vaultId, string? projectId, string title, string content, string? sessionId = null, CancellationToken ct = default)
         {
             try
             {
@@ -407,14 +407,14 @@ namespace AVA.Vault.Core.Adapters
             }
         }
 
-        public Task<VaultNote?> GetNoteAsync(string vaultId, string noteId, CancellationToken ct = default)
+        public Task<VaultNote?> GetVaultNoteAsync(string vaultId, string noteId, CancellationToken ct = default)
         {
             var vaultPath = GetVaultPath(vaultId);
             var meta      = FindNoteMeta(vaultPath, noteId);
             return Task.FromResult(meta);
         }
 
-        public Task<UpdateVaultNoteResponse> UpdateNoteAsync(string vaultId, string noteId, string? title, string? content, CancellationToken ct = default)
+        public Task<UpdateVaultNoteResponse> UpdateNoteAsync(string vaultId,string noteId, string? title, string? content, CancellationToken ct = default)
         {
             try
             {
@@ -744,6 +744,236 @@ namespace AVA.Vault.Core.Adapters
 
             return Task.FromResult<IEnumerable<RelatedNoteResult>>(results);
         }
+
+        // ── Workflow ──────────────────────────────────────────────────────────
+
+        public Task<CreateVaultWorkflowResponse> CreateWorkflowAsync(string vaultId, string? projectId, string name, string? description = null, string? workflowType = null, string? status = null, int? sortOrder = null, CancellationToken ct = default)
+            => Task.FromResult(new CreateVaultWorkflowResponse { UserMessage = "Workflows are not supported in file storage mode." });
+
+        public Task<UpdateVaultWorkflowResponse> UpdateWorkflowAsync(string workflowId, string? name, string? description, string? status, int? sortOrder = null, string? projectId = null, string? workflowType = null, CancellationToken ct = default)
+            => Task.FromResult(new UpdateVaultWorkflowResponse { UserMessage = "Workflows are not supported in file storage mode." });
+
+        public Task<DeleteVaultWorkflowResponse> DeleteWorkflowAsync(string workflowId, CancellationToken ct = default)
+            => Task.FromResult(new DeleteVaultWorkflowResponse { UserMessage = "Workflows are not supported in file storage mode." });
+
+        public Task<CreateVaultWorkflowNodeResponse> CreateWorkflowNodeAsync(string workflowId, string name, string? workflowNodeId = null, string? description = null, string? instructions = null, string? metadataJson = null, string? nodeType = null, int? nodeOrder = null, string? status = null, CancellationToken ct = default)
+            => Task.FromResult(new CreateVaultWorkflowNodeResponse { UserMessage = "Workflow nodes are not supported in file storage mode." });
+
+        public Task<UpdateVaultWorkflowNodeResponse> UpdateWorkflowNodeAsync(string workflowNodeId, string? name = null, string? description = null, string? instructions = null, string? nodeType = null, int? nodeOrder = null, string? status = null, string? metadataJson = null, CancellationToken ct = default)
+            => Task.FromResult(new UpdateVaultWorkflowNodeResponse { UserMessage = "Workflow nodes are not supported in file storage mode." });
+
+        public Task<DeleteVaultWorkflowNodeResponse> DeleteWorkflowNodeAsync(string workflowNodeId, CancellationToken ct = default)
+            => Task.FromResult(new DeleteVaultWorkflowNodeResponse { UserMessage = "Workflow nodes are not supported in file storage mode." });
+
+        public Task<CreateVaultWorkflowLineResponse> CreateWorkflowLineAsync(string workflowId, string sourceWorkflowNodeId, string targetWorkflowNodeId, string name, string? workflowLineId = null, string? description = null, string? conditionJson = null, bool? isDefaultLine = null, string? lineType = null, int? lineOrder = null, CancellationToken ct = default)
+            => Task.FromResult(new CreateVaultWorkflowLineResponse { UserMessage = "Workflow lines are not supported in file storage mode." });
+
+        public Task<UpdateVaultWorkflowLineResponse> UpdateWorkflowLineAsync(string workflowLineId, string? name = null, string? description = null, string? conditionJson = null, bool? isDefaultLine = null, string? lineType = null, int? lineOrder = null, CancellationToken ct = default)
+            => Task.FromResult(new UpdateVaultWorkflowLineResponse { UserMessage = "Workflow lines are not supported in file storage mode." });
+
+        public Task<DeleteVaultWorkflowLineResponse> DeleteWorkflowLineAsync(string workflowLineId, CancellationToken ct = default)
+            => Task.FromResult(new DeleteVaultWorkflowLineResponse { UserMessage = "Workflow lines are not supported in file storage mode." });
+
+        public Task<CreateVaultWorkflowLineStepResponse> CreateWorkflowLineStepAsync(string workflowLineId, string name, string? workflowLineStepId = null, string? description = null, string? instructions = null, bool? isRequired = null, int? stepOrder = null, string? stepType = null, CancellationToken ct = default)
+            => Task.FromResult(new CreateVaultWorkflowLineStepResponse { UserMessage = "Workflow line steps are not supported in file storage mode." });
+
+        public Task<UpdateVaultWorkflowLineStepResponse> UpdateWorkflowLineStepAsync(string workflowLineStepId, string? name = null, string? description = null, string? instructions = null, bool? isRequired = null, int? stepOrder = null, string? stepType = null, CancellationToken ct = default)
+            => Task.FromResult(new UpdateVaultWorkflowLineStepResponse { UserMessage = "Workflow line steps are not supported in file storage mode." });
+
+        public Task<DeleteVaultWorkflowLineStepResponse> DeleteWorkflowLineStepAsync(string workflowLineStepId, CancellationToken ct = default)
+            => Task.FromResult(new DeleteVaultWorkflowLineStepResponse { UserMessage = "Workflow line steps are not supported in file storage mode." });
+
+        public Task<CreateVaultWorkflowNoteResponse> CreateWorkflowNoteAsync(string workflowId, string noteId, string? workflowNoteId = null, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null, CancellationToken ct = default)
+            => Task.FromResult(new CreateVaultWorkflowNoteResponse { UserMessage = "Workflow note links are not supported in file storage mode." });
+
+        public Task<UpdateVaultWorkflowNoteResponse> UpdateWorkflowNoteAsync(string workflowNoteId, string? usageRole, string? instructions, bool? isRequired, int? sortOrder, CancellationToken ct = default)
+            => Task.FromResult(new UpdateVaultWorkflowNoteResponse { UserMessage = "Workflow note links are not supported in file storage mode." });
+
+        public Task<DeleteVaultWorkflowNoteResponse> DeleteWorkflowNoteAsync(string workflowNoteId, CancellationToken ct = default)
+            => Task.FromResult(new DeleteVaultWorkflowNoteResponse { UserMessage = "Workflow note links are not supported in file storage mode." });
+
+        public Task<CreateVaultWorkflowNodeNoteResponse> CreateWorkflowNodeNoteAsync(string workflowNodeId, string noteId, string? workflowNodeNoteId = null, string? instructions = null, bool? isRequired = null, int? noteOrder = null, string? usageRole = null, CancellationToken ct = default)
+            => Task.FromResult(new CreateVaultWorkflowNodeNoteResponse { UserMessage = "Workflow node note links are not supported in file storage mode." });
+
+        public Task<UpdateVaultWorkflowNodeNoteResponse> UpdateWorkflowNodeNoteAsync(string workflowNodeNoteId, string? usageRole, string? instructions, bool? isRequired, int? noteOrder, CancellationToken ct = default)
+            => Task.FromResult(new UpdateVaultWorkflowNodeNoteResponse { UserMessage = "Workflow node note links are not supported in file storage mode." });
+
+        public Task<DeleteVaultWorkflowNodeNoteResponse> DeleteWorkflowNodeNoteAsync(string workflowNodeNoteId, CancellationToken ct = default)
+            => Task.FromResult(new DeleteVaultWorkflowNodeNoteResponse { UserMessage = "Workflow node note links are not supported in file storage mode." });
+
+        public Task<CreateVaultWorkflowLineNoteResponse> CreateWorkflowLineNoteAsync(string workflowLineId, string noteId, string? workflowLineNoteId = null, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null, CancellationToken ct = default)
+            => Task.FromResult(new CreateVaultWorkflowLineNoteResponse { UserMessage = "Workflow line note links are not supported in file storage mode." });
+
+        public Task<UpdateVaultWorkflowLineNoteResponse> UpdateWorkflowLineNoteAsync(string workflowLineNoteId, string? usageRole, string? instructions, bool? isRequired, int? sortOrder, CancellationToken ct = default)
+            => Task.FromResult(new UpdateVaultWorkflowLineNoteResponse { UserMessage = "Workflow line note links are not supported in file storage mode." });
+
+        public Task<DeleteVaultWorkflowLineNoteResponse> DeleteWorkflowLineNoteAsync(string workflowLineNoteId, CancellationToken ct = default)
+            => Task.FromResult(new DeleteVaultWorkflowLineNoteResponse { UserMessage = "Workflow line note links are not supported in file storage mode." });
+
+        public Task<CreateVaultWorkflowLineStepNoteResponse> CreateWorkflowLineStepNoteAsync(string workflowLineStepId, string noteId, string? workflowLineStepNoteId = null, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null, CancellationToken ct = default)
+            => Task.FromResult(new CreateVaultWorkflowLineStepNoteResponse { UserMessage = "Workflow line step note links are not supported in file storage mode." });
+
+        public Task<UpdateVaultWorkflowLineStepNoteResponse> UpdateWorkflowLineStepNoteAsync(string workflowLineStepNoteId, string? usageRole, string? instructions, bool? isRequired, int? sortOrder, CancellationToken ct = default)
+            => Task.FromResult(new UpdateVaultWorkflowLineStepNoteResponse { UserMessage = "Workflow line step note links are not supported in file storage mode." });
+
+        public Task<DeleteVaultWorkflowLineStepNoteResponse> DeleteWorkflowLineStepNoteAsync(string workflowLineStepNoteId, CancellationToken ct = default)
+            => Task.FromResult(new DeleteVaultWorkflowLineStepNoteResponse { UserMessage = "Workflow line step note links are not supported in file storage mode." });
+
+        public Task<CreateVaultWorkflowFileRefResponse> CreateWorkflowFileRefAsync(string workflowId, string fileRefId, string? workflowFileRefId = null, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null, CancellationToken ct = default)
+            => Task.FromResult(new CreateVaultWorkflowFileRefResponse { UserMessage = "Workflow file ref links are not supported in file storage mode." });
+
+        public Task<UpdateVaultWorkflowFileRefResponse> UpdateWorkflowFileRefAsync(string workflowFileRefId, string? usageRole, string? instructions, bool? isRequired, int? sortOrder, CancellationToken ct = default)
+            => Task.FromResult(new UpdateVaultWorkflowFileRefResponse { UserMessage = "Workflow file ref links are not supported in file storage mode." });
+
+        public Task<DeleteVaultWorkflowFileRefResponse> DeleteWorkflowFileRefAsync(string workflowFileRefId, CancellationToken ct = default)
+            => Task.FromResult(new DeleteVaultWorkflowFileRefResponse { UserMessage = "Workflow file ref links are not supported in file storage mode." });
+
+        public Task<CreateVaultWorkflowNodeFileRefResponse> CreateWorkflowNodeFileRefAsync(string workflowNodeId, string fileRefId, string? workflowNodeFileRefId = null, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null, CancellationToken ct = default)
+            => Task.FromResult(new CreateVaultWorkflowNodeFileRefResponse { UserMessage = "Workflow node file ref links are not supported in file storage mode." });
+
+        public Task<UpdateVaultWorkflowNodeFileRefResponse> UpdateWorkflowNodeFileRefAsync(string workflowNodeFileRefId, string? usageRole, string? instructions, bool? isRequired, int? sortOrder, CancellationToken ct = default)
+            => Task.FromResult(new UpdateVaultWorkflowNodeFileRefResponse { UserMessage = "Workflow node file ref links are not supported in file storage mode." });
+
+        public Task<DeleteVaultWorkflowNodeFileRefResponse> DeleteWorkflowNodeFileRefAsync(string workflowNodeFileRefId, CancellationToken ct = default)
+            => Task.FromResult(new DeleteVaultWorkflowNodeFileRefResponse { UserMessage = "Workflow node file ref links are not supported in file storage mode." });
+
+        public Task<CreateVaultWorkflowLineFileRefResponse> CreateWorkflowLineFileRefAsync(string workflowLineId, string fileRefId, string? workflowLineFileRefId = null, string? instructions = null, bool? isRequired = null, int? fileOrder = null, string? usageRole = null, CancellationToken ct = default)
+            => Task.FromResult(new CreateVaultWorkflowLineFileRefResponse { UserMessage = "Workflow line file ref links are not supported in file storage mode." });
+
+        public Task<UpdateVaultWorkflowLineFileRefResponse> UpdateWorkflowLineFileRefAsync(string workflowLineFileRefId, string? usageRole, string? instructions, bool? isRequired, int? fileOrder, CancellationToken ct = default)
+            => Task.FromResult(new UpdateVaultWorkflowLineFileRefResponse { UserMessage = "Workflow line file ref links are not supported in file storage mode." });
+
+        public Task<DeleteVaultWorkflowLineFileRefResponse> DeleteWorkflowLineFileRefAsync(string workflowLineFileRefId, CancellationToken ct = default)
+            => Task.FromResult(new DeleteVaultWorkflowLineFileRefResponse { UserMessage = "Workflow line file ref links are not supported in file storage mode." });
+
+        public Task<CreateVaultWorkflowLineStepFileRefResponse> CreateWorkflowLineStepFileRefAsync(string workflowLineStepId, string fileRefId, string? workflowLineStepFileRefId = null, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null, CancellationToken ct = default)
+            => Task.FromResult(new CreateVaultWorkflowLineStepFileRefResponse { UserMessage = "Workflow line step file ref links are not supported in file storage mode." });
+
+        public Task<UpdateVaultWorkflowLineStepFileRefResponse> UpdateWorkflowLineStepFileRefAsync(string workflowLineStepFileRefId, string? usageRole, string? instructions, bool? isRequired, int? sortOrder, CancellationToken ct = default)
+            => Task.FromResult(new UpdateVaultWorkflowLineStepFileRefResponse { UserMessage = "Workflow line step file ref links are not supported in file storage mode." });
+
+        public Task<DeleteVaultWorkflowLineStepFileRefResponse> DeleteWorkflowLineStepFileRefAsync(string workflowLineStepFileRefId, CancellationToken ct = default)
+            => Task.FromResult(new DeleteVaultWorkflowLineStepFileRefResponse { UserMessage = "Workflow line step file ref links are not supported in file storage mode." });
+
+        public Task<CreateVaultHeaderNoteResponse> CreateVaultHeaderNoteAsync(string vaultId, string noteId, string? headerNoteId = null, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null, CancellationToken ct = default)
+            => Task.FromResult(new CreateVaultHeaderNoteResponse { UserMessage = "Vault header note links are not supported in file storage mode." });
+
+        public Task<UpdateVaultHeaderNoteResponse> UpdateVaultHeaderNoteAsync(string headerNoteId, string? usageRole, string? instructions, bool? isRequired, int? sortOrder, CancellationToken ct = default)
+            => Task.FromResult(new UpdateVaultHeaderNoteResponse { UserMessage = "Vault header note links are not supported in file storage mode." });
+
+        public Task<DeleteVaultHeaderNoteResponse> DeleteVaultHeaderNoteAsync(string headerNoteId, CancellationToken ct = default)
+            => Task.FromResult(new DeleteVaultHeaderNoteResponse { UserMessage = "Vault header note links are not supported in file storage mode." });
+
+        public Task<CreateVaultProjectNoteResponse> CreateVaultProjectNoteAsync(string projectId, string noteId, string? projectNoteId = null, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null, CancellationToken ct = default)
+            => Task.FromResult(new CreateVaultProjectNoteResponse { UserMessage = "Vault project note links are not supported in file storage mode." });
+
+        public Task<UpdateVaultProjectNoteResponse> UpdateVaultProjectNoteAsync(string projectNoteId, string? usageRole, string? instructions, bool? isRequired, int? sortOrder, CancellationToken ct = default)
+            => Task.FromResult(new UpdateVaultProjectNoteResponse { UserMessage = "Vault project note links are not supported in file storage mode." });
+
+        public Task<DeleteVaultProjectNoteResponse> DeleteVaultProjectNoteAsync(string projectNoteId, CancellationToken ct = default)
+            => Task.FromResult(new DeleteVaultProjectNoteResponse { UserMessage = "Vault project note links are not supported in file storage mode." });
+
+        public Task<CreateVaultSessionNoteResponse> CreateVaultSessionNoteAsync(string sessionId, string noteId, string? sessionNoteId = null, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null, CancellationToken ct = default)
+            => Task.FromResult(new CreateVaultSessionNoteResponse { UserMessage = "Vault session note links are not supported in file storage mode." });
+
+        public Task<UpdateVaultSessionNoteResponse> UpdateVaultSessionNoteAsync(string sessionNoteId, string? usageRole, string? instructions, bool? isRequired, int? sortOrder, CancellationToken ct = default)
+            => Task.FromResult(new UpdateVaultSessionNoteResponse { UserMessage = "Vault session note links are not supported in file storage mode." });
+
+        public Task<DeleteVaultSessionNoteResponse> DeleteVaultSessionNoteAsync(string sessionNoteId, CancellationToken ct = default)
+            => Task.FromResult(new DeleteVaultSessionNoteResponse { UserMessage = "Vault session note links are not supported in file storage mode." });
+
+        public Task<CreateVaultHeaderFileRefResponse> CreateVaultHeaderFileRefAsync(string vaultId, string fileRefId, string? headerFileRefId = null, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null, CancellationToken ct = default)
+            => Task.FromResult(new CreateVaultHeaderFileRefResponse { UserMessage = "Vault header file ref links are not supported in file storage mode." });
+
+        public Task<UpdateVaultHeaderFileRefResponse> UpdateVaultHeaderFileRefAsync(string headerFileRefId, string? usageRole, string? instructions, bool? isRequired, int? sortOrder, CancellationToken ct = default)
+            => Task.FromResult(new UpdateVaultHeaderFileRefResponse { UserMessage = "Vault header file ref links are not supported in file storage mode." });
+
+        public Task<DeleteVaultHeaderFileRefResponse> DeleteVaultHeaderFileRefAsync(string headerFileRefId, CancellationToken ct = default)
+            => Task.FromResult(new DeleteVaultHeaderFileRefResponse { UserMessage = "Vault header file ref links are not supported in file storage mode." });
+
+        public Task<CreateVaultProjectFileRefResponse> CreateVaultProjectFileRefAsync(string projectId, string fileRefId, string? projectFileRefId = null, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null, CancellationToken ct = default)
+            => Task.FromResult(new CreateVaultProjectFileRefResponse { UserMessage = "Vault project file ref links are not supported in file storage mode." });
+
+        public Task<UpdateVaultProjectFileRefResponse> UpdateVaultProjectFileRefAsync(string projectFileRefId, string? usageRole, string? instructions, bool? isRequired, int? sortOrder, CancellationToken ct = default)
+            => Task.FromResult(new UpdateVaultProjectFileRefResponse { UserMessage = "Vault project file ref links are not supported in file storage mode." });
+
+        public Task<DeleteVaultProjectFileRefResponse> DeleteVaultProjectFileRefAsync(string projectFileRefId, CancellationToken ct = default)
+            => Task.FromResult(new DeleteVaultProjectFileRefResponse { UserMessage = "Vault project file ref links are not supported in file storage mode." });
+
+        public Task<CreateVaultSessionFileRefResponse> CreateVaultSessionFileRefAsync(string sessionId, string fileRefId, string? sessionFileRefId = null, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null, CancellationToken ct = default)
+            => Task.FromResult(new CreateVaultSessionFileRefResponse { UserMessage = "Vault session file ref links are not supported in file storage mode." });
+
+        public Task<UpdateVaultSessionFileRefResponse> UpdateVaultSessionFileRefAsync(string sessionFileRefId, string? usageRole, string? instructions, bool? isRequired, int? sortOrder, CancellationToken ct = default)
+            => Task.FromResult(new UpdateVaultSessionFileRefResponse { UserMessage = "Vault session file ref links are not supported in file storage mode." });
+
+        public Task<DeleteVaultSessionFileRefResponse> DeleteVaultSessionFileRefAsync(string sessionFileRefId, CancellationToken ct = default)
+            => Task.FromResult(new DeleteVaultSessionFileRefResponse { UserMessage = "Vault session file ref links are not supported in file storage mode." });
+
+        public Task<CreateVaultFileRefResponse> CreateFileRefAsync(string vaultId, string name, string path, string? fileRefId = null, string? projectId = null, string? sessionId = null, long? fileSizeBytes = null, string? contentHash = null, string? mimeType = null, int? fileOrder = null, CancellationToken ct = default)
+            => Task.FromResult(new CreateVaultFileRefResponse { UserMessage = "File refs are not supported in file storage mode." });
+
+        public Task<UpdateVaultFileRefResponse> UpdateFileRefAsync(string fileRefId, string? name = null, string? path = null, string? mimeType = null, string? contentHash = null, long? fileSizeBytes = null, int? fileOrder = null, string? vaultId = null, string? projectId = null, string? sessionId = null, CancellationToken ct = default)
+            => Task.FromResult(new UpdateVaultFileRefResponse { UserMessage = "File refs are not supported in file storage mode." });
+
+        public Task<DeleteVaultFileRefResponse> DeleteFileRefAsync(string fileRefId, CancellationToken ct = default)
+            => Task.FromResult(new DeleteVaultFileRefResponse { UserMessage = "File refs are not supported in file storage mode." });
+
+        public Task<CreateVaultFileRefNoteResponse> CreateFileRefNoteAsync(string fileRefId, string noteId, string? fileRefNoteId = null, string? instructions = null, bool? isRequired = null, int? noteOrder = null, string? usageRole = null, CancellationToken ct = default)
+            => Task.FromResult(new CreateVaultFileRefNoteResponse { UserMessage = "File ref note links are not supported in file storage mode." });
+
+        public Task<UpdateVaultFileRefNoteResponse> UpdateFileRefNoteAsync(string fileRefNoteId, string? usageRole, string? instructions, bool? isRequired, int? noteOrder, CancellationToken ct = default)
+            => Task.FromResult(new UpdateVaultFileRefNoteResponse { UserMessage = "File ref note links are not supported in file storage mode." });
+
+        public Task<DeleteVaultFileRefNoteResponse> DeleteFileRefNoteAsync(string fileRefNoteId, CancellationToken ct = default)
+            => Task.FromResult(new DeleteVaultFileRefNoteResponse { UserMessage = "File ref note links are not supported in file storage mode." });
+
+        public Task<CreateVaultNoteFileRefResponse> CreateNoteFileRefAsync(string noteId, string fileRefId, string? noteFileRefId = null, string? instructions = null, bool? isRequired = null, int? sortOrder = null, string? usageRole = null, CancellationToken ct = default)
+            => Task.FromResult(new CreateVaultNoteFileRefResponse { UserMessage = "Note file ref links are not supported in file storage mode." });
+
+        public Task<UpdateVaultNoteFileRefResponse> UpdateNoteFileRefAsync(string noteFileRefId, string? usageRole, string? instructions, bool? isRequired, int? sortOrder, CancellationToken ct = default)
+            => Task.FromResult(new UpdateVaultNoteFileRefResponse { UserMessage = "Note file ref links are not supported in file storage mode." });
+
+        public Task<DeleteVaultNoteFileRefResponse> DeleteNoteFileRefAsync(string noteFileRefId, CancellationToken ct = default)
+            => Task.FromResult(new DeleteVaultNoteFileRefResponse { UserMessage = "Note file ref links are not supported in file storage mode." });
+
+        public Task<CreateVaultFileRefRelationResponse> CreateFileRefRelationAsync(string sourceFileRefId, string targetFileRefId, string relationType, string? description = null, string? fileRefRelationId = null, int? sortOrder = null, float? weight = null, CancellationToken ct = default)
+            => Task.FromResult(new CreateVaultFileRefRelationResponse { UserMessage = "File ref relations are not supported in file storage mode." });
+
+        public Task<UpdateVaultFileRefRelationResponse> UpdateFileRefRelationAsync(string fileRefRelationId, string? relationType = null, string? description = null, int? sortOrder = null, float? weight = null, CancellationToken ct = default)
+            => Task.FromResult(new UpdateVaultFileRefRelationResponse { UserMessage = "File ref relations are not supported in file storage mode." });
+
+        public Task<DeleteVaultFileRefRelationResponse> DeleteFileRefRelationAsync(string fileRefRelationId, CancellationToken ct = default)
+            => Task.FromResult(new DeleteVaultFileRefRelationResponse { UserMessage = "File ref relations are not supported in file storage mode." });
+
+        public Task<CreateVaultNoteRelationResponse> CreateNoteRelationAsync(string sourceNoteId, string targetNoteId, string relationType, string? description = null, string? noteRelationId = null, int? sortOrder = null, float? weight = null, CancellationToken ct = default)
+            => Task.FromResult(new CreateVaultNoteRelationResponse { UserMessage = "Note relations are not supported in file storage mode." });
+
+        public Task<UpdateVaultNoteRelationResponse> UpdateNoteRelationAsync(string noteRelationId, string? relationType = null, string? description = null, int? sortOrder = null, float? weight = null, CancellationToken ct = default)
+            => Task.FromResult(new UpdateVaultNoteRelationResponse { UserMessage = "Note relations are not supported in file storage mode." });
+
+        public Task<DeleteVaultNoteRelationResponse> DeleteNoteRelationAsync(string noteRelationId, CancellationToken ct = default)
+            => Task.FromResult(new DeleteVaultNoteRelationResponse { UserMessage = "Note relations are not supported in file storage mode." });
+
+        public Task<CreateVaultNoteVaultTagResponse> CreateNoteVaultTagAsync(string noteId, string tagId, string? noteVaultTagId = null, int? sortOrder = null, CancellationToken ct = default)
+            => Task.FromResult(new CreateVaultNoteVaultTagResponse { UserMessage = "Note vault tags are not supported in file storage mode." });
+
+        public Task<UpdateVaultNoteVaultTagResponse> UpdateNoteVaultTagAsync(string noteVaultTagId, int? sortOrder = null, CancellationToken ct = default)
+            => Task.FromResult(new UpdateVaultNoteVaultTagResponse { UserMessage = "Note vault tags are not supported in file storage mode." });
+
+        public Task<DeleteVaultNoteVaultTagResponse> DeleteNoteVaultTagAsync(string noteVaultTagId, CancellationToken ct = default)
+            => Task.FromResult(new DeleteVaultNoteVaultTagResponse { UserMessage = "Note vault tags are not supported in file storage mode." });
+
+        public Task<UpdateVaultTagResponse> UpdateTagAsync(string tagId, string? name = null, string? description = null, string? colorHex = null, int? sortOrder = null, string? vaultId = null, CancellationToken ct = default)
+            => Task.FromResult(new UpdateVaultTagResponse { UserMessage = "Tag updates are not supported in file storage mode." });
+
+        public Task<CreateVaultMetadataResponse> CreateMetadataAsync(string noteId, string key, string? value = null, string? metadataId = null, CancellationToken ct = default)
+            => Task.FromResult(new CreateVaultMetadataResponse { UserMessage = "Metadata is not supported in file storage mode." });
+
+        public Task<UpdateVaultMetadataResponse> UpdateMetadataAsync(string metadataId, string? key = null, string? value = null, CancellationToken ct = default)
+            => Task.FromResult(new UpdateVaultMetadataResponse { UserMessage = "Metadata is not supported in file storage mode." });
+
+        public Task<DeleteVaultMetadataResponse> DeleteMetadataAsync(string metadataId, CancellationToken ct = default)
+            => Task.FromResult(new DeleteVaultMetadataResponse { UserMessage = "Metadata is not supported in file storage mode." });
 
         // ── Path helpers ──────────────────────────────────────────────────────
 

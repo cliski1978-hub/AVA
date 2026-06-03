@@ -51,8 +51,8 @@ namespace AVA.Vault.Core.Services.Data
                     VaultID = request.VaultID,
                     Name = request.Name,
                     Description = request.Description,
-                    IsArchived = request.IsArchived,
-                    IsExpanded = request.IsExpanded,
+                    IsArchived = false,
+                    IsExpanded = false,
                     SortOrder = request.SortOrder,
                     Status = string.IsNullOrWhiteSpace(request.Status) ? "Active" : request.Status,
                     CreatedAt = DateTime.UtcNow,
@@ -100,10 +100,6 @@ namespace AVA.Vault.Core.Services.Data
         public string Name { get; set; }
 
         public string? Description { get; set; }
-
-        public bool IsArchived { get; set; }
-
-        public bool IsExpanded { get; set; }
 
         public int SortOrder { get; set; }
 
