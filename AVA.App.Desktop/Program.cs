@@ -30,6 +30,7 @@ using AVA.Vault.Core.Data.Entities;
 using AVA.Vault.Core.Logger;
 using AVA.Vault.Core.Persistence;
 using AVA.Vault.Core.Services;
+using AVA.Vault.Core.Services.Interfaces;
 using AVA.Vault.Core.Adapters;
 using AVA.Vault.Core.Interfaces;
 using AVA.Memory.Abstractions;
@@ -207,7 +208,15 @@ public class Program
             sp.GetRequiredService<DbVaultPersistenceProvider>(),
             sp.GetRequiredService<IMemoryStore>(),
             sp.GetRequiredService<VaultLogger>(),
-            sp.GetRequiredService<ILogger<VaultUiSyncService>>()));
+            sp.GetRequiredService<ILogger<VaultUiSyncService>>(),
+            sp.GetRequiredService<IVaultNavigationReadService>(),
+            sp.GetRequiredService<IVaultWorkflowDetailsReadService>(),
+            sp.GetRequiredService<IVaultWorkflowGraphReadService>(),
+            sp.GetRequiredService<IVaultNoteDetailsReadService>(),
+            sp.GetRequiredService<IVaultNoteUsageReadService>(),
+            sp.GetRequiredService<IVaultFileDetailsReadService>(),
+            sp.GetRequiredService<IVaultFileUsageReadService>(),
+            sp.GetRequiredService<IVaultContextFilesReadService>()));
 
         // ── Runtime Context ───────────────────────────────────────────────────
         // App-wide service access surface only; EF contexts remain short-lived

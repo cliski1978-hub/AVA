@@ -7,9 +7,14 @@ using AVA.UI.Vault.Mapping;
 using AVA.Vault.Core.Adapters;
 using AVA.Vault.Core.Data.Entities;
 using AVA.Vault.Core.Data.Models;
+using AVA.Vault.Core.Dtos.Files;
+using AVA.Vault.Core.Dtos.Navigation;
+using AVA.Vault.Core.Dtos.Notes;
+using AVA.Vault.Core.Dtos.Workflows;
 using AVA.Vault.Core.Interfaces;
 using AVA.Vault.Core.Logger;
 using AVA.Vault.Core.Services.Data;
+using AVA.Vault.Core.Services.Interfaces;
 
 namespace AVA.UI.Vault.Services;
 
@@ -26,18 +31,43 @@ public class VaultUiSyncService : IVaultUiSyncService
     private readonly VaultLogger _vaultLogger;
     private readonly ILogger<VaultUiSyncService> _logger;
 
+    private readonly IVaultNavigationReadService _navRead;
+    private readonly IVaultWorkflowDetailsReadService _wfDetails;
+    private readonly IVaultWorkflowGraphReadService _wfGraph;
+    private readonly IVaultNoteDetailsReadService _noteDetails;
+    private readonly IVaultNoteUsageReadService _noteUsage;
+    private readonly IVaultFileDetailsReadService _fileDetails;
+    private readonly IVaultFileUsageReadService _fileUsage;
+    private readonly IVaultContextFilesReadService _ctxFiles;
+
     public VaultUiSyncService(
         IDbContextFactory<VaultDbContext> dbFactory,
         IVaultPersistenceProvider dbProvider,
         IMemoryStore memoryStore,
         VaultLogger vaultLogger,
-        ILogger<VaultUiSyncService> logger)
+        ILogger<VaultUiSyncService> logger,
+        IVaultNavigationReadService navRead,
+        IVaultWorkflowDetailsReadService wfDetails,
+        IVaultWorkflowGraphReadService wfGraph,
+        IVaultNoteDetailsReadService noteDetails,
+        IVaultNoteUsageReadService noteUsage,
+        IVaultFileDetailsReadService fileDetails,
+        IVaultFileUsageReadService fileUsage,
+        IVaultContextFilesReadService ctxFiles)
     {
         _dbFactory = dbFactory;
         _dbProvider = dbProvider;
         _memoryStore = memoryStore;
         _vaultLogger = vaultLogger;
         _logger = logger;
+        _navRead = navRead;
+        _wfDetails = wfDetails;
+        _wfGraph = wfGraph;
+        _noteDetails = noteDetails;
+        _noteUsage = noteUsage;
+        _fileDetails = fileDetails;
+        _fileUsage = fileUsage;
+        _ctxFiles = ctxFiles;
     }
 
     // ── Infrastructure ────────────────────────────────────────────────────────
@@ -509,4 +539,48 @@ public class VaultUiSyncService : IVaultUiSyncService
         => _dbProvider.DeleteMetadataAsync(metadataId);
 
     #endregion
+
+    // ── Read Queries ──────────────────────────────────────────────────────────
+
+    public Task<VaultNavigationTreeDto> GetVaultNavigationTreeAsync(string vaultId, CancellationToken ct = default)
+        => _navRead.GetVaultNavigationTreeAsync(vaultId, ct);
+
+    public Task<VaultNavigationTreeDto> GetAllVaultNavigationTreesAsync(CancellationToken ct = default)
+        => _navRead.GetAllVaultNavigationTreesAsync(ct);
+
+    public Task<VaultNavigationProjectDto> GetProjectNavigationBranchAsync(string projectId, CancellationToken ct = default)
+        => _navRead.GetProjectNavigationBranchAsync(projectId, ct);
+
+    public Task<VaultWorkflowDetailsDto?> GetWorkflowDetailsAsync(string workflowId, CancellationToken ct = default)
+        => _wfDetails.GetWorkflowDetailsAsync(workflowId, ct);
+
+    public Task<VaultWorkflowGraphDto?> GetWorkflowGraphAsync(string workflowId, CancellationToken ct = default)
+        => _wfGraph.GetWorkflowGraphAsync(workflowId, ct);
+
+    public Task<VaultNoteDetailsDto?> GetNoteDetailsAsync(string noteId, CancellationToken ct = default)
+        => _noteDetails.GetNoteDetailsAsync(noteId, ct);
+
+    public Task<VaultNoteUsageDto> GetNoteUsageAsync(string noteId, CancellationToken ct = default)
+        => _noteUsage.GetNoteUsageAsync(noteId, ct);
+
+    public Task<VaultFileDetailsDto?> GetFileDetailsAsync(string fileRefId, CancellationToken ct = default)
+        => _fileDetails.GetFileDetailsAsync(fileRefId, ct);
+
+    public Task<VaultFileUsageDto> GetFileUsageAsync(string fileRefId, CancellationToken ct = default)
+        => _fileUsage.GetFileUsageAsync(fileRefId, ct);
+
+    public Task<VaultContextFilesDto> GetFilesForVaultAsync(string vaultId, CancellationToken ct = default)
+        => _ctxFiles.GetFilesForVaultAsync(vaultId, ct);
+
+    public Task<VaultContextFilesDto> GetFilesForProjectAsync(string projectId, CancellationToken ct = default)
+        => _ctxFiles.GetFilesForProjectAsync(projectId, ct);
+
+    public Task<VaultContextFilesDto> GetFilesForSessionAsync(string sessionId, CancellationToken ct = default)
+        => _ctxFiles.GetFilesForSessionAsync(sessionId, ct);
+
+    public Task<VaultContextFilesDto> GetFilesForNoteAsync(string noteId, CancellationToken ct = default)
+        => _ctxFiles.GetFilesForNoteAsync(noteId, ct);
+
+    public Task<VaultContextFilesDto> GetFilesForWorkflowAsync(string workflowId, CancellationToken ct = default)
+        => _ctxFiles.GetFilesForWorkflowAsync(workflowId, ct);
 }

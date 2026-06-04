@@ -1,5 +1,9 @@
 using AVA.UI.CORE.Models.UI;
 using AVA.Vault.Core.Data.Models;
+using AVA.Vault.Core.Dtos.Files;
+using AVA.Vault.Core.Dtos.Navigation;
+using AVA.Vault.Core.Dtos.Notes;
+using AVA.Vault.Core.Dtos.Workflows;
 using AVA.Vault.Core.Services.Data;
 
 
@@ -169,6 +173,26 @@ public interface IVaultUiSyncService
     Task<CreateVaultMetadataResponse> CreateMetadataAsync(string noteId, string key, string? value = null, string? metadataId = null);
     Task<UpdateVaultMetadataResponse> UpdateMetadataAsync(string metadataId, string? key = null, string? value = null);
     Task<DeleteVaultMetadataResponse> DeleteMetadataAsync(string metadataId);
+
+    // ── Read Queries ───────────────────────────────────────────────────────────
+    Task<VaultNavigationTreeDto> GetVaultNavigationTreeAsync(string vaultId, CancellationToken ct = default);
+    Task<VaultNavigationTreeDto> GetAllVaultNavigationTreesAsync(CancellationToken ct = default);
+    Task<VaultNavigationProjectDto> GetProjectNavigationBranchAsync(string projectId, CancellationToken ct = default);
+
+    Task<VaultWorkflowDetailsDto?> GetWorkflowDetailsAsync(string workflowId, CancellationToken ct = default);
+    Task<VaultWorkflowGraphDto?> GetWorkflowGraphAsync(string workflowId, CancellationToken ct = default);
+
+    Task<VaultNoteDetailsDto?> GetNoteDetailsAsync(string noteId, CancellationToken ct = default);
+    Task<VaultNoteUsageDto> GetNoteUsageAsync(string noteId, CancellationToken ct = default);
+
+    Task<VaultFileDetailsDto?> GetFileDetailsAsync(string fileRefId, CancellationToken ct = default);
+    Task<VaultFileUsageDto> GetFileUsageAsync(string fileRefId, CancellationToken ct = default);
+
+    Task<VaultContextFilesDto> GetFilesForVaultAsync(string vaultId, CancellationToken ct = default);
+    Task<VaultContextFilesDto> GetFilesForProjectAsync(string projectId, CancellationToken ct = default);
+    Task<VaultContextFilesDto> GetFilesForSessionAsync(string sessionId, CancellationToken ct = default);
+    Task<VaultContextFilesDto> GetFilesForNoteAsync(string noteId, CancellationToken ct = default);
+    Task<VaultContextFilesDto> GetFilesForWorkflowAsync(string workflowId, CancellationToken ct = default);
 
     // ── Search ────────────────────────────────────────────────────────────────
     Task<List<VaultNote>> SearchNotesAsync(

@@ -42,6 +42,7 @@ using AVA.Vault.Core.Interfaces;
 using AVA.Vault.Core.Logger;
 using AVA.Vault.Core.Persistence;
 using AVA.Vault.Core.Services;
+using AVA.Vault.Core.Services.Interfaces;
 using AVA.Vault.Core.Services.Secrets;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
@@ -124,7 +125,18 @@ builder.Services.AddScoped<IVaultUiSyncService>(sp =>
     var memStore   = sp.GetRequiredService<IMemoryStore>();
     var genericLog = sp.GetRequiredService<ILogger<VaultUiSyncService>>();
     var dbProvider = new DbVaultPersistenceProvider(dbFactory, logger, ids);
-    return new VaultUiSyncService(dbFactory, dbProvider, memStore, logger, genericLog);
+
+    var navRead    = sp.GetRequiredService<IVaultNavigationReadService>();
+    var wfDetails  = sp.GetRequiredService<IVaultWorkflowDetailsReadService>();
+    var wfGraph    = sp.GetRequiredService<IVaultWorkflowGraphReadService>();
+    var noteDet    = sp.GetRequiredService<IVaultNoteDetailsReadService>();
+    var noteUsage  = sp.GetRequiredService<IVaultNoteUsageReadService>();
+    var fileDet    = sp.GetRequiredService<IVaultFileDetailsReadService>();
+    var fileUsage  = sp.GetRequiredService<IVaultFileUsageReadService>();
+    var ctxFiles   = sp.GetRequiredService<IVaultContextFilesReadService>();
+
+    return new VaultUiSyncService(dbFactory, dbProvider, memStore, logger, genericLog,
+        navRead, wfDetails, wfGraph, noteDet, noteUsage, fileDet, fileUsage, ctxFiles);
 });
 
 // â”€â”€ Runtime contexts (null stubs) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
